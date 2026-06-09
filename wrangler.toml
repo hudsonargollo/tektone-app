@@ -1,0 +1,9 @@
+name = "tektone-app"
+pages_build_output_dir = "dist"
+compatibility_date = "2024-11-01"
+
+# KV binding for the kanban API (Pages Functions read env.KANBAN).
+# id is filled in after `wrangler kv namespace create KANBAN`.
+[[kv_namespaces]]
+binding = "KANBAN"
+id = "REPLACE_WITH_KV_ID"

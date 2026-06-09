@@ -1,0 +1,140 @@
+@import "tailwindcss";
+
+/* ── Fonts ──────────────────────────────────────────────────────────────── */
+@font-face {
+  font-family: "Geist";
+  src: url("/fonts/GeistVF.woff") format("woff");
+  font-weight: 100 900;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Geist Mono";
+  src: url("/fonts/GeistMonoVF.woff") format("woff");
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+/* ── TEKTONE design tokens (mirrors landing page) ───────────────────────── */
+@theme {
+  --font-sans: "Geist", system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, monospace;
+
+  /* Neutral dark elevation ladder */
+  --color-ink-base: #0a0a0a;
+  --color-ink-900: #121212;
+  --color-ink-800: #171717;
+  --color-ink-700: #1e1e1e;
+  --color-ink-600: #272727;
+  --color-ink-500: #353535;
+
+  /* Brand — scarce, high-potency accents */
+  --color-pillar: #002d62;
+  --color-action: #00e5ff;
+  --color-result-lime: #c2ff00;
+
+  /* Semantic state lexicon */
+  --color-success: #46ff9e;
+  --color-danger: #e5484d;
+  --color-warning: #ffb224;
+}
+
+/* ── Base ───────────────────────────────────────────────────────────────── */
+html {
+  color-scheme: dark;
+}
+body {
+  margin: 0;
+  background: var(--color-ink-base);
+  color: #ededed;
+  font-family: var(--font-sans);
+  letter-spacing: 0.005em;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.font-mono,
+.tnum {
+  font-feature-settings: "tnum" 1, "ss01" 1;
+}
+
+/* ── Elevation surfaces ─────────────────────────────────────────────────── */
+.surface-1 {
+  background-color: #171717;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+.surface-2 {
+  background-color: #1e1e1e;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.surface-3 {
+  background-color: #272727;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.glass {
+  background: rgba(17, 17, 17, 0.72);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* ── Accent treatments ──────────────────────────────────────────────────── */
+.ring-action {
+  box-shadow: 0 0 0 1px rgba(0, 229, 255, 0.4), 0 0 24px rgba(0, 229, 255, 0.16);
+}
+.glow-action {
+  box-shadow: 0 0 22px rgba(0, 229, 255, 0.32), 0 0 60px rgba(0, 229, 255, 0.1);
+}
+
+.label-tech {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--color-action);
+}
+
+/* ── Blueprint backdrop ─────────────────────────────────────────────────── */
+.bp-dots {
+  background-image: radial-gradient(
+    circle,
+    rgba(0, 229, 255, 0.08) 1px,
+    transparent 1px
+  );
+  background-size: 30px 30px;
+}
+.bp-lines {
+  background-image: linear-gradient(
+      to right,
+      rgba(255, 255, 255, 0.03) 1px,
+      transparent 1px
+    ),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 60px 60px;
+}
+
+/* ── Scrollbars ─────────────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 229, 255, 0.4);
+}
+::selection {
+  background: rgba(0, 229, 255, 0.25);
+  color: #fff;
+}
+
+/* Hide number input spinners */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.7);
+  cursor: pointer;
+}
