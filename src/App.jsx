@@ -233,7 +233,7 @@ export default function App() {
   // ── Auth gate ─────────────────────────────────────────────────────────────
   if (authed === null) {
     return (
-      <div className="flex h-screen items-center justify-center bg-ink-base">
+      <div className="flex h-screen items-center justify-center bg-clay">
         <Spinner />
       </div>
     );
@@ -242,33 +242,33 @@ export default function App() {
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
-    <div className="flex h-screen flex-col bg-ink-base">
+    <div className="flex h-screen flex-col bg-clay">
       {/* Brand bar */}
-      <div className="relative z-10 flex h-14 shrink-0 items-center justify-between border-b border-white/[0.06] bg-ink-base/80 px-5 backdrop-blur-xl">
-        <div className="flex items-center gap-3">
-          <span className="font-mono text-sm font-bold tracking-[0.28em] text-white">
+      <div className="relative z-10 flex h-14 shrink-0 items-center justify-between border-b border-ink/10 bg-clay/80 px-5 backdrop-blur-xl">
+        <div className="flex items-baseline gap-3">
+          <span className="text-sm font-semibold tracking-[0.3em] text-ink">
             TEKTONE
           </span>
-          <span className="hidden font-mono text-[11px] tracking-[0.18em] text-zinc-600 sm:inline">
-            / OPERAÇÕES
+          <span className="serif hidden text-[13px] text-stone-500 sm:inline">
+            Maison · Operações
           </span>
         </div>
         <div className="flex items-center gap-4">
           {userEmail && (
-            <span className="hidden font-mono text-[11px] tracking-wide text-zinc-500 md:inline">
+            <span className="hidden font-mono text-[11px] tracking-wide text-stone-500 md:inline">
               {userEmail}
             </span>
           )}
           <a
             href="https://tektone.com.br"
-            className="hidden font-mono text-[11px] tracking-wide text-zinc-500 transition-colors hover:text-action sm:inline"
+            className="hidden font-mono text-[11px] tracking-wide text-stone-500 transition-colors hover:text-action sm:inline"
           >
             ← tektone.com.br
           </a>
           {isAdmin && (
             <button
               onClick={() => setShowAdmin(true)}
-              className="flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1.5 font-mono text-[11px] tracking-wide text-zinc-400 transition-colors hover:border-action/40 hover:text-action"
+              className="flex items-center gap-1.5 rounded-lg border border-ink/15 px-2.5 py-1.5 font-mono text-[11px] tracking-wide text-stone-500 transition-colors hover:border-action/40 hover:text-action"
               title="Admin"
             >
               <ShieldCheck size={12} /> admin
@@ -276,7 +276,7 @@ export default function App() {
           )}
           <button
             onClick={logout}
-            className="flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1.5 font-mono text-[11px] tracking-wide text-zinc-400 transition-colors hover:border-danger/40 hover:text-danger"
+            className="flex items-center gap-1.5 rounded-lg border border-ink/15 px-2.5 py-1.5 font-mono text-[11px] tracking-wide text-stone-500 transition-colors hover:border-danger/40 hover:text-danger"
             title="Sair"
           >
             <LogOut size={12} /> sair
@@ -289,7 +289,7 @@ export default function App() {
         <div className="pointer-events-none absolute inset-0 bp-dots opacity-50" aria-hidden />
 
         {loading ? (
-          <div className="flex flex-1 items-center justify-center gap-3 text-zinc-500">
+          <div className="flex flex-1 items-center justify-center gap-3 text-stone-500">
             <Spinner />
             <span className="font-mono text-sm">carregando pipeline…</span>
           </div>
@@ -299,9 +299,9 @@ export default function App() {
             <div>
               <p className="font-bold">Erro ao carregar</p>
               <p className="mt-1 font-mono text-xs text-danger/80">{error}</p>
-              <p className="mt-3 text-xs text-zinc-500">
+              <p className="mt-3 text-xs text-stone-500">
                 A API KV responde apenas no deploy (Pages Functions). Em dev local
-                use <code className="text-zinc-400">wrangler pages dev</code>.
+                use <code className="text-stone-500">wrangler pages dev</code>.
               </p>
             </div>
           </div>

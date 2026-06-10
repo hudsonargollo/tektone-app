@@ -30,7 +30,7 @@ function Card({ card, client, onEdit, onDelete, onDragStart, onDragEnd, dragging
           e.stopPropagation();
           onDelete(card.id);
         }}
-        className="absolute right-2 top-2 rounded-md p-1 text-zinc-600 opacity-0 transition-all hover:bg-danger/10 hover:text-danger group-hover:opacity-100"
+        className="absolute right-2 top-2 rounded-md p-1 text-stone-400 opacity-0 transition-all hover:bg-danger/10 hover:text-danger group-hover:opacity-100"
         title="Excluir"
       >
         <Trash2 size={12} />
@@ -40,9 +40,9 @@ function Card({ card, client, onEdit, onDelete, onDragStart, onDragEnd, dragging
         <div className="mb-3 h-1 w-10 rounded-full" style={{ background: card.labelColor }} />
       )}
 
-      <p className="mb-2 pr-5 text-sm font-semibold leading-snug text-white">{card.title}</p>
+      <p className="mb-2 pr-5 text-sm font-semibold leading-snug text-ink">{card.title}</p>
       {card.description && (
-        <p className="mb-3 line-clamp-2 text-xs leading-relaxed text-zinc-500">
+        <p className="mb-3 line-clamp-2 text-xs leading-relaxed text-stone-500">
           {card.description}
         </p>
       )}
@@ -62,7 +62,7 @@ function Card({ card, client, onEdit, onDelete, onDragStart, onDragEnd, dragging
           {card.dueDate && (
             <span
               className={`flex items-center gap-1 font-mono text-[10px] font-semibold ${
-                overdue ? "text-danger" : "text-zinc-500"
+                overdue ? "text-danger" : "text-stone-500"
               }`}
             >
               <Calendar size={10} />
@@ -93,7 +93,7 @@ function QuickAdd({ columnId, onAdd }) {
     return (
       <button
         onClick={() => setOpen(true)}
-        className="flex w-full items-center gap-2 rounded-lg border border-dashed border-white/10 px-3 py-2 text-xs font-medium text-zinc-500 transition-colors hover:border-action/40 hover:text-action"
+        className="flex w-full items-center gap-2 rounded-lg border border-dashed border-ink/15 px-3 py-2 text-xs font-medium text-stone-500 transition-colors hover:border-action/40 hover:text-action"
       >
         <Plus size={13} /> Adicionar tarefa
       </button>
@@ -116,16 +116,16 @@ function QuickAdd({ columnId, onAdd }) {
         }}
         onBlur={submit}
         placeholder="Título da tarefa…"
-        className="w-full resize-none bg-transparent text-sm text-white outline-none placeholder:text-zinc-600"
+        className="w-full resize-none bg-transparent text-sm text-ink outline-none placeholder:text-stone-400"
       />
       <div className="mt-1 flex items-center justify-between">
-        <span className="font-mono text-[10px] text-zinc-600">
+        <span className="font-mono text-[10px] text-stone-400">
           <CornerDownLeft size={10} className="inline" /> criar
         </span>
         <button
           onMouseDown={(e) => e.preventDefault()}
           onClick={submit}
-          className="rounded-md bg-action px-2.5 py-1 text-[11px] font-bold text-ink-base"
+          className="rounded-md bg-action px-2.5 py-1 text-[11px] font-bold text-clay"
         >
           Criar
         </button>
@@ -151,10 +151,10 @@ function Column({
       <div className="mb-3 flex items-center justify-between px-1">
         <div className="flex items-center gap-2">
           <span className="h-2.5 w-2.5 rounded-full" style={{ background: col.color }} />
-          <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.15em] text-zinc-300">
+          <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.15em] text-stone-600">
             {col.title}
           </span>
-          <span className="rounded-full bg-white/5 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-zinc-500 tnum">
+          <span className="rounded-full bg-ink/[0.05] px-1.5 py-0.5 font-mono text-[10px] font-semibold text-stone-500 tnum">
             {cards.length}
           </span>
         </div>
@@ -175,7 +175,7 @@ function Column({
         className={`flex-1 space-y-2.5 rounded-2xl border p-2 transition-colors ${
           isOver
             ? "border-action/40 bg-action/[0.04]"
-            : "border-white/[0.04] bg-white/[0.015]"
+            : "border-ink/[0.06] bg-ink/[0.025]"
         }`}
         style={{ minHeight: 120 }}
       >
@@ -192,7 +192,7 @@ function Column({
         </AnimatePresence>
 
         {cards.length === 0 && (
-          <div className="flex h-16 items-center justify-center font-mono text-[11px] text-zinc-700">
+          <div className="flex h-16 items-center justify-center font-mono text-[11px] text-stone-300">
             arraste cards aqui
           </div>
         )}

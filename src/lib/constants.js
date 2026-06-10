@@ -1,55 +1,55 @@
-// Kanban configuration — TEKTONE themed
+// Kanban configuration — TEKTONE v2 "Mineral" palette (ancient + tech)
 
 export const COLUMNS = [
-  { id: "backlog", title: "Backlog", color: "#64748B" },
-  { id: "todo", title: "A Fazer", color: "#3B82F6" },
-  { id: "inprogress", title: "Em Andamento", color: "#FFB224" },
-  { id: "review", title: "Em Revisão", color: "#8B5CF6" },
-  { id: "done", title: "Concluído", color: "#46FF9E" },
+  { id: "backlog", title: "Backlog", color: "#8A8579" }, // stone
+  { id: "todo", title: "A Fazer", color: "#4C6B7A" }, // slate
+  { id: "inprogress", title: "Em Andamento", color: "#B8862F" }, // ochre
+  { id: "review", title: "Em Revisão", color: "#7A5A6E" }, // plum
+  { id: "done", title: "Concluído", color: "#2E4A43" }, // mineral green
 ];
 
 export const PRIORITY = {
   low: {
     label: "Baixa",
-    color: "#64748B",
-    bg: "rgba(100,116,139,0.14)",
-    border: "rgba(100,116,139,0.35)",
+    color: "#8A8579",
+    bg: "rgba(138,133,121,0.14)",
+    border: "rgba(138,133,121,0.4)",
   },
   medium: {
     label: "Média",
-    color: "#FFB224",
-    bg: "rgba(255,178,36,0.12)",
-    border: "rgba(255,178,36,0.35)",
+    color: "#B8862F",
+    bg: "rgba(184,134,47,0.14)",
+    border: "rgba(184,134,47,0.4)",
   },
   high: {
     label: "Alta",
-    color: "#E5484D",
-    bg: "rgba(229,72,77,0.14)",
-    border: "rgba(229,72,77,0.4)",
+    color: "#9B3D2E",
+    bg: "rgba(155,61,46,0.14)",
+    border: "rgba(155,61,46,0.42)",
   },
 };
 
-// Label palette tuned for the dark surface
+// Earthy label palette for cards
 export const LABEL_COLORS = [
-  "#00E5FF", // action cyan
-  "#C2FF00", // result lime
-  "#46FF9E", // success
-  "#3B82F6", // blue
-  "#8B5CF6", // violet
-  "#F472B6", // pink
-  "#FFB224", // amber
-  "#E5484D", // danger
+  "#2E4A43", // mineral green
+  "#9B3D2E", // terracotta
+  "#B8862F", // ochre
+  "#4C6B7A", // slate
+  "#7A5A6E", // plum
+  "#5B7A4E", // olive
+  "#C7B79C", // sand
+  "#141618", // mineral black
 ];
 
 export const PARTNER_COLORS = [
-  "#00E5FF",
-  "#C2FF00",
-  "#3B82F6",
-  "#8B5CF6",
-  "#46FF9E",
-  "#FFB224",
-  "#F472B6",
-  "#E5484D",
+  "#2E4A43",
+  "#9B3D2E",
+  "#B8862F",
+  "#4C6B7A",
+  "#7A5A6E",
+  "#5B7A4E",
+  "#C7B79C",
+  "#8A8579",
 ];
 
 export function today() {

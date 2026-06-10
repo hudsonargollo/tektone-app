@@ -25,21 +25,21 @@ export default function Sidebar({ clients, activeId, counts, onSelect, onAdd, on
   const total = Object.values(counts).reduce((a, b) => a + b, 0);
 
   return (
-    <aside className="flex w-60 shrink-0 flex-col border-r border-white/[0.06] pr-4">
-      <p className="mb-3 px-2 font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-zinc-600">
+    <aside className="flex w-60 shrink-0 flex-col border-r border-ink/10 pr-4">
+      <p className="mb-3 px-2 font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-stone-400">
         Parceiros
       </p>
 
       <button
         onClick={() => onSelect(null)}
         className={`mb-1 flex items-center justify-between rounded-xl px-3 py-2 text-sm font-semibold transition-colors ${
-          !activeId ? "bg-action text-ink-base" : "text-zinc-300 hover:bg-white/5"
+          !activeId ? "bg-action text-clay" : "text-stone-600 hover:bg-ink/[0.05]"
         }`}
       >
         <span className="flex items-center gap-2.5">
           <LayoutGrid size={14} /> Todos
         </span>
-        <span className={`font-mono text-[11px] tnum ${!activeId ? "text-ink-base/70" : "text-zinc-600"}`}>
+        <span className={`font-mono text-[11px] tnum ${!activeId ? "text-clay/70" : "text-stone-400"}`}>
           {total}
         </span>
       </button>
@@ -58,12 +58,12 @@ export default function Sidebar({ clients, activeId, counts, onSelect, onAdd, on
                     if (e.key === "Enter") submitRename(c.id);
                     if (e.key === "Escape") setRenaming(null);
                   }}
-                  className="flex-1 rounded-lg border border-action/40 bg-white/[0.03] px-2 py-1.5 text-xs text-white outline-none focus:border-action"
+                  className="flex-1 rounded-lg border border-action/40 bg-ink/[0.03] px-2 py-1.5 text-xs text-ink outline-none focus:border-action"
                 />
                 <button onClick={() => submitRename(c.id)} className="p-1 text-success">
                   <Check size={12} />
                 </button>
-                <button onClick={() => setRenaming(null)} className="p-1 text-zinc-500">
+                <button onClick={() => setRenaming(null)} className="p-1 text-stone-500">
                   <X size={12} />
                 </button>
               </div>
@@ -73,7 +73,7 @@ export default function Sidebar({ clients, activeId, counts, onSelect, onAdd, on
             <div
               key={c.id}
               className={`group flex items-center rounded-xl transition-colors ${
-                active ? "" : "hover:bg-white/5"
+                active ? "" : "hover:bg-ink/[0.05]"
               }`}
               style={active ? { background: c.color + "22" } : {}}
             >
@@ -84,7 +84,7 @@ export default function Sidebar({ clients, activeId, counts, onSelect, onAdd, on
               >
                 <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: c.color }} />
                 <span className="flex-1 truncate">{c.name}</span>
-                <span className="font-mono text-[11px] tnum text-zinc-600">{counts[c.id] ?? 0}</span>
+                <span className="font-mono text-[11px] tnum text-stone-400">{counts[c.id] ?? 0}</span>
               </button>
               <div className="flex items-center gap-0.5 pr-2 opacity-0 transition-opacity group-hover:opacity-100">
                 <button
@@ -92,7 +92,7 @@ export default function Sidebar({ clients, activeId, counts, onSelect, onAdd, on
                     setRenaming(c.id);
                     setRenameVal(c.name);
                   }}
-                  className="rounded p-1 text-zinc-500 hover:text-white"
+                  className="rounded p-1 text-stone-500 hover:text-ink"
                   title="Renomear"
                 >
                   <Pencil size={11} />
@@ -101,7 +101,7 @@ export default function Sidebar({ clients, activeId, counts, onSelect, onAdd, on
                   onClick={() => {
                     if (window.confirm(`Excluir "${c.name}" e todos os seus cards?`)) onDelete(c.id);
                   }}
-                  className="rounded p-1 text-zinc-500 hover:text-danger"
+                  className="rounded p-1 text-stone-500 hover:text-danger"
                   title="Excluir"
                 >
                   <Trash2 size={11} />
@@ -123,7 +123,7 @@ export default function Sidebar({ clients, activeId, counts, onSelect, onAdd, on
               if (e.key === "Escape") setAdding(false);
             }}
             placeholder="Nome do parceiro"
-            className="w-full rounded-lg border border-action/40 bg-white/[0.03] px-2 py-1.5 text-xs text-white outline-none focus:border-action"
+            className="w-full rounded-lg border border-action/40 bg-ink/[0.03] px-2 py-1.5 text-xs text-ink outline-none focus:border-action"
           />
           <div className="flex flex-wrap gap-1.5">
             {PARTNER_COLORS.map((c) => (
@@ -131,7 +131,7 @@ export default function Sidebar({ clients, activeId, counts, onSelect, onAdd, on
                 key={c}
                 onClick={() => setColor(c)}
                 className={`h-5 w-5 rounded-full transition-transform ${
-                  color === c ? "scale-110 ring-2 ring-white ring-offset-2 ring-offset-ink-base" : ""
+                  color === c ? "scale-110 ring-2 ring-ink ring-offset-2 ring-offset-clay" : ""
                 }`}
                 style={{ background: c }}
               />
@@ -140,13 +140,13 @@ export default function Sidebar({ clients, activeId, counts, onSelect, onAdd, on
           <div className="flex gap-1">
             <button
               onClick={submitAdd}
-              className="flex-1 rounded-lg bg-action py-1.5 text-xs font-bold text-ink-base"
+              className="flex-1 rounded-lg bg-action py-1.5 text-xs font-bold text-clay"
             >
               Adicionar
             </button>
             <button
               onClick={() => setAdding(false)}
-              className="rounded-lg px-2 text-xs text-zinc-500 hover:bg-white/5"
+              className="rounded-lg px-2 text-xs text-stone-500 hover:bg-ink/[0.05]"
             >
               ✕
             </button>
@@ -155,7 +155,7 @@ export default function Sidebar({ clients, activeId, counts, onSelect, onAdd, on
       ) : (
         <button
           onClick={() => setAdding(true)}
-          className="mt-1 flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-bold text-zinc-500 transition-colors hover:bg-white/5 hover:text-action"
+          className="mt-1 flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-bold text-stone-500 transition-colors hover:bg-ink/[0.05] hover:text-action"
         >
           <Plus size={13} /> Novo parceiro
         </button>

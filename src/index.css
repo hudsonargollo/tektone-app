@@ -1,97 +1,97 @@
 @import "tailwindcss";
 
-/* ── Fonts ──────────────────────────────────────────────────────────────── */
-@font-face {
-  font-family: "Geist";
-  src: url("/fonts/GeistVF.woff") format("woff");
-  font-weight: 100 900;
-  font-display: swap;
-}
-@font-face {
-  font-family: "Geist Mono";
-  src: url("/fonts/GeistMonoVF.woff") format("woff");
-  font-weight: 100 900;
-  font-display: swap;
-}
+/* ── TEKTONE v2 · Mineral system ─────────────────────────────────────────────
+   Ancient + tech. Ivory base, mineral black, deep green, sand.
+   Type: Inter (display) · EB Garamond italic (editorial/Latin) · JetBrains Mono (UI)
+   Fonts loaded via <link> in index.html.
+------------------------------------------------------------------------------ */
 
-/* ── TEKTONE design tokens (mirrors landing page) ───────────────────────── */
 @theme {
-  --font-sans: "Geist", system-ui, sans-serif;
-  --font-mono: "Geist Mono", ui-monospace, monospace;
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --font-serif: "EB Garamond", Georgia, serif;
 
-  /* Neutral dark elevation ladder */
-  --color-ink-base: #0a0a0a;
-  --color-ink-900: #121212;
-  --color-ink-800: #171717;
-  --color-ink-700: #1e1e1e;
-  --color-ink-600: #272727;
-  --color-ink-500: #353535;
+  /* Mineral palette */
+  --color-clay: #efe8dc; /* Ivory Clay — dominant base */
+  --color-paper: #f8f3ea; /* raised card */
+  --color-ink: #141618; /* Mineral Black — text/structure */
+  --color-green: #2e4a43; /* Mineral Green — primary accent */
+  --color-sand: #c7b79c; /* Mineral Sand — secondary accent */
 
-  /* Brand — scarce, high-potency accents */
-  --color-pillar: #002d62;
-  --color-action: #00e5ff;
-  --color-result-lime: #c2ff00;
+  /* action = green (so existing bg-action/text-action map to brand green) */
+  --color-action: #2e4a43;
+  --color-pillar: #c7b79c;
 
-  /* Semantic state lexicon */
-  --color-success: #46ff9e;
-  --color-danger: #e5484d;
-  --color-warning: #ffb224;
+  /* Semantic state lexicon (earthy) */
+  --color-success: #3e6b4e;
+  --color-danger: #9b3d2e; /* terracotta */
+  --color-warning: #b8862f; /* ochre */
 }
 
-/* ── Base ───────────────────────────────────────────────────────────────── */
+/* ── Base ───────────────────────────────────────────────────────────────────── */
 html {
-  color-scheme: dark;
+  color-scheme: light;
 }
 body {
   margin: 0;
-  background: var(--color-ink-base);
-  color: #ededed;
+  background: var(--color-clay);
+  color: var(--color-ink);
   font-family: var(--font-sans);
-  letter-spacing: 0.005em;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
 .font-mono,
 .tnum {
-  font-feature-settings: "tnum" 1, "ss01" 1;
+  font-feature-settings: "tnum" 1;
 }
 
-/* ── Elevation surfaces ─────────────────────────────────────────────────── */
+/* Editorial serif helper */
+.serif {
+  font-family: var(--font-serif);
+  font-style: italic;
+}
+
+/* ── Elevation surfaces (light, warm) ───────────────────────────────────────── */
 .surface-1 {
-  background-color: #171717;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  /* recessed (column drop zones) */
+  background-color: #e9e1d2;
+  border: 1px solid rgba(20, 22, 24, 0.07);
 }
 .surface-2 {
-  background-color: #1e1e1e;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  /* raised card */
+  background-color: #f8f3ea;
+  border: 1px solid rgba(20, 22, 24, 0.1);
+  box-shadow: 0 1px 2px rgba(20, 22, 24, 0.04);
 }
 .surface-3 {
-  background-color: #272727;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  /* nested control */
+  background-color: #fcf9f2;
+  border: 1px solid rgba(20, 22, 24, 0.1);
 }
 
 .glass {
-  background: rgba(17, 17, 17, 0.72);
+  background: rgba(239, 232, 220, 0.78);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(20, 22, 24, 0.08);
 }
 
-/* ── Accent treatments ──────────────────────────────────────────────────── */
+/* ── Accent treatments (soft, editorial — no neon glow) ─────────────────────── */
 .ring-action {
-  box-shadow: 0 0 0 1px rgba(0, 229, 255, 0.4), 0 0 24px rgba(0, 229, 255, 0.16);
+  box-shadow: 0 0 0 1px rgba(46, 74, 67, 0.3), 0 1px 3px rgba(20, 22, 24, 0.08);
 }
 .glow-action {
-  box-shadow: 0 0 22px rgba(0, 229, 255, 0.32), 0 0 60px rgba(0, 229, 255, 0.1);
+  box-shadow: 0 2px 12px rgba(46, 74, 67, 0.2);
 }
 
+/* Mono eyebrow / technical label */
 .label-tech {
   font-family: var(--font-mono);
   font-size: 0.7rem;
   letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: var(--color-action);
+  color: var(--color-green);
 }
 
 /* Icon nested inside a text input */
@@ -100,30 +100,22 @@ body {
   left: 0.75rem;
   top: 50%;
   transform: translateY(-50%);
-  color: #71717a;
+  color: #a8a29e;
   pointer-events: none;
 }
 
-/* ── Blueprint backdrop ─────────────────────────────────────────────────── */
+/* ── Blueprint backdrop (subtle, dark-on-cream) ─────────────────────────────── */
 .bp-dots {
-  background-image: radial-gradient(
-    circle,
-    rgba(0, 229, 255, 0.08) 1px,
-    transparent 1px
-  );
+  background-image: radial-gradient(circle, rgba(20, 22, 24, 0.06) 1px, transparent 1px);
   background-size: 30px 30px;
 }
 .bp-lines {
-  background-image: linear-gradient(
-      to right,
-      rgba(255, 255, 255, 0.03) 1px,
-      transparent 1px
-    ),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-image: linear-gradient(to right, rgba(20, 22, 24, 0.045) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(20, 22, 24, 0.045) 1px, transparent 1px);
   background-size: 60px 60px;
 }
 
-/* ── Scrollbars ─────────────────────────────────────────────────────────── */
+/* ── Scrollbars ─────────────────────────────────────────────────────────────── */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -132,19 +124,20 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(20, 22, 24, 0.16);
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 229, 255, 0.4);
+  background: rgba(46, 74, 67, 0.5);
 }
 ::selection {
-  background: rgba(0, 229, 255, 0.25);
-  color: #fff;
+  background: rgba(46, 74, 67, 0.18);
+  color: #141618;
 }
 
-/* Hide number input spinners */
+/* Date input calendar icon — keep dark on light */
 input[type="date"]::-webkit-calendar-picker-indicator {
-  filter: invert(0.7);
+  filter: none;
+  opacity: 0.55;
   cursor: pointer;
 }

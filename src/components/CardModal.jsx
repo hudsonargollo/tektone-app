@@ -4,9 +4,9 @@ import { X, Trash2, Check } from "lucide-react";
 import { COLUMNS, PRIORITY, LABEL_COLORS } from "@/lib/constants";
 
 const labelCls =
-  "mb-1.5 block font-mono text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-500";
+  "mb-1.5 block font-mono text-[11px] font-medium uppercase tracking-[0.16em] text-stone-500";
 const inputCls =
-  "w-full rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2.5 text-sm text-white outline-none transition-colors placeholder:text-zinc-600 focus:border-action";
+  "w-full rounded-lg border border-ink/15 bg-ink/[0.03] px-3 py-2.5 text-sm text-ink outline-none transition-colors placeholder:text-stone-400 focus:border-action";
 
 export default function CardModal({ card, clients, members, onSave, onDelete, onClose }) {
   const [d, setD] = useState({ ...card });
@@ -41,7 +41,7 @@ export default function CardModal({ card, clients, members, onSave, onDelete, on
         transition={{ type: "spring", stiffness: 320, damping: 28 }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-white/10 px-6 py-4">
+        <div className="flex items-center justify-between border-b border-ink/15 px-6 py-4">
           <span className="label-tech">Editar card</span>
           <div className="flex gap-1.5">
             <button
@@ -51,14 +51,14 @@ export default function CardModal({ card, clients, members, onSave, onDelete, on
                   onClose();
                 }
               }}
-              className="rounded-lg p-1.5 text-zinc-500 transition-colors hover:bg-danger/10 hover:text-danger"
+              className="rounded-lg p-1.5 text-stone-500 transition-colors hover:bg-danger/10 hover:text-danger"
               title="Excluir"
             >
               <Trash2 size={15} />
             </button>
             <button
               onClick={onClose}
-              className="rounded-lg p-1.5 text-zinc-500 transition-colors hover:bg-white/5 hover:text-white"
+              className="rounded-lg p-1.5 text-stone-500 transition-colors hover:bg-ink/[0.05] hover:text-ink"
             >
               <X size={16} />
             </button>
@@ -96,7 +96,7 @@ export default function CardModal({ card, clients, members, onSave, onDelete, on
                 className={inputCls}
               >
                 {COLUMNS.map((c) => (
-                  <option key={c.id} value={c.id} className="bg-ink-700">
+                  <option key={c.id} value={c.id} className="bg-paper">
                     {c.title}
                   </option>
                 ))}
@@ -110,7 +110,7 @@ export default function CardModal({ card, clients, members, onSave, onDelete, on
                 className={inputCls}
               >
                 {Object.entries(PRIORITY).map(([k, v]) => (
-                  <option key={k} value={k} className="bg-ink-700">
+                  <option key={k} value={k} className="bg-paper">
                     {v.label}
                   </option>
                 ))}
@@ -126,9 +126,9 @@ export default function CardModal({ card, clients, members, onSave, onDelete, on
                 onChange={(e) => set("clientId", e.target.value)}
                 className={inputCls}
               >
-                <option value="" className="bg-ink-700">— Nenhum —</option>
+                <option value="" className="bg-paper">— Nenhum —</option>
                 {clients.map((c) => (
-                  <option key={c.id} value={c.id} className="bg-ink-700">
+                  <option key={c.id} value={c.id} className="bg-paper">
                     {c.name}
                   </option>
                 ))}
@@ -141,9 +141,9 @@ export default function CardModal({ card, clients, members, onSave, onDelete, on
                 onChange={(e) => set("assignee", e.target.value)}
                 className={inputCls}
               >
-                <option value="" className="bg-ink-700">— Nenhum —</option>
+                <option value="" className="bg-paper">— Nenhum —</option>
                 {members.map((m) => (
-                  <option key={m.id} value={m.name} className="bg-ink-700">
+                  <option key={m.id} value={m.name} className="bg-paper">
                     {m.name}
                   </option>
                 ))}
@@ -167,17 +167,17 @@ export default function CardModal({ card, clients, members, onSave, onDelete, on
               <button
                 onClick={() => set("labelColor", null)}
                 className={`flex h-6 w-6 items-center justify-center rounded-full border-2 ${
-                  !d.labelColor ? "border-zinc-400" : "border-white/15"
+                  !d.labelColor ? "border-zinc-400" : "border-ink/20"
                 }`}
               >
-                <X size={10} className="text-zinc-500" />
+                <X size={10} className="text-stone-500" />
               </button>
               {LABEL_COLORS.map((c) => (
                 <button
                   key={c}
                   onClick={() => set("labelColor", c)}
                   className={`h-6 w-6 rounded-full transition-transform ${
-                    d.labelColor === c ? "scale-110 ring-2 ring-white ring-offset-2 ring-offset-ink-700" : ""
+                    d.labelColor === c ? "scale-110 ring-2 ring-ink ring-offset-2 ring-offset-clay" : ""
                   }`}
                   style={{ background: c }}
                 />
@@ -187,14 +187,14 @@ export default function CardModal({ card, clients, members, onSave, onDelete, on
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between gap-3 border-t border-white/10 px-6 py-4">
-          <span className="font-mono text-[10px] tracking-wide text-zinc-600">
+        <div className="flex items-center justify-between gap-3 border-t border-ink/15 px-6 py-4">
+          <span className="font-mono text-[10px] tracking-wide text-stone-400">
             ⌘+↵ salvar · esc fechar
           </span>
           <div className="flex gap-2">
             <button
               onClick={onClose}
-              className="rounded-lg px-4 py-2 text-sm font-semibold text-zinc-400 transition-colors hover:text-white"
+              className="rounded-lg px-4 py-2 text-sm font-semibold text-stone-500 transition-colors hover:text-ink"
             >
               Cancelar
             </button>
@@ -203,7 +203,7 @@ export default function CardModal({ card, clients, members, onSave, onDelete, on
                 onSave(d);
                 onClose();
               }}
-              className="inline-flex items-center gap-2 rounded-lg bg-action px-5 py-2 text-sm font-bold text-ink-base transition-all hover:brightness-110 ring-action"
+              className="inline-flex items-center gap-2 rounded-lg bg-action px-5 py-2 text-sm font-bold text-clay transition-all hover:brightness-110 ring-action"
             >
               <Check size={14} /> Salvar
             </button>

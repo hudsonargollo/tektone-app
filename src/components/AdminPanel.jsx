@@ -58,18 +58,18 @@ export default function AdminPanel({ currentEmail, onClose }) {
         exit={{ opacity: 0, y: 12, scale: 0.98 }}
         transition={{ type: "spring", stiffness: 320, damping: 28 }}
       >
-        <div className="flex items-center justify-between border-b border-white/10 px-6 py-4">
+        <div className="flex items-center justify-between border-b border-ink/15 px-6 py-4">
           <div className="flex items-center gap-2">
             <ShieldCheck size={15} className="text-action" />
             <span className="label-tech">Admin · acessos</span>
           </div>
-          <button onClick={onClose} className="rounded-lg p-1.5 text-zinc-500 hover:bg-white/5 hover:text-white">
+          <button onClick={onClose} className="rounded-lg p-1.5 text-stone-500 hover:bg-ink/[0.05] hover:text-ink">
             <X size={16} />
           </button>
         </div>
 
         <div className="px-6 py-5">
-          <p className="mb-4 text-xs leading-relaxed text-zinc-500">
+          <p className="mb-4 text-xs leading-relaxed text-stone-500">
             Resetar remove a senha da pessoa. No próximo acesso ela cria uma nova
             senha em “primeiro acesso”.
           </p>
@@ -88,7 +88,7 @@ export default function AdminPanel({ currentEmail, onClose }) {
                   className="flex items-center justify-between gap-3 rounded-lg surface-3 px-3.5 py-3"
                 >
                   <div className="min-w-0">
-                    <p className="flex items-center gap-2 truncate text-sm font-semibold text-white">
+                    <p className="flex items-center gap-2 truncate text-sm font-semibold text-ink">
                       {u.email}
                       {u.admin && (
                         <span className="rounded bg-action/15 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-action">
@@ -96,7 +96,7 @@ export default function AdminPanel({ currentEmail, onClose }) {
                         </span>
                       )}
                     </p>
-                    <p className="mt-0.5 flex items-center gap-1.5 font-mono text-[11px] text-zinc-500">
+                    <p className="mt-0.5 flex items-center gap-1.5 font-mono text-[11px] text-stone-500">
                       {u.registered ? (
                         <>
                           <Check size={11} className="text-success" /> registrado
@@ -111,7 +111,7 @@ export default function AdminPanel({ currentEmail, onClose }) {
                   <button
                     disabled={!u.registered || busy === u.email}
                     onClick={() => reset(u.email)}
-                    className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1.5 font-mono text-[11px] text-zinc-300 transition-colors hover:border-danger/40 hover:text-danger disabled:cursor-not-allowed disabled:opacity-30"
+                    className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-ink/15 px-2.5 py-1.5 font-mono text-[11px] text-stone-600 transition-colors hover:border-danger/40 hover:text-danger disabled:cursor-not-allowed disabled:opacity-30"
                   >
                     {busy === u.email ? <Spinner /> : <RotateCcw size={12} />}
                     resetar

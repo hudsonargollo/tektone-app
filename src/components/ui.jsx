@@ -7,7 +7,7 @@ export function Avatar({ name, size = "sm" }) {
   return (
     <div
       title={name}
-      className={`${sz} shrink-0 rounded-full flex items-center justify-center font-bold text-ink-base ring-1 ring-white/10`}
+      className={`${sz} shrink-0 rounded-full flex items-center justify-center font-bold text-clay ring-1 ring-ink/10`}
       style={{ background: `hsl(${hue} 70% 60%)` }}
     >
       {initials(name)}
