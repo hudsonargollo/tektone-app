@@ -215,7 +215,7 @@ function Column({
   ...handlers
 }) {
   return (
-    <div className="flex w-72 shrink-0 flex-col">
+    <div className="flex min-w-[15rem] flex-1 flex-col">
       <div className="mb-3 flex items-center justify-between px-1">
         <div className="flex items-center gap-2">
           <span className="h-2.5 w-2.5 rounded-full" style={{ background: col.color }} />
