@@ -283,10 +283,14 @@ export default function Board({ cards, clients, onEdit, onDelete, onQuickAdd, on
   const [draggingId, setDraggingId] = useState(null);
   const [overCol, setOverCol] = useState(null);
   const [collapsed, setCollapsed] = useState(() => {
+    // Default: dock Backlog + Concluído so all columns fit one desktop view.
+    // A saved preference (even an empty one) always wins.
     try {
-      return new Set(JSON.parse(localStorage.getItem(COLLAPSE_KEY) || "[]"));
+      const stored = localStorage.getItem(COLLAPSE_KEY);
+      if (stored === null) return new Set(["backlog", "done"]);
+      return new Set(JSON.parse(stored));
     } catch {
-      return new Set();
+      return new Set(["backlog", "done"]);
     }
   });
 
