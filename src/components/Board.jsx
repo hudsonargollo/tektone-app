@@ -1,8 +1,17 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Calendar, Trash2, CornerDownLeft } from "lucide-react";
+import {
+  Plus,
+  Calendar,
+  Trash2,
+  CornerDownLeft,
+  ChevronsRightLeft,
+  ChevronsLeftRight,
+} from "lucide-react";
 import { COLUMNS, today, fmtDate } from "@/lib/constants";
 import { Avatar, PriorityBadge } from "@/components/ui";
+
+const COLLAPSE_KEY = "tk_collapsed_cols";
 
 // ── Card ────────────────────────────────────────────────────────────────────
 function Card({ card, client, onEdit, onDelete, onDragStart, onDragEnd, dragging }) {
@@ -134,6 +143,64 @@ function QuickAdd({ columnId, onAdd }) {
   );
 }
 
+// ── Collapsed rail (docked column) ────────────────────────────────────────────
+function CollapsedColumn({ col, cards, isOver, setOver, onDrop, onExpand }) {
+  const overdue = cards.filter(
+    (c) => col.id !== "done" && c.dueDate && c.dueDate < today()
+  ).length;
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onExpand}
+      onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && onExpand()}
+      onDragOver={(e) => {
+        e.preventDefault();
+        setOver(col.id);
+      }}
+      onDragLeave={(e) => {
+        if (e.currentTarget === e.target) setOver(null);
+      }}
+      onDrop={() => {
+        onDrop(col.id);
+        setOver(null);
+      }}
+      title={`Expandir ${col.title}`}
+      className={`group flex w-12 shrink-0 cursor-pointer flex-col items-center gap-3 rounded-2xl border py-3 transition-colors ${
+        isOver ? "border-action/50 bg-action/[0.06]" : "surface-1 hover:border-action/30"
+      }`}
+    >
+      <ChevronsLeftRight
+        size={14}
+        className="text-stone-400 transition-colors group-hover:text-action"
+      />
+      <span className="h-2 w-2 rounded-full" style={{ background: col.color }} />
+
+      {/* Notification badge */}
+      <span
+        className={`min-w-5 rounded-full px-1.5 py-0.5 text-center font-mono text-[10px] font-bold tnum ${
+          overdue > 0 ? "bg-danger text-clay" : "bg-ink/10 text-stone-600"
+        }`}
+        title={overdue > 0 ? `${overdue} atrasada(s)` : `${cards.length} card(s)`}
+      >
+        {cards.length}
+      </span>
+      {overdue > 0 && (
+        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-danger" />
+      )}
+
+      {/* Vertical title fills the rest */}
+      <span
+        className="flex flex-1 items-center justify-center font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-500"
+        style={{ writingMode: "vertical-rl" }}
+      >
+        {col.title}
+      </span>
+    </div>
+  );
+}
+
 // ── Column ───────────────────────────────────────────────────────────────────
 function Column({
   col,
@@ -143,6 +210,7 @@ function Column({
   setOver,
   onDrop,
   onQuickAdd,
+  onCollapse,
   draggingId,
   ...handlers
 }) {
@@ -158,6 +226,13 @@ function Column({
             {cards.length}
           </span>
         </div>
+        <button
+          onClick={onCollapse}
+          title={`Minimizar ${col.title}`}
+          className="rounded-md p-1 text-stone-400 transition-colors hover:bg-ink/[0.05] hover:text-action"
+        >
+          <ChevronsRightLeft size={13} />
+        </button>
       </div>
 
       <div
@@ -204,16 +279,29 @@ function Column({
 }
 
 // ── Board ────────────────────────────────────────────────────────────────────
-export default function Board({
-  cards,
-  clients,
-  onEdit,
-  onDelete,
-  onQuickAdd,
-  onMove,
-}) {
+export default function Board({ cards, clients, onEdit, onDelete, onQuickAdd, onMove }) {
   const [draggingId, setDraggingId] = useState(null);
   const [overCol, setOverCol] = useState(null);
+  const [collapsed, setCollapsed] = useState(() => {
+    try {
+      return new Set(JSON.parse(localStorage.getItem(COLLAPSE_KEY) || "[]"));
+    } catch {
+      return new Set();
+    }
+  });
+
+  function toggleCollapse(id) {
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      try {
+        localStorage.setItem(COLLAPSE_KEY, JSON.stringify([...next]));
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  }
 
   function handleDrop(targetColId) {
     if (!draggingId) return;
@@ -223,24 +311,38 @@ export default function Board({
   }
 
   return (
-    <div className="flex flex-1 gap-5 overflow-x-auto pb-4" style={{ minHeight: 0 }}>
-      {COLUMNS.map((col) => (
-        <Column
-          key={col.id}
-          col={col}
-          cards={cards.filter((c) => c.columnId === col.id)}
-          clients={clients}
-          isOver={overCol === col.id}
-          setOver={setOverCol}
-          onDrop={handleDrop}
-          onQuickAdd={onQuickAdd}
-          onEdit={onEdit}
-          onDelete={onDelete}
-          onDragStart={setDraggingId}
-          onDragEnd={() => setDraggingId(null)}
-          draggingId={draggingId}
-        />
-      ))}
+    <div className="flex flex-1 gap-4 overflow-x-auto pb-4" style={{ minHeight: 0 }}>
+      {COLUMNS.map((col) => {
+        const colCards = cards.filter((c) => c.columnId === col.id);
+        return collapsed.has(col.id) ? (
+          <CollapsedColumn
+            key={col.id}
+            col={col}
+            cards={colCards}
+            isOver={overCol === col.id}
+            setOver={setOverCol}
+            onDrop={handleDrop}
+            onExpand={() => toggleCollapse(col.id)}
+          />
+        ) : (
+          <Column
+            key={col.id}
+            col={col}
+            cards={colCards}
+            clients={clients}
+            isOver={overCol === col.id}
+            setOver={setOverCol}
+            onDrop={handleDrop}
+            onQuickAdd={onQuickAdd}
+            onCollapse={() => toggleCollapse(col.id)}
+            onEdit={onEdit}
+            onDelete={onDelete}
+            onDragStart={setDraggingId}
+            onDragEnd={() => setDraggingId(null)}
+            draggingId={draggingId}
+          />
+        );
+      })}
     </div>
   );
 }

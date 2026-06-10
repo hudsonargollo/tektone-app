@@ -120,7 +120,7 @@ export default function CardModal({ card, clients, members, onSave, onDelete, on
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className={labelCls}>Parceiro</label>
+              <label className={labelCls}>Projeto</label>
               <select
                 value={d.clientId ?? ""}
                 onChange={(e) => set("clientId", e.target.value)}

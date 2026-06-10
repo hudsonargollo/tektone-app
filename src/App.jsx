@@ -319,7 +319,7 @@ export default function App() {
 
             <div className="flex min-w-0 flex-1 flex-col">
               <TopBar
-                title={activeClient ? activeClient.name : "Todos os Parceiros"}
+                title={activeClient ? activeClient.name : "Todos os Projetos"}
                 titleColor={activeClient?.color}
                 stats={stats}
                 query={query}

@@ -27,7 +27,7 @@ export default function Sidebar({ clients, activeId, counts, onSelect, onAdd, on
   return (
     <aside className="flex w-60 shrink-0 flex-col border-r border-ink/10 pr-4">
       <p className="mb-3 px-2 font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-stone-400">
-        Parceiros
+        Projetos
       </p>
 
       <button
@@ -122,7 +122,7 @@ export default function Sidebar({ clients, activeId, counts, onSelect, onAdd, on
               if (e.key === "Enter") submitAdd();
               if (e.key === "Escape") setAdding(false);
             }}
-            placeholder="Nome do parceiro"
+            placeholder="Nome do projeto"
             className="w-full rounded-lg border border-action/40 bg-ink/[0.03] px-2 py-1.5 text-xs text-ink outline-none focus:border-action"
           />
           <div className="flex flex-wrap gap-1.5">
@@ -157,7 +157,7 @@ export default function Sidebar({ clients, activeId, counts, onSelect, onAdd, on
           onClick={() => setAdding(true)}
           className="mt-1 flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-bold text-stone-500 transition-colors hover:bg-ink/[0.05] hover:text-action"
         >
-          <Plus size={13} /> Novo parceiro
+          <Plus size={13} /> Novo projeto
         </button>
       )}
     </aside>
