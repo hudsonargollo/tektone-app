@@ -10,6 +10,7 @@ import Board from "@/components/Board";
 import CardModal from "@/components/CardModal";
 import Login from "@/components/Login";
 import AdminPanel from "@/components/AdminPanel";
+import LogoMark from "@/components/LogoMark";
 
 export default function App() {
   const [clients, setClients] = useState([]);
@@ -243,14 +244,16 @@ export default function App() {
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <div className="flex h-screen flex-col bg-clay">
+      <div className="grain-overlay" aria-hidden />
       {/* Brand bar */}
       <div className="relative z-10 flex h-14 shrink-0 items-center justify-between border-b border-ink/10 bg-clay/80 px-5 backdrop-blur-xl">
-        <div className="flex items-baseline gap-3">
+        <div className="flex items-center gap-2.5">
+          <LogoMark className="h-7 w-auto" />
           <span className="text-sm font-semibold tracking-[0.3em] text-ink">
             TEKTONE
           </span>
           <span className="serif hidden text-[13px] text-stone-500 sm:inline">
-            Maison · Operações
+            Operações
           </span>
         </div>
         <div className="flex items-center gap-4">

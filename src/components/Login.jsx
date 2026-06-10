@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Mail, Lock, ArrowRight, ArrowLeft, ShieldQuestion, UserPlus } from "lucide-react";
 import { api } from "@/lib/api";
 import { Spinner } from "@/components/ui";
+import LogoMark from "@/components/LogoMark";
 
 const ADMIN_CONTACT = "hudson@tektone.com.br";
 
@@ -76,6 +77,7 @@ export default function Login({ onAuthed }) {
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-clay px-6">
+      <div className="grain-overlay" aria-hidden />
       <div className="absolute inset-0 bp-lines opacity-60" aria-hidden />
       <div className="absolute inset-0 bp-dots opacity-40" aria-hidden />
       <div
@@ -89,7 +91,8 @@ export default function Login({ onAuthed }) {
         transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
         className="relative z-10 w-full max-w-sm"
       >
-        <div className="mb-8 text-center">
+        <div className="mb-8 flex flex-col items-center text-center">
+          <LogoMark className="mb-4 h-16 w-auto" />
           <span className="text-lg font-semibold tracking-[0.32em] text-ink">
             TEKTONE
           </span>
