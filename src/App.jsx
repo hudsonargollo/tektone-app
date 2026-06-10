@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { AnimatePresence } from "framer-motion";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, LogOut } from "lucide-react";
 import { api } from "@/lib/api";
 import { today } from "@/lib/constants";
 import { Spinner } from "@/components/ui";
@@ -8,6 +8,7 @@ import Sidebar from "@/components/Sidebar";
 import TopBar from "@/components/TopBar";
 import Board from "@/components/Board";
 import CardModal from "@/components/CardModal";
+import Login from "@/components/Login";
 
 export default function App() {
   const [clients, setClients] = useState([]);
@@ -20,27 +21,45 @@ export default function App() {
   const [editing, setEditing] = useState(null);
   const [query, setQuery] = useState("");
   const [priorityFilter, setPriorityFilter] = useState("all");
+  const [authed, setAuthed] = useState(null); // null = checking
   const searchRef = useRef(null);
 
-  // ── Load ──────────────────────────────────────────────────────────────────
+  // ── Auth check ──────────────────────────────────────────────────────────────
   useEffect(() => {
-    (async () => {
-      try {
-        const [{ clients: cl }, { cards: cd }, { members: mb }] = await Promise.all([
-          api.listClients(),
-          api.listCards(),
-          api.listMembers(),
-        ]);
-        setClients(cl);
-        setCards(cd);
-        setMembers(mb);
-      } catch (e) {
-        setError(e.message);
-      } finally {
-        setLoading(false);
-      }
-    })();
+    api
+      .me()
+      .then(({ authed }) => setAuthed(Boolean(authed)))
+      .catch(() => setAuthed(false));
   }, []);
+
+  // ── Load (only once authed) ──────────────────────────────────────────────────
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [{ clients: cl }, { cards: cd }, { members: mb }] = await Promise.all([
+        api.listClients(),
+        api.listCards(),
+        api.listMembers(),
+      ]);
+      setClients(cl);
+      setCards(cd);
+      setMembers(mb);
+      setError(null);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (authed) loadData();
+  }, [authed, loadData]);
+
+  async function logout() {
+    await api.logout().catch(() => {});
+    setAuthed(false);
+  }
 
   // ── Keyboard shortcuts ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -199,6 +218,16 @@ export default function App() {
     api.deleteClient(id).catch((e) => setError(e.message));
   }
 
+  // ── Auth gate ─────────────────────────────────────────────────────────────
+  if (authed === null) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-ink-base">
+        <Spinner />
+      </div>
+    );
+  }
+  if (!authed) return <Login onAuthed={() => setAuthed(true)} />;
+
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <div className="flex h-screen flex-col bg-ink-base">
@@ -212,12 +241,21 @@ export default function App() {
             / OPERAÇÕES
           </span>
         </div>
-        <a
-          href="https://tektone.com.br"
-          className="font-mono text-[11px] tracking-wide text-zinc-500 transition-colors hover:text-action"
-        >
-          ← tektone.com.br
-        </a>
+        <div className="flex items-center gap-4">
+          <a
+            href="https://tektone.com.br"
+            className="font-mono text-[11px] tracking-wide text-zinc-500 transition-colors hover:text-action"
+          >
+            ← tektone.com.br
+          </a>
+          <button
+            onClick={logout}
+            className="flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1.5 font-mono text-[11px] tracking-wide text-zinc-400 transition-colors hover:border-danger/40 hover:text-danger"
+            title="Sair"
+          >
+            <LogOut size={12} /> sair
+          </button>
+        </div>
       </div>
 
       {/* Body */}

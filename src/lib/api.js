@@ -1,36 +1,46 @@
-// REST client for the KV-backed kanban API (Pages Functions, same origin).
-
-const BASE = "/api/kanban";
+// REST client for the KV-backed kanban API + auth (Pages Functions, same origin).
 
 async function req(path, opts = {}) {
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await fetch(`/api${path}`, {
     headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
     ...opts,
     body: opts.body ? JSON.stringify(opts.body) : undefined,
   });
   if (!res.ok) {
-    const txt = await res.text().catch(() => "");
-    throw new Error(`API ${res.status}${txt ? ` — ${txt}` : ""}`);
+    const err = new Error(`API ${res.status}`);
+    err.status = res.status;
+    try {
+      err.body = await res.json();
+    } catch {
+      /* ignore */
+    }
+    throw err;
   }
   return res.json();
 }
 
 export const api = {
+  // auth
+  me: () => req("/auth/me"),
+  login: (password) => req("/auth/login", { method: "POST", body: { password } }),
+  logout: () => req("/auth/logout", { method: "POST" }),
+
   // clients / parceiros
-  listClients: () => req("/clients"),
-  createClient: (body) => req("/clients", { method: "POST", body }),
-  updateClient: (id, body) => req(`/clients/${id}`, { method: "PUT", body }),
-  deleteClient: (id) => req(`/clients/${id}`, { method: "DELETE" }),
+  listClients: () => req("/kanban/clients"),
+  createClient: (body) => req("/kanban/clients", { method: "POST", body }),
+  updateClient: (id, body) => req(`/kanban/clients/${id}`, { method: "PUT", body }),
+  deleteClient: (id) => req(`/kanban/clients/${id}`, { method: "DELETE" }),
 
   // cards
-  listCards: () => req("/cards"),
-  createCard: (body) => req("/cards", { method: "POST", body }),
-  updateCard: (id, body) => req(`/cards/${id}`, { method: "PUT", body }),
-  deleteCard: (id) => req(`/cards/${id}`, { method: "DELETE" }),
+  listCards: () => req("/kanban/cards"),
+  createCard: (body) => req("/kanban/cards", { method: "POST", body }),
+  updateCard: (id, body) => req(`/kanban/cards/${id}`, { method: "PUT", body }),
+  deleteCard: (id) => req(`/kanban/cards/${id}`, { method: "DELETE" }),
 
   // members
-  listMembers: () => req("/members"),
-  createMember: (body) => req("/members", { method: "POST", body }),
-  updateMember: (id, body) => req(`/members/${id}`, { method: "PUT", body }),
-  deleteMember: (id) => req(`/members/${id}`, { method: "DELETE" }),
+  listMembers: () => req("/kanban/members"),
+  createMember: (body) => req("/kanban/members", { method: "POST", body }),
+  updateMember: (id, body) => req(`/kanban/members/${id}`, { method: "PUT", body }),
+  deleteMember: (id) => req(`/kanban/members/${id}`, { method: "DELETE" }),
 };
