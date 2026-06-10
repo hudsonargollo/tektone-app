@@ -22,15 +22,23 @@ export default function App() {
   const [query, setQuery] = useState("");
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [authed, setAuthed] = useState(null); // null = checking
+  const [userEmail, setUserEmail] = useState(null);
   const searchRef = useRef(null);
 
   // ── Auth check ──────────────────────────────────────────────────────────────
-  useEffect(() => {
+  const refreshMe = useCallback(() => {
     api
       .me()
-      .then(({ authed }) => setAuthed(Boolean(authed)))
+      .then(({ authed, email }) => {
+        setAuthed(Boolean(authed));
+        setUserEmail(email);
+      })
       .catch(() => setAuthed(false));
   }, []);
+
+  useEffect(() => {
+    refreshMe();
+  }, [refreshMe]);
 
   // ── Load (only once authed) ──────────────────────────────────────────────────
   const loadData = useCallback(async () => {
@@ -226,7 +234,7 @@ export default function App() {
       </div>
     );
   }
-  if (!authed) return <Login onAuthed={() => setAuthed(true)} />;
+  if (!authed) return <Login onAuthed={refreshMe} />;
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
@@ -242,9 +250,14 @@ export default function App() {
           </span>
         </div>
         <div className="flex items-center gap-4">
+          {userEmail && (
+            <span className="hidden font-mono text-[11px] tracking-wide text-zinc-500 md:inline">
+              {userEmail}
+            </span>
+          )}
           <a
             href="https://tektone.com.br"
-            className="font-mono text-[11px] tracking-wide text-zinc-500 transition-colors hover:text-action"
+            className="hidden font-mono text-[11px] tracking-wide text-zinc-500 transition-colors hover:text-action sm:inline"
           >
             ← tektone.com.br
           </a>

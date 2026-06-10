@@ -1,21 +1,33 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Lock, ArrowRight } from "lucide-react";
+import { Mail, Lock, ArrowRight } from "lucide-react";
 import { api } from "@/lib/api";
 import { Spinner } from "@/components/ui";
 
+const fieldCls =
+  "w-full rounded-lg border border-white/10 bg-white/[0.03] py-2.5 pl-9 pr-3 text-sm text-white outline-none transition-colors placeholder:text-zinc-600 focus:border-action";
+
 export default function Login({ onAuthed }) {
+  const [mode, setMode] = useState("login"); // "login" | "signup"
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const isSignup = mode === "signup";
+
   async function submit(e) {
     e.preventDefault();
-    if (!password.trim()) return;
+    if (!email.trim() || !password) return;
+    if (isSignup && password.length < 8) {
+      setError("A senha precisa ter ao menos 8 caracteres.");
+      return;
+    }
     setLoading(true);
     setError("");
     try {
-      await api.login(password);
+      if (isSignup) await api.signup(email.trim(), password);
+      else await api.login(email.trim(), password);
       onAuthed();
     } catch (err) {
       setError(err.body?.error || "Falha na autenticação.");
@@ -25,7 +37,6 @@ export default function Login({ onAuthed }) {
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-ink-base px-6">
-      {/* Blueprint backdrop */}
       <div className="absolute inset-0 bp-lines opacity-60" aria-hidden />
       <div className="absolute inset-0 bp-dots opacity-40" aria-hidden />
       <div
@@ -49,45 +60,83 @@ export default function Login({ onAuthed }) {
         </div>
 
         <form onSubmit={submit} className="rounded-2xl surface-2 p-7">
-          <div className="mb-5 flex items-center gap-2.5">
+          <div className="mb-6 flex items-center gap-2.5">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg surface-3 text-action">
               <Lock size={16} />
             </div>
             <div>
-              <p className="text-sm font-bold text-white">Acesso restrito</p>
-              <p className="font-mono text-[11px] text-zinc-500">pipeline interno</p>
+              <p className="text-sm font-bold text-white">
+                {isSignup ? "Criar conta" : "Entrar"}
+              </p>
+              <p className="font-mono text-[11px] text-zinc-500">acesso restrito</p>
             </div>
+          </div>
+
+          <label className="mb-1.5 block font-mono text-[11px] uppercase tracking-[0.16em] text-zinc-500">
+            E-mail
+          </label>
+          <div className="relative mb-4">
+            <Mail
+              size={14}
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500"
+            />
+            <input
+              autoFocus
+              type="email"
+              autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="voce@tektone.com.br"
+              className={fieldCls}
+            />
           </div>
 
           <label className="mb-1.5 block font-mono text-[11px] uppercase tracking-[0.16em] text-zinc-500">
             Senha
           </label>
-          <input
-            autoFocus
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="••••••••"
-            className="w-full rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2.5 text-sm text-white outline-none transition-colors placeholder:text-zinc-600 focus:border-action"
-          />
+          <div className="relative">
+            <Lock
+              size={14}
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500"
+            />
+            <input
+              type="password"
+              autoComplete={isSignup ? "new-password" : "current-password"}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder={isSignup ? "mín. 8 caracteres" : "••••••••"}
+              className={fieldCls}
+            />
+          </div>
 
-          {error && (
-            <p className="mt-3 font-mono text-[11px] text-danger">{error}</p>
-          )}
+          {error && <p className="mt-3 font-mono text-[11px] text-danger">{error}</p>}
 
           <button
             type="submit"
-            disabled={loading || !password.trim()}
+            disabled={loading || !email.trim() || !password}
             className="mt-5 flex w-full items-center justify-center gap-2 rounded-lg bg-action px-5 py-3 text-sm font-bold text-ink-base transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40 ring-action"
           >
             {loading ? (
               <Spinner />
             ) : (
               <>
-                Entrar
+                {isSignup ? "Criar conta" : "Entrar"}
                 <ArrowRight size={15} />
               </>
             )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setMode(isSignup ? "login" : "signup");
+              setError("");
+            }}
+            className="mt-4 w-full text-center font-mono text-[11px] tracking-wide text-zinc-500 transition-colors hover:text-action"
+          >
+            {isSignup
+              ? "já tem conta? entrar"
+              : "primeiro acesso? criar conta"}
           </button>
         </form>
 

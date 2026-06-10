@@ -23,7 +23,8 @@ async function req(path, opts = {}) {
 export const api = {
   // auth
   me: () => req("/auth/me"),
-  login: (password) => req("/auth/login", { method: "POST", body: { password } }),
+  login: (email, password) => req("/auth/login", { method: "POST", body: { email, password } }),
+  signup: (email, password) => req("/auth/signup", { method: "POST", body: { email, password } }),
   logout: () => req("/auth/logout", { method: "POST" }),
 
   // clients / parceiros
