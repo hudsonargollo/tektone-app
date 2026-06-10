@@ -278,6 +278,75 @@ function Column({
   );
 }
 
+// ── Mobile board (tabbed, one column at a time) ───────────────────────────────
+function MobileBoard({ cards, clients, onEdit, onDelete, onQuickAdd }) {
+  const [active, setActive] = useState("todo");
+  const colCards = cards.filter((c) => c.columnId === active);
+  const noop = () => {};
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col lg:hidden">
+      {/* Column tabs */}
+      <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-3">
+        {COLUMNS.map((col) => {
+          const n = cards.filter((c) => c.columnId === col.id).length;
+          const overdue = cards.filter(
+            (c) => c.columnId === col.id && col.id !== "done" && c.dueDate && c.dueDate < today()
+          ).length;
+          const isActive = active === col.id;
+          return (
+            <button
+              key={col.id}
+              onClick={() => setActive(col.id)}
+              className={`flex shrink-0 items-center gap-2 rounded-lg border px-3 py-2 text-[13px] font-medium transition-colors ${
+                isActive ? "border-transparent bg-ink text-clay" : "border-ink/15 text-stone-600"
+              }`}
+            >
+              <span className="h-2 w-2 rounded-full" style={{ background: col.color }} />
+              {col.title}
+              <span
+                className={`rounded-full px-1.5 py-px font-mono text-[10px] font-bold tnum ${
+                  overdue > 0
+                    ? "bg-danger text-clay"
+                    : isActive
+                      ? "bg-clay/20 text-clay/80"
+                      : "bg-ink/10 text-stone-500"
+                }`}
+              >
+                {n}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Active column */}
+      <div className="flex-1 space-y-2.5 overflow-y-auto pb-6">
+        <AnimatePresence mode="popLayout">
+          {colCards.map((card) => (
+            <Card
+              key={card.id}
+              card={card}
+              client={clients.find((c) => c.id === card.clientId)}
+              onEdit={onEdit}
+              onDelete={onDelete}
+              onDragStart={noop}
+              onDragEnd={noop}
+              dragging={false}
+            />
+          ))}
+        </AnimatePresence>
+        {colCards.length === 0 && (
+          <div className="flex h-20 items-center justify-center font-mono text-[11px] text-stone-300">
+            nenhum card aqui
+          </div>
+        )}
+        <QuickAdd columnId={active} onAdd={onQuickAdd} />
+      </div>
+    </div>
+  );
+}
+
 // ── Board ────────────────────────────────────────────────────────────────────
 export default function Board({ cards, clients, onEdit, onDelete, onQuickAdd, onMove }) {
   const [draggingId, setDraggingId] = useState(null);
@@ -315,38 +384,53 @@ export default function Board({ cards, clients, onEdit, onDelete, onQuickAdd, on
   }
 
   return (
-    <div className="flex flex-1 gap-4 overflow-x-auto pb-4" style={{ minHeight: 0 }}>
-      {COLUMNS.map((col) => {
-        const colCards = cards.filter((c) => c.columnId === col.id);
-        return collapsed.has(col.id) ? (
-          <CollapsedColumn
-            key={col.id}
-            col={col}
-            cards={colCards}
-            isOver={overCol === col.id}
-            setOver={setOverCol}
-            onDrop={handleDrop}
-            onExpand={() => toggleCollapse(col.id)}
-          />
-        ) : (
-          <Column
-            key={col.id}
-            col={col}
-            cards={colCards}
-            clients={clients}
-            isOver={overCol === col.id}
-            setOver={setOverCol}
-            onDrop={handleDrop}
-            onQuickAdd={onQuickAdd}
-            onCollapse={() => toggleCollapse(col.id)}
-            onEdit={onEdit}
-            onDelete={onDelete}
-            onDragStart={setDraggingId}
-            onDragEnd={() => setDraggingId(null)}
-            draggingId={draggingId}
-          />
-        );
-      })}
-    </div>
+    <>
+      {/* Desktop — multi-column with collapse rails */}
+      <div
+        className="hidden flex-1 gap-4 overflow-x-auto pb-4 lg:flex"
+        style={{ minHeight: 0 }}
+      >
+        {COLUMNS.map((col) => {
+          const colCards = cards.filter((c) => c.columnId === col.id);
+          return collapsed.has(col.id) ? (
+            <CollapsedColumn
+              key={col.id}
+              col={col}
+              cards={colCards}
+              isOver={overCol === col.id}
+              setOver={setOverCol}
+              onDrop={handleDrop}
+              onExpand={() => toggleCollapse(col.id)}
+            />
+          ) : (
+            <Column
+              key={col.id}
+              col={col}
+              cards={colCards}
+              clients={clients}
+              isOver={overCol === col.id}
+              setOver={setOverCol}
+              onDrop={handleDrop}
+              onQuickAdd={onQuickAdd}
+              onCollapse={() => toggleCollapse(col.id)}
+              onEdit={onEdit}
+              onDelete={onDelete}
+              onDragStart={setDraggingId}
+              onDragEnd={() => setDraggingId(null)}
+              draggingId={draggingId}
+            />
+          );
+        })}
+      </div>
+
+      {/* Mobile — tabbed single column */}
+      <MobileBoard
+        cards={cards}
+        clients={clients}
+        onEdit={onEdit}
+        onDelete={onDelete}
+        onQuickAdd={onQuickAdd}
+      />
+    </>
   );
 }

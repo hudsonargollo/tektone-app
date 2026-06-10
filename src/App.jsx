@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
-import { AnimatePresence } from "framer-motion";
-import { AlertCircle, LogOut, ShieldCheck } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { AlertCircle, LogOut, ShieldCheck, Menu, X, MoreVertical } from "lucide-react";
 import { api } from "@/lib/api";
 import { today } from "@/lib/constants";
 import { Spinner } from "@/components/ui";
@@ -27,6 +27,8 @@ export default function App() {
   const [userEmail, setUserEmail] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const searchRef = useRef(null);
 
   // ── Auth check ──────────────────────────────────────────────────────────────
@@ -242,29 +244,48 @@ export default function App() {
   if (!authed) return <Login onAuthed={refreshMe} />;
 
   // ── Render ──────────────────────────────────────────────────────────────────
+  const sidebarProps = {
+    clients,
+    activeId,
+    counts,
+    onAdd: addClient,
+    onRename: renameClient,
+    onDelete: deleteClient,
+  };
+
   return (
-    <div className="flex h-screen flex-col bg-clay">
+    <div className="flex h-[100dvh] flex-col bg-clay">
       <div className="grain-overlay" aria-hidden />
+
       {/* Brand bar */}
-      <div className="relative z-10 flex h-14 shrink-0 items-center justify-between border-b border-ink/10 bg-clay/80 px-5 backdrop-blur-xl">
-        <div className="flex items-center gap-2.5">
+      <header className="relative z-20 flex h-14 shrink-0 items-center justify-between border-b border-ink/10 bg-clay/80 px-4 backdrop-blur-xl lg:px-5">
+        <div className="flex items-center gap-2 sm:gap-2.5">
+          <button
+            onClick={() => setDrawerOpen(true)}
+            className="-ml-1 rounded-lg p-1.5 text-ink transition-colors hover:bg-ink/[0.05] lg:hidden"
+            aria-label="Abrir projetos"
+          >
+            <Menu size={20} />
+          </button>
           <LogoMark className="h-7 w-auto" />
-          <span className="text-sm font-semibold tracking-[0.3em] text-ink">
+          <span className="text-sm font-semibold tracking-[0.28em] text-ink sm:tracking-[0.3em]">
             TEKTONE
           </span>
-          <span className="serif hidden text-[13px] text-stone-500 sm:inline">
+          <span className="serif hidden text-[13px] text-stone-500 md:inline">
             Operações
           </span>
         </div>
-        <div className="flex items-center gap-4">
+
+        {/* Desktop actions */}
+        <div className="hidden items-center gap-4 lg:flex">
           {userEmail && (
-            <span className="hidden font-mono text-[11px] tracking-wide text-stone-500 md:inline">
+            <span className="font-mono text-[11px] tracking-wide text-stone-500">
               {userEmail}
             </span>
           )}
           <a
             href="https://tektone.com.br"
-            className="hidden font-mono text-[11px] tracking-wide text-stone-500 transition-colors hover:text-action sm:inline"
+            className="font-mono text-[11px] tracking-wide text-stone-500 transition-colors hover:text-action"
           >
             ← tektone.com.br
           </a>
@@ -272,7 +293,6 @@ export default function App() {
             <button
               onClick={() => setShowAdmin(true)}
               className="flex items-center gap-1.5 rounded-lg border border-ink/15 px-2.5 py-1.5 font-mono text-[11px] tracking-wide text-stone-500 transition-colors hover:border-action/40 hover:text-action"
-              title="Admin"
             >
               <ShieldCheck size={12} /> admin
             </button>
@@ -280,12 +300,65 @@ export default function App() {
           <button
             onClick={logout}
             className="flex items-center gap-1.5 rounded-lg border border-ink/15 px-2.5 py-1.5 font-mono text-[11px] tracking-wide text-stone-500 transition-colors hover:border-danger/40 hover:text-danger"
-            title="Sair"
           >
             <LogOut size={12} /> sair
           </button>
         </div>
-      </div>
+
+        {/* Mobile actions — kebab menu */}
+        <div className="relative lg:hidden">
+          <button
+            onClick={() => setMenuOpen((v) => !v)}
+            className="rounded-lg p-1.5 text-ink transition-colors hover:bg-ink/[0.05]"
+            aria-label="Menu"
+          >
+            <MoreVertical size={20} />
+          </button>
+          <AnimatePresence>
+            {menuOpen && (
+              <>
+                <div className="fixed inset-0 z-30" onClick={() => setMenuOpen(false)} />
+                <motion.div
+                  initial={{ opacity: 0, y: -6, scale: 0.97 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -6, scale: 0.97 }}
+                  transition={{ duration: 0.16 }}
+                  className="absolute right-0 top-full z-40 mt-2 w-56 overflow-hidden rounded-xl surface-2 shadow-xl"
+                >
+                  {userEmail && (
+                    <div className="truncate border-b border-ink/10 px-4 py-3 font-mono text-[11px] text-stone-500">
+                      {userEmail}
+                    </div>
+                  )}
+                  {isAdmin && (
+                    <button
+                      onClick={() => {
+                        setShowAdmin(true);
+                        setMenuOpen(false);
+                      }}
+                      className="flex w-full items-center gap-2.5 px-4 py-3 text-left text-sm text-stone-700 transition-colors hover:bg-ink/[0.04]"
+                    >
+                      <ShieldCheck size={15} className="text-action" /> Admin · acessos
+                    </button>
+                  )}
+                  <a
+                    href="https://tektone.com.br"
+                    className="flex w-full items-center gap-2.5 px-4 py-3 text-sm text-stone-700 transition-colors hover:bg-ink/[0.04]"
+                  >
+                    ← tektone.com.br
+                  </a>
+                  <button
+                    onClick={logout}
+                    className="flex w-full items-center gap-2.5 border-t border-ink/10 px-4 py-3 text-left text-sm text-danger transition-colors hover:bg-danger/[0.06]"
+                  >
+                    <LogOut size={15} /> Sair
+                  </button>
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>
+        </div>
+      </header>
 
       {/* Body */}
       <div className="relative flex flex-1 overflow-hidden">
@@ -309,16 +382,11 @@ export default function App() {
             </div>
           </div>
         ) : (
-          <div className="relative flex flex-1 gap-6 overflow-hidden p-6">
-            <Sidebar
-              clients={clients}
-              activeId={activeId}
-              counts={counts}
-              onSelect={setActiveId}
-              onAdd={addClient}
-              onRename={renameClient}
-              onDelete={deleteClient}
-            />
+          <div className="relative flex flex-1 overflow-hidden p-4 lg:gap-6 lg:p-6">
+            {/* Desktop sidebar */}
+            <div className="hidden lg:block">
+              <Sidebar {...sidebarProps} onSelect={setActiveId} />
+            </div>
 
             <div className="flex min-w-0 flex-1 flex-col">
               <TopBar
@@ -345,6 +413,47 @@ export default function App() {
           </div>
         )}
       </div>
+
+      {/* Mobile projects drawer */}
+      <AnimatePresence>
+        {drawerOpen && (
+          <div className="fixed inset-0 z-50 lg:hidden">
+            <motion.div
+              className="absolute inset-0 bg-ink/40 backdrop-blur-sm"
+              onClick={() => setDrawerOpen(false)}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            />
+            <motion.aside
+              initial={{ x: "-100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "-100%" }}
+              transition={{ type: "spring", stiffness: 340, damping: 34 }}
+              className="absolute left-0 top-0 h-full w-72 max-w-[82%] overflow-y-auto bg-clay p-4 shadow-2xl"
+            >
+              <div className="mb-1 flex items-center justify-between">
+                <span className="flex items-center gap-2 font-semibold tracking-[0.2em] text-ink">
+                  <LogoMark className="h-6 w-auto" /> TEKTONE
+                </span>
+                <button
+                  onClick={() => setDrawerOpen(false)}
+                  className="rounded-lg p-1.5 text-stone-500 transition-colors hover:bg-ink/[0.05] hover:text-ink"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+              <Sidebar
+                {...sidebarProps}
+                onSelect={(id) => {
+                  setActiveId(id);
+                  setDrawerOpen(false);
+                }}
+              />
+            </motion.aside>
+          </div>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {editing && (
