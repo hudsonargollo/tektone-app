@@ -26,7 +26,7 @@ export default function Sidebar({ clients, activeId, counts, onSelect, onAdd, on
 
   return (
     <aside className="flex w-60 shrink-0 flex-col border-r border-ink/10 pr-4">
-      <p className="mb-3 px-2 font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-stone-400">
+      <p className="mb-3 px-2 font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-stone-500">
         Projetos
       </p>
 
@@ -39,7 +39,7 @@ export default function Sidebar({ clients, activeId, counts, onSelect, onAdd, on
         <span className="flex items-center gap-2.5">
           <LayoutGrid size={14} /> Todos
         </span>
-        <span className={`font-mono text-[11px] tnum ${!activeId ? "text-clay/70" : "text-stone-400"}`}>
+        <span className={`font-mono text-[11px] tnum ${!activeId ? "text-clay/70" : "text-stone-500"}`}>
           {total}
         </span>
       </button>
@@ -80,11 +80,11 @@ export default function Sidebar({ clients, activeId, counts, onSelect, onAdd, on
               <button
                 onClick={() => onSelect(c.id)}
                 className="flex min-w-0 flex-1 items-center gap-2.5 px-3 py-2 text-left text-sm font-semibold"
-                style={{ color: active ? c.color : "#d4d4d8" }}
+                style={{ color: active ? "#141618" : "#57534e" }}
               >
                 <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: c.color }} />
                 <span className="flex-1 truncate">{c.name}</span>
-                <span className="font-mono text-[11px] tnum text-stone-400">{counts[c.id] ?? 0}</span>
+                <span className="font-mono text-[11px] tnum text-stone-500">{counts[c.id] ?? 0}</span>
               </button>
               <div className="flex items-center gap-0.5 pr-2 opacity-0 transition-opacity group-hover:opacity-100">
                 <button
