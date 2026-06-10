@@ -1,8 +1,11 @@
-// Email/password auth backed by Cloudflare KV.
-//   POST /api/auth/signup   { email, password, name? }
+// Email-first auth backed by Cloudflare KV.
+//   POST /api/auth/check    { email }            → { allowed, exists }
+//   POST /api/auth/signup   { email, password }  → first-access account creation
 //   POST /api/auth/login    { email, password }
 //   GET  /api/auth/me
 //   POST /api/auth/logout
+//   GET  /api/auth/admin/users                   → admin only
+//   POST /api/auth/admin/reset { email }         → admin only (clears an account)
 import {
   randomSaltHex,
   hashPassword,
@@ -12,7 +15,7 @@ import {
   getCookie,
   sessionCookie,
 } from "../../_lib/session.js";
-import { isAllowed } from "../../_lib/allowlist.js";
+import { ALLOWED_EMAILS, isAllowed, isAdmin } from "../../_lib/allowlist.js";
 
 const json = (data, status = 200, extra = {}) =>
   new Response(JSON.stringify(data), {
@@ -58,7 +61,8 @@ async function handle(context) {
   // ── me ──────────────────────────────────────────────────────────────────
   if (action === "me" && method === "GET") {
     const email = await verifySession(secret, getCookie(request, "tk_session"));
-    return json({ authed: Boolean(email) && isAllowed(email), email: email || null });
+    const authed = Boolean(email) && isAllowed(email);
+    return json({ authed, email: authed ? email : null, admin: authed && isAdmin(email) });
   }
 
   // ── logout ──────────────────────────────────────────────────────────────
@@ -66,13 +70,21 @@ async function handle(context) {
     return json({ ok: true }, 200, { "Set-Cookie": sessionCookie("", 0) });
   }
 
-  // ── signup ──────────────────────────────────────────────────────────────
+  // ── check (email-first branch) ────────────────────────────────────────────
+  if (action === "check" && method === "POST") {
+    const { email } = await request.json().catch(() => ({}));
+    const e = normEmail(email);
+    if (!isAllowed(e)) return json({ allowed: false, exists: false });
+    const users = await getUsers(kv);
+    return json({ allowed: true, exists: users.some((u) => u.email === e) });
+  }
+
+  // ── signup (first access) ─────────────────────────────────────────────────
   if (action === "signup" && method === "POST") {
     const body = await request.json().catch(() => ({}));
     const email = normEmail(body.email);
-    const password = body.password;
     if (!isAllowed(email)) return json({ error: "Este e-mail não tem acesso." }, 403);
-    if (!validPassword(password))
+    if (!validPassword(body.password))
       return json({ error: "A senha precisa ter ao menos 8 caracteres." }, 400);
 
     const users = await getUsers(kv);
@@ -80,40 +92,66 @@ async function handle(context) {
       return json({ error: "Conta já existe. Faça login." }, 409);
 
     const salt = randomSaltHex();
-    const hash = await hashPassword(password, salt);
-    const user = {
+    const hash = await hashPassword(body.password, salt);
+    users.push({
       email,
       name: (body.name || email.split("@")[0]).trim(),
       salt,
       hash,
       createdAt: new Date().toISOString(),
-    };
-    users.push(user);
+    });
     await saveUsers(kv, users);
-
     const token = await signSession(secret, email);
     return json({ ok: true, email }, 201, { "Set-Cookie": sessionCookie(token) });
   }
 
-  // ── login ───────────────────────────────────────────────────────────────
+  // ── login ─────────────────────────────────────────────────────────────────
   if (action === "login" && method === "POST") {
     const body = await request.json().catch(() => ({}));
     const email = normEmail(body.email);
-    const password = body.password;
     if (!isAllowed(email)) return json({ error: "Credenciais inválidas." }, 401);
-
     const users = await getUsers(kv);
     const user = users.find((u) => u.email === email);
-    // Run a hash even when user missing to blunt timing/enumeration.
     const ok = user
-      ? await verifyPassword(password, user)
-      : (await hashPassword(password || "", "00"), false);
+      ? await verifyPassword(body.password, user)
+      : (await hashPassword(body.password || "", "00"), false);
     if (!ok) return json({ error: "Credenciais inválidas." }, 401);
-
     const token = await signSession(secret, email);
     return json({ ok: true, email, name: user.name }, 200, {
       "Set-Cookie": sessionCookie(token),
     });
+  }
+
+  // ── admin (Hudson) ────────────────────────────────────────────────────────
+  if (action === "admin") {
+    const sessionEmail = await verifySession(secret, getCookie(request, "tk_session"));
+    if (!sessionEmail || !isAdmin(sessionEmail)) return json({ error: "Acesso negado." }, 403);
+    const sub = seg[1];
+
+    if (sub === "users" && method === "GET") {
+      const users = await getUsers(kv);
+      const byEmail = Object.fromEntries(users.map((u) => [u.email, u]));
+      return json({
+        users: ALLOWED_EMAILS.map((e) => ({
+          email: e,
+          registered: Boolean(byEmail[e]),
+          name: byEmail[e]?.name ?? null,
+          createdAt: byEmail[e]?.createdAt ?? null,
+          admin: isAdmin(e),
+        })),
+      });
+    }
+
+    if (sub === "reset" && method === "POST") {
+      const { email } = await request.json().catch(() => ({}));
+      const target = normEmail(email);
+      if (!isAllowed(target)) return json({ error: "E-mail inválido." }, 400);
+      const users = await getUsers(kv);
+      await saveUsers(kv, users.filter((u) => u.email !== target));
+      return json({ ok: true });
+    }
+
+    return json({ error: "Not found" }, 404);
   }
 
   return json({ error: "Not found" }, 404);

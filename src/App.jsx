@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { AnimatePresence } from "framer-motion";
-import { AlertCircle, LogOut } from "lucide-react";
+import { AlertCircle, LogOut, ShieldCheck } from "lucide-react";
 import { api } from "@/lib/api";
 import { today } from "@/lib/constants";
 import { Spinner } from "@/components/ui";
@@ -9,6 +9,7 @@ import TopBar from "@/components/TopBar";
 import Board from "@/components/Board";
 import CardModal from "@/components/CardModal";
 import Login from "@/components/Login";
+import AdminPanel from "@/components/AdminPanel";
 
 export default function App() {
   const [clients, setClients] = useState([]);
@@ -23,15 +24,18 @@ export default function App() {
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [authed, setAuthed] = useState(null); // null = checking
   const [userEmail, setUserEmail] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [showAdmin, setShowAdmin] = useState(false);
   const searchRef = useRef(null);
 
   // ── Auth check ──────────────────────────────────────────────────────────────
   const refreshMe = useCallback(() => {
     api
       .me()
-      .then(({ authed, email }) => {
+      .then(({ authed, email, admin }) => {
         setAuthed(Boolean(authed));
         setUserEmail(email);
+        setIsAdmin(Boolean(admin));
       })
       .catch(() => setAuthed(false));
   }, []);
@@ -261,6 +265,15 @@ export default function App() {
           >
             ← tektone.com.br
           </a>
+          {isAdmin && (
+            <button
+              onClick={() => setShowAdmin(true)}
+              className="flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1.5 font-mono text-[11px] tracking-wide text-zinc-400 transition-colors hover:border-action/40 hover:text-action"
+              title="Admin"
+            >
+              <ShieldCheck size={12} /> admin
+            </button>
+          )}
           <button
             onClick={logout}
             className="flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1.5 font-mono text-[11px] tracking-wide text-zinc-400 transition-colors hover:border-danger/40 hover:text-danger"
@@ -340,6 +353,9 @@ export default function App() {
             onDelete={deleteCard}
             onClose={() => setEditing(null)}
           />
+        )}
+        {showAdmin && (
+          <AdminPanel currentEmail={userEmail} onClose={() => setShowAdmin(false)} />
         )}
       </AnimatePresence>
     </div>

@@ -94,6 +94,16 @@ body {
   color: var(--color-action);
 }
 
+/* Icon nested inside a text input */
+.input-ico {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #71717a;
+  pointer-events: none;
+}
+
 /* ── Blueprint backdrop ─────────────────────────────────────────────────── */
 .bp-dots {
   background-image: radial-gradient(

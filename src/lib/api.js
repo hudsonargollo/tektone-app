@@ -23,9 +23,12 @@ async function req(path, opts = {}) {
 export const api = {
   // auth
   me: () => req("/auth/me"),
+  check: (email) => req("/auth/check", { method: "POST", body: { email } }),
   login: (email, password) => req("/auth/login", { method: "POST", body: { email, password } }),
   signup: (email, password) => req("/auth/signup", { method: "POST", body: { email, password } }),
   logout: () => req("/auth/logout", { method: "POST" }),
+  adminUsers: () => req("/auth/admin/users"),
+  adminReset: (email) => req("/auth/admin/reset", { method: "POST", body: { email } }),
 
   // clients / parceiros
   listClients: () => req("/kanban/clients"),
