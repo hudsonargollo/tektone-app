@@ -76,8 +76,9 @@ Then redeploy. (Optional: `GEMINI_MODEL` secret to override the default
 
 ### 2c. Email notifications on @mention (optional)
 When someone `@mentions` a teammate in a comment (or material request), the app can
-email them. This uses **Resend** — create a key at <https://resend.com> and verify a
-sender domain (e.g. `tektone.com.br`, via DNS records in Cloudflare). Then:
+email them. This uses **Resend** — sign in/create the key with the project's
+**Resend account: `spacemkt34@gmail.com` (Mkt)**. Verify a sender domain (e.g.
+`tektone.com.br`, via DNS records in Cloudflare). Then:
 ```sh
 echo "re_xxx" | npx wrangler pages secret put RESEND_API_KEY --project-name tektone-app
 # optional sender override (defaults to "TEKTONE <notificacoes@tektone.com.br>")
