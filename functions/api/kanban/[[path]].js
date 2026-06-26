@@ -160,9 +160,10 @@ export async function onRequest(context) {
           const body = await request.json().catch(() => ({}));
           const text = String(body.text || "").trim();
           if (!text) return json({ error: "Comentário vazio." }, 400);
+          // include the author too, so you can @mention yourself (e.g. to test)
           const mentioned = parseMentions(text, members)
             .map((m) => String(m.email || "").toLowerCase())
-            .filter((e) => e && e !== email.toLowerCase());
+            .filter(Boolean);
           const comment = {
             id: uid(),
             text,
