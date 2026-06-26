@@ -57,6 +57,10 @@ export const api = {
   analyzeMeeting: (body) => req("/analyze/meeting", { method: "POST", body }),
   commitAnalysis: (body) => req("/analyze/commit", { method: "POST", body }),
 
+  // comment notifications (per-user unread)
+  getNotifications: () => req("/kanban/notifications"),
+  markCardSeen: (cardId) => req(`/kanban/cards/${cardId}/seen`, { method: "POST" }),
+
   // meeting-notes review (validation popup)
   listReviews: () => req("/kanban/reviews"),
   ackReviews: (ids) => req("/kanban/reviews/ack", { method: "POST", body: { ids } }),

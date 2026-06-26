@@ -13,6 +13,7 @@ import AdminPanel from "@/components/AdminPanel";
 import ProfilePage from "@/components/ProfilePage";
 import ReviewPopup from "@/components/ReviewPopup";
 import MeetingIntelligence from "@/components/MeetingIntelligence";
+import NotificationsBell from "@/components/NotificationsBell";
 import LogoMark from "@/components/LogoMark";
 
 export default function App() {
@@ -37,6 +38,8 @@ export default function App() {
   const [showProfile, setShowProfile] = useState(false);
   const [showIntel, setShowIntel] = useState(false);
   const [reviews, setReviews] = useState([]);
+  const [notifications, setNotifications] = useState([]);
+  const [notifTotal, setNotifTotal] = useState(0);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const searchRef = useRef(null);
@@ -102,6 +105,38 @@ export default function App() {
       /* if ack fails it simply reappears next login */
     }
   }
+
+  // ── Comment notifications (per-user unread) ───────────────────────────────────
+  const refreshNotifications = useCallback(() => {
+    api
+      .getNotifications()
+      .then(({ notifications, total }) => {
+        setNotifications(notifications || []);
+        setNotifTotal(total || 0);
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!authed) return;
+    refreshNotifications();
+    const t = setInterval(refreshNotifications, 60000);
+    return () => clearInterval(t);
+  }, [authed, refreshNotifications]);
+
+  function openCard(card) {
+    setEditing(card);
+    api.markCardSeen(card.id).then(refreshNotifications).catch(() => {});
+  }
+  const openCardById = (id) => {
+    const c = cards.find((x) => x.id === id);
+    if (c) openCard(c);
+  };
+  const markAllSeen = () => {
+    Promise.all((notifications || []).map((n) => api.markCardSeen(n.cardId)))
+      .then(refreshNotifications)
+      .catch(() => {});
+  };
 
   async function logout() {
     await api.logout().catch(() => {});
@@ -340,6 +375,13 @@ export default function App() {
 
         {/* Desktop actions */}
         <div className="hidden items-center gap-4 lg:flex">
+          <NotificationsBell
+            notifications={notifications}
+            total={notifTotal}
+            avatarByName={avatarByName}
+            onOpen={openCardById}
+            onMarkAll={markAllSeen}
+          />
           {userEmail && (
             <button
               onClick={() => setShowProfile(true)}
@@ -393,8 +435,16 @@ export default function App() {
           </button>
         </div>
 
-        {/* Mobile actions — kebab menu */}
-        <div className="relative lg:hidden">
+        {/* Mobile actions — bell + kebab menu */}
+        <div className="flex items-center gap-1 lg:hidden">
+          <NotificationsBell
+            notifications={notifications}
+            total={notifTotal}
+            avatarByName={avatarByName}
+            onOpen={openCardById}
+            onMarkAll={markAllSeen}
+          />
+          <div className="relative">
           <button
             onClick={() => setMenuOpen((v) => !v)}
             className="rounded-lg p-1.5 text-ink transition-colors hover:bg-ink/[0.05]"
@@ -480,6 +530,7 @@ export default function App() {
               </>
             )}
           </AnimatePresence>
+          </div>
         </div>
       </header>
 
@@ -531,7 +582,7 @@ export default function App() {
                 cards={visibleCards}
                 clients={clients}
                 avatarByName={avatarByName}
-                onEdit={setEditing}
+                onEdit={openCard}
                 onDelete={deleteCard}
                 onQuickAdd={quickAdd}
                 onMove={moveCard}
@@ -594,11 +645,12 @@ export default function App() {
             onSave={saveCard}
             onDelete={deleteCard}
             onClose={() => setEditing(null)}
-            onCardUpdated={(serverCard) =>
+            onCardUpdated={(serverCard) => {
               setCards((p) =>
                 p.map((c) => (c.id === serverCard.id ? { ...c, comments: serverCard.comments } : c))
-              )
-            }
+              );
+              refreshNotifications();
+            }}
           />
         )}
         {showAdmin && (

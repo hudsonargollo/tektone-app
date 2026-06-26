@@ -169,6 +169,17 @@ export async function onRequest(context) {
         return json({ error: "Not found" }, 404);
       }
 
+      // /cards/:id/seen — mark this card's comments as read by the current user
+      if (id && seg[2] === "seen" && method === "POST") {
+        const email = await verifySession(env.SESSION_SECRET, getCookie(request, "tk_session"));
+        if (!email) return json({ error: "unauthorized" }, 401);
+        const reads = await kvGet(kv, "kanban:reads", {});
+        reads[email] = reads[email] || {};
+        reads[email][id] = new Date().toISOString();
+        await kvSet(kv, "kanban:reads", reads);
+        return json({ ok: true });
+      }
+
       if (!id) {
         if (method === "GET") return json({ cards: await kvGet(kv, "kanban:cards", []) });
         if (method === "POST") {
@@ -229,6 +240,55 @@ export async function onRequest(context) {
           return json({ ok: true });
         }
       }
+    }
+
+    // ── NOTIFICATIONS (unread comments per user) ──────────────────────────
+    if (resource === "notifications" && method === "GET") {
+      const email = await verifySession(env.SESSION_SECRET, getCookie(request, "tk_session"));
+      if (!email) return json({ error: "unauthorized" }, 401);
+      const cards = await kvGet(kv, "kanban:cards", []);
+      const reads = await kvGet(kv, "kanban:reads", {});
+      const members = await kvGet(kv, "kanban:members", []);
+      const ur = reads[email] || {};
+      const norm = (s) => String(s || "").trim().toLowerCase();
+      const myName = norm(
+        members.find((m) => norm(m.email) === norm(email))?.name || ""
+      );
+
+      const notifications = [];
+      for (const card of cards) {
+        const comments = card.comments || [];
+        if (!comments.length) continue;
+        const since = ur[card.id];
+        const unread = comments.filter(
+          (c) => c.author !== email && (!since || c.createdAt > since)
+        );
+        if (!unread.length) continue;
+        const last = unread[unread.length - 1];
+        const assignees = card.assignees?.length
+          ? card.assignees
+          : card.assignee
+            ? [card.assignee]
+            : [];
+        const mine = Boolean(myName) && assignees.map(norm).includes(myName);
+        notifications.push({
+          cardId: card.id,
+          cardTitle: card.title,
+          clientId: card.clientId,
+          count: unread.length,
+          hasRequest: unread.some((c) => c.kind === "request"),
+          mine,
+          last: {
+            authorName: last.authorName,
+            kind: last.kind,
+            text: String(last.text || "").slice(0, 100),
+            createdAt: last.createdAt,
+          },
+        });
+      }
+      notifications.sort((a, b) => new Date(b.last.createdAt) - new Date(a.last.createdAt));
+      const total = notifications.reduce((n, x) => n + x.count, 0);
+      return json({ notifications, total });
     }
 
     // ── REVIEWS (meeting-notes validation popup, per-user) ────────────────
