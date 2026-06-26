@@ -94,6 +94,20 @@ async function handle(context) {
     });
   }
 
+  // ── directory (teammates: name + email + avatar) ─────────────────────────
+  if (action === "directory" && method === "GET") {
+    const email = await verifySession(secret, getCookie(request, "tk_session"));
+    if (!email || !isAllowed(email)) return json({ error: "unauthorized" }, 401);
+    const users = await getUsers(kv);
+    return json({
+      users: users.map((u) => ({
+        email: u.email,
+        name: u.name ?? "",
+        avatar: u.avatar ?? "",
+      })),
+    });
+  }
+
   // ── profile (current user) ────────────────────────────────────────────────
   if (action === "profile") {
     const email = await verifySession(secret, getCookie(request, "tk_session"));

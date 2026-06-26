@@ -17,6 +17,7 @@ export default function App() {
   const [clients, setClients] = useState([]);
   const [cards, setCards] = useState([]);
   const [members, setMembers] = useState([]);
+  const [directory, setDirectory] = useState([]);
   const [activeId, setActiveId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -57,14 +58,16 @@ export default function App() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [{ clients: cl }, { cards: cd }, { members: mb }] = await Promise.all([
+      const [{ clients: cl }, { cards: cd }, { members: mb }, dir] = await Promise.all([
         api.listClients(),
         api.listCards(),
         api.listMembers(),
+        api.directory().catch(() => ({ users: [] })),
       ]);
       setClients(cl);
       setCards(cd);
       setMembers(mb);
+      setDirectory(dir.users ?? []);
       setError(null);
     } catch (e) {
       setError(e.message);
@@ -100,6 +103,21 @@ export default function App() {
   }, [editing, activeId, clients]);
 
   // ── Derived ─────────────────────────────────────────────────────────────────
+  // Map an assignee (stored as a member name) → avatar. Joins the user
+  // directory directly by name, and via member email when names differ.
+  const avatarByName = useMemo(() => {
+    const norm = (s) => String(s || "").trim().toLowerCase();
+    const map = {};
+    for (const u of directory) {
+      if (u.avatar && u.name) map[norm(u.name)] = u.avatar;
+    }
+    for (const m of members) {
+      const u = directory.find((x) => norm(x.email) === norm(m.email));
+      if (u?.avatar) map[norm(m.name)] = u.avatar;
+    }
+    return map;
+  }, [directory, members]);
+
   const counts = useMemo(() => {
     const m = {};
     for (const c of clients) m[c.id] = cards.filter((k) => k.clientId === c.id).length;
@@ -431,6 +449,7 @@ export default function App() {
               <Board
                 cards={visibleCards}
                 clients={clients}
+                avatarByName={avatarByName}
                 onEdit={setEditing}
                 onDelete={deleteCard}
                 onQuickAdd={quickAdd}
@@ -488,6 +507,7 @@ export default function App() {
             card={editing}
             clients={clients}
             members={members}
+            avatarByName={avatarByName}
             onSave={saveCard}
             onDelete={deleteCard}
             onClose={() => setEditing(null)}
@@ -502,6 +522,10 @@ export default function App() {
             onSaved={(prof) => {
               setUserName(prof.name);
               setUserAvatar(prof.avatar);
+              setDirectory((prev) => {
+                const others = prev.filter((u) => u.email !== prof.email);
+                return [...others, { email: prof.email, name: prof.name, avatar: prof.avatar }];
+              });
             }}
           />
         )}

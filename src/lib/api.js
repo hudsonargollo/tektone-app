@@ -29,6 +29,7 @@ export const api = {
   logout: () => req("/auth/logout", { method: "POST" }),
   getProfile: () => req("/auth/profile"),
   updateProfile: (body) => req("/auth/profile", { method: "PUT", body }),
+  directory: () => req("/auth/directory"),
   adminUsers: () => req("/auth/admin/users"),
   adminReset: (email) => req("/auth/admin/reset", { method: "POST", body: { email } }),
 

@@ -590,7 +590,7 @@ function Links({ items, onChange }) {
   );
 }
 
-export default function CardModal({ card, clients, members, onSave, onDelete, onClose }) {
+export default function CardModal({ card, clients, members, avatarByName, onSave, onDelete, onClose }) {
   const [d, setD] = useState({ ...card });
   const set = (k, v) => setD((p) => ({ ...p, [k]: v }));
 
@@ -606,7 +606,11 @@ export default function CardModal({ card, clients, members, onSave, onDelete, on
   ];
   const memberOpts = [
     { value: "", label: "— Nenhum —" },
-    ...members.map((m) => ({ value: m.name, label: m.name, avatar: <Avatar name={m.name} /> })),
+    ...members.map((m) => ({
+      value: m.name,
+      label: m.name,
+      avatar: <Avatar name={m.name} src={avatarByName?.[m.name?.trim().toLowerCase()]} />,
+    })),
   ];
 
   useEffect(() => {

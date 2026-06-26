@@ -16,8 +16,9 @@ import { Avatar, PriorityBadge } from "@/components/ui";
 const COLLAPSE_KEY = "tk_collapsed_cols";
 
 // ── Card ────────────────────────────────────────────────────────────────────
-function Card({ card, client, onEdit, onDelete, onDragStart, onDragEnd, dragging }) {
+function Card({ card, client, avatarByName, onEdit, onDelete, onDragStart, onDragEnd, dragging }) {
   const overdue = card.dueDate && card.dueDate < today() && card.columnId !== "done";
+  const assigneeAvatar = avatarByName?.[card.assignee?.trim().toLowerCase()];
   const checklist = card.checklist ?? [];
   const checkTotal = checklist.length;
   const checkDone = checklist.filter((i) => i.done).length;
@@ -105,7 +106,7 @@ function Card({ card, client, onEdit, onDelete, onDragStart, onDragEnd, dragging
               {fmtDate(card.dueDate)}
             </span>
           )}
-          {card.assignee && <Avatar name={card.assignee} />}
+          {card.assignee && <Avatar name={card.assignee} src={assigneeAvatar} />}
         </div>
       </div>
     </motion.div>
@@ -233,6 +234,7 @@ function Column({
   col,
   cards,
   clients,
+  avatarByName,
   isOver,
   setOver,
   onDrop,
@@ -287,6 +289,7 @@ function Column({
               key={card.id}
               card={card}
               client={clients.find((c) => c.id === card.clientId)}
+              avatarByName={avatarByName}
               dragging={draggingId === card.id}
               {...handlers}
             />
@@ -306,7 +309,7 @@ function Column({
 }
 
 // ── Mobile board (tabbed, one column at a time) ───────────────────────────────
-function MobileBoard({ cards, clients, onEdit, onDelete, onQuickAdd }) {
+function MobileBoard({ cards, clients, avatarByName, onEdit, onDelete, onQuickAdd }) {
   const [active, setActive] = useState("todo");
   const colCards = cards.filter((c) => c.columnId === active);
   const noop = () => {};
@@ -355,6 +358,7 @@ function MobileBoard({ cards, clients, onEdit, onDelete, onQuickAdd }) {
               key={card.id}
               card={card}
               client={clients.find((c) => c.id === card.clientId)}
+              avatarByName={avatarByName}
               onEdit={onEdit}
               onDelete={onDelete}
               onDragStart={noop}
@@ -375,7 +379,7 @@ function MobileBoard({ cards, clients, onEdit, onDelete, onQuickAdd }) {
 }
 
 // ── Board ────────────────────────────────────────────────────────────────────
-export default function Board({ cards, clients, onEdit, onDelete, onQuickAdd, onMove }) {
+export default function Board({ cards, clients, avatarByName, onEdit, onDelete, onQuickAdd, onMove }) {
   const [draggingId, setDraggingId] = useState(null);
   const [overCol, setOverCol] = useState(null);
   const [collapsed, setCollapsed] = useState(() => {
@@ -435,6 +439,7 @@ export default function Board({ cards, clients, onEdit, onDelete, onQuickAdd, on
               col={col}
               cards={colCards}
               clients={clients}
+              avatarByName={avatarByName}
               isOver={overCol === col.id}
               setOver={setOverCol}
               onDrop={handleDrop}
@@ -454,6 +459,7 @@ export default function Board({ cards, clients, onEdit, onDelete, onQuickAdd, on
       <MobileBoard
         cards={cards}
         clients={clients}
+        avatarByName={avatarByName}
         onEdit={onEdit}
         onDelete={onDelete}
         onQuickAdd={onQuickAdd}
