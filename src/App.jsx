@@ -3,13 +3,14 @@ import { AnimatePresence, motion } from "framer-motion";
 import { AlertCircle, LogOut, ShieldCheck, Menu, X, MoreVertical } from "lucide-react";
 import { api } from "@/lib/api";
 import { today } from "@/lib/constants";
-import { Spinner } from "@/components/ui";
+import { Spinner, Avatar } from "@/components/ui";
 import Sidebar from "@/components/Sidebar";
 import TopBar from "@/components/TopBar";
 import Board from "@/components/Board";
 import CardModal from "@/components/CardModal";
 import Login from "@/components/Login";
 import AdminPanel from "@/components/AdminPanel";
+import ProfilePage from "@/components/ProfilePage";
 import LogoMark from "@/components/LogoMark";
 
 export default function App() {
@@ -25,8 +26,11 @@ export default function App() {
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [authed, setAuthed] = useState(null); // null = checking
   const [userEmail, setUserEmail] = useState(null);
+  const [userName, setUserName] = useState(null);
+  const [userAvatar, setUserAvatar] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const searchRef = useRef(null);
@@ -35,10 +39,12 @@ export default function App() {
   const refreshMe = useCallback(() => {
     api
       .me()
-      .then(({ authed, email, admin }) => {
+      .then(({ authed, email, admin, name, avatar }) => {
         setAuthed(Boolean(authed));
         setUserEmail(email);
         setIsAdmin(Boolean(admin));
+        setUserName(name);
+        setUserAvatar(avatar);
       })
       .catch(() => setAuthed(false));
   }, []);
@@ -279,9 +285,16 @@ export default function App() {
         {/* Desktop actions */}
         <div className="hidden items-center gap-4 lg:flex">
           {userEmail && (
-            <span className="font-mono text-[11px] tracking-wide text-stone-500">
-              {userEmail}
-            </span>
+            <button
+              onClick={() => setShowProfile(true)}
+              className="flex items-center gap-2 rounded-lg px-1.5 py-1 transition-colors hover:bg-ink/[0.05]"
+              title="Meu perfil"
+            >
+              <Avatar name={userName || userEmail} src={userAvatar} />
+              <span className="font-mono text-[11px] tracking-wide text-stone-500">
+                {userName || userEmail}
+              </span>
+            </button>
           )}
           <a
             href="https://tektone.com.br"
@@ -326,9 +339,23 @@ export default function App() {
                   className="absolute right-0 top-full z-40 mt-2 w-56 overflow-hidden rounded-xl surface-2 shadow-xl"
                 >
                   {userEmail && (
-                    <div className="truncate border-b border-ink/10 px-4 py-3 font-mono text-[11px] text-stone-500">
-                      {userEmail}
-                    </div>
+                    <button
+                      onClick={() => {
+                        setShowProfile(true);
+                        setMenuOpen(false);
+                      }}
+                      className="flex w-full items-center gap-2.5 border-b border-ink/10 px-4 py-3 text-left transition-colors hover:bg-ink/[0.04]"
+                    >
+                      <Avatar name={userName || userEmail} src={userAvatar} size="md" />
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm font-semibold text-ink">
+                          {userName || "Meu perfil"}
+                        </span>
+                        <span className="block truncate font-mono text-[10px] text-stone-500">
+                          {userEmail}
+                        </span>
+                      </span>
+                    </button>
                   )}
                   {isAdmin && (
                     <button
@@ -468,6 +495,15 @@ export default function App() {
         )}
         {showAdmin && (
           <AdminPanel currentEmail={userEmail} onClose={() => setShowAdmin(false)} />
+        )}
+        {showProfile && (
+          <ProfilePage
+            onClose={() => setShowProfile(false)}
+            onSaved={(prof) => {
+              setUserName(prof.name);
+              setUserAvatar(prof.avatar);
+            }}
+          />
         )}
       </AnimatePresence>
     </div>

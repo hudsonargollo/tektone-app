@@ -1,7 +1,23 @@
 import { PRIORITY, initials } from "@/lib/constants";
 
-export function Avatar({ name, size = "sm" }) {
-  const sz = size === "sm" ? "h-6 w-6 text-[9px]" : "h-8 w-8 text-[11px]";
+const AVATAR_SIZES = {
+  sm: "h-6 w-6 text-[9px]",
+  md: "h-8 w-8 text-[11px]",
+  lg: "h-20 w-20 text-2xl",
+};
+
+export function Avatar({ name, src, size = "sm" }) {
+  const sz = AVATAR_SIZES[size] ?? AVATAR_SIZES.sm;
+  if (src) {
+    return (
+      <img
+        src={src}
+        alt={name || ""}
+        title={name}
+        className={`${sz} shrink-0 rounded-full object-cover ring-1 ring-ink/10`}
+      />
+    );
+  }
   // deterministic hue from name
   const hue = name ? (name.charCodeAt(0) * 47) % 360 : 200;
   return (

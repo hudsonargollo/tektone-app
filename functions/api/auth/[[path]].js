@@ -38,6 +38,21 @@ const saveUsers = (kv, users) => kv.put(USERS_KEY, JSON.stringify(users));
 const normEmail = (e) => String(e || "").trim().toLowerCase();
 const validPassword = (p) => typeof p === "string" && p.length >= 8;
 
+// Editable profile fields (never expose salt/hash).
+const PROFILE_FIELDS = ["name", "role", "phone", "location", "bio", "avatar"];
+const MAX_AVATAR_LEN = 700000; // ~512 KB image as a data URL
+const publicProfile = (u) => ({
+  email: u.email,
+  name: u.name ?? "",
+  role: u.role ?? "",
+  phone: u.phone ?? "",
+  location: u.location ?? "",
+  bio: u.bio ?? "",
+  avatar: u.avatar ?? "",
+  admin: isAdmin(u.email),
+  createdAt: u.createdAt ?? null,
+});
+
 export async function onRequest(context) {
   try {
     return await handle(context);
@@ -62,7 +77,45 @@ async function handle(context) {
   if (action === "me" && method === "GET") {
     const email = await verifySession(secret, getCookie(request, "tk_session"));
     const authed = Boolean(email) && isAllowed(email);
-    return json({ authed, email: authed ? email : null, admin: authed && isAdmin(email) });
+    let name = null;
+    let avatar = null;
+    if (authed) {
+      const users = await getUsers(kv);
+      const u = users.find((x) => x.email === email);
+      name = u?.name ?? null;
+      avatar = u?.avatar ?? null;
+    }
+    return json({
+      authed,
+      email: authed ? email : null,
+      admin: authed && isAdmin(email),
+      name,
+      avatar,
+    });
+  }
+
+  // ── profile (current user) ────────────────────────────────────────────────
+  if (action === "profile") {
+    const email = await verifySession(secret, getCookie(request, "tk_session"));
+    if (!email || !isAllowed(email)) return json({ error: "unauthorized" }, 401);
+    const users = await getUsers(kv);
+    const idx = users.findIndex((u) => u.email === email);
+    if (idx === -1) return json({ error: "Conta não encontrada." }, 404);
+
+    if (method === "GET") return json({ profile: publicProfile(users[idx]) });
+
+    if (method === "PUT") {
+      const body = await request.json().catch(() => ({}));
+      if (typeof body.avatar === "string" && body.avatar.length > MAX_AVATAR_LEN)
+        return json({ error: "Imagem muito grande. Use uma menor." }, 413);
+      for (const f of PROFILE_FIELDS) {
+        if (f in body) users[idx][f] = typeof body[f] === "string" ? body[f] : users[idx][f];
+      }
+      await saveUsers(kv, users);
+      return json({ profile: publicProfile(users[idx]) });
+    }
+
+    return json({ error: "Not found" }, 404);
   }
 
   // ── logout ──────────────────────────────────────────────────────────────

@@ -27,6 +27,8 @@ export const api = {
   login: (email, password) => req("/auth/login", { method: "POST", body: { email, password } }),
   signup: (email, password) => req("/auth/signup", { method: "POST", body: { email, password } }),
   logout: () => req("/auth/logout", { method: "POST" }),
+  getProfile: () => req("/auth/profile"),
+  updateProfile: (body) => req("/auth/profile", { method: "PUT", body }),
   adminUsers: () => req("/auth/admin/users"),
   adminReset: (email) => req("/auth/admin/reset", { method: "POST", body: { email } }),
 

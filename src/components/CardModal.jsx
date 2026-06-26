@@ -13,6 +13,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Calendar as CalendarIcon,
+  Pencil,
 } from "lucide-react";
 import { COLUMNS, PRIORITY, LABEL_COLORS } from "@/lib/constants";
 import { Avatar } from "@/components/ui";
@@ -427,24 +428,120 @@ function Checklist({ items, onChange }) {
 }
 
 // ── Links & references ────────────────────────────────────────────────────────
+const normalizeUrl = (u) => {
+  const t = u.trim();
+  if (!t) return "";
+  return /^https?:\/\//i.test(t) ? t : `https://${t}`;
+};
+
+function LinkRow({ item, onSave, onRemove }) {
+  const [editing, setEditing] = useState(false);
+  const [label, setLabel] = useState(item.label);
+  const [url, setUrl] = useState(item.url);
+
+  const start = () => {
+    setLabel(item.label);
+    setUrl(item.url);
+    setEditing(true);
+  };
+  const save = () => {
+    const u = normalizeUrl(url);
+    if (!u) return;
+    onSave({ ...item, label: label.trim() || u, url: u });
+    setEditing(false);
+  };
+
+  if (editing) {
+    return (
+      <div className="flex flex-col gap-2 rounded-lg border border-action/40 bg-ink/[0.02] p-2 sm:flex-row">
+        <input
+          value={label}
+          onChange={(e) => setLabel(e.target.value)}
+          placeholder="Rótulo (opcional)"
+          className={`${inputCls} sm:w-2/5`}
+        />
+        <div className="flex flex-1 gap-1.5">
+          <input
+            autoFocus
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                save();
+              }
+              if (e.key === "Escape") setEditing(false);
+            }}
+            placeholder="https://…"
+            className={`${inputCls} flex-1`}
+          />
+          <button
+            type="button"
+            onClick={save}
+            className="shrink-0 rounded-lg bg-action px-2.5 text-clay transition-colors hover:brightness-110"
+            title="Salvar"
+          >
+            <Check size={15} />
+          </button>
+          <button
+            type="button"
+            onClick={() => setEditing(false)}
+            className="shrink-0 rounded-lg border border-ink/15 px-2.5 text-stone-500 transition-colors hover:text-ink"
+            title="Cancelar"
+          >
+            <X size={15} />
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="group/link flex items-center gap-2 rounded-lg border border-ink/10 bg-ink/[0.02] px-2.5 py-1.5">
+      <Link2 size={13} className="shrink-0 text-stone-400" />
+      <a
+        href={item.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex min-w-0 flex-1 items-center gap-1 text-sm text-action hover:underline"
+        title={item.url}
+      >
+        <span className="truncate">{item.label}</span>
+        <ExternalLink size={11} className="shrink-0 opacity-60" />
+      </a>
+      <button
+        type="button"
+        onClick={start}
+        className="shrink-0 rounded p-0.5 text-stone-300 opacity-0 transition-all hover:text-action group-hover/link:opacity-100"
+        title="Editar link"
+      >
+        <Pencil size={12} />
+      </button>
+      <button
+        type="button"
+        onClick={() => onRemove(item.id)}
+        className="shrink-0 rounded p-0.5 text-stone-300 opacity-0 transition-all hover:text-danger group-hover/link:opacity-100"
+        title="Remover link"
+      >
+        <X size={13} />
+      </button>
+    </div>
+  );
+}
+
 function Links({ items, onChange }) {
   const [label, setLabel] = useState("");
   const [url, setUrl] = useState("");
   const list = items ?? [];
 
-  const normalize = (u) => {
-    const t = u.trim();
-    if (!t) return "";
-    return /^https?:\/\//i.test(t) ? t : `https://${t}`;
-  };
-
   const add = () => {
-    const u = normalize(url);
+    const u = normalizeUrl(url);
     if (!u) return;
     onChange([...list, { id: genId(), label: label.trim() || u, url: u }]);
     setLabel("");
     setUrl("");
   };
+  const save = (next) => onChange(list.map((i) => (i.id === next.id ? next : i)));
   const remove = (id) => onChange(list.filter((i) => i.id !== id));
 
   return (
@@ -454,30 +551,7 @@ function Links({ items, onChange }) {
       {list.length > 0 && (
         <div className="mb-2 space-y-1.5">
           {list.map((i) => (
-            <div
-              key={i.id}
-              className="group/link flex items-center gap-2 rounded-lg border border-ink/10 bg-ink/[0.02] px-2.5 py-1.5"
-            >
-              <Link2 size={13} className="shrink-0 text-stone-400" />
-              <a
-                href={i.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex-1 truncate text-sm text-action hover:underline"
-                title={i.url}
-              >
-                {i.label}
-              </a>
-              <ExternalLink size={12} className="shrink-0 text-stone-300" />
-              <button
-                type="button"
-                onClick={() => remove(i.id)}
-                className="shrink-0 rounded p-0.5 text-stone-300 opacity-0 transition-all hover:text-danger group-hover/link:opacity-100"
-                title="Remover link"
-              >
-                <X size={13} />
-              </button>
-            </div>
+            <LinkRow key={i.id} item={i} onSave={save} onRemove={remove} />
           ))}
         </div>
       )}
