@@ -3,7 +3,7 @@
 Turns Gemini meeting-notes Google Docs into kanban cards automatically.
 
 ```
-Apps Script (polls every 15 min — Google has no "on save" Drive trigger)
+Apps Script (polls every 30 min, 5am–11pm — Google has no "on save" Drive trigger)
   → finds new Gemini notes Docs ("Shared with me" or a folder)
   → POSTs the transcript to https://tasks.tektone.com.br/api/analyze/auto
         ↓
@@ -26,9 +26,10 @@ Cloudflare Pages Function (functions/api/analyze/[[path]].js) — Gemini
 
 ### "Every time a meeting is saved"
 Google Drive has **no native on-create trigger** for arbitrary folders, so the script
-**polls every `POLL_MINUTES` (15)** — each new transcript is processed within ~15 min
-of being saved. Lower it to 5 or 10 in `CONFIG` for faster pickup, or run
-`installDailyTrigger` instead to batch once a day at 5pm São Paulo.
+**polls every `POLL_MINUTES` (30)** — each new transcript is processed within ~30 min
+of being saved. It **skips `QUIET_START`–`QUIET_END` (23–5 São Paulo)** to save compute
+overnight. Lower `POLL_MINUTES` to 5/10/15 for faster pickup, adjust the quiet window,
+or run `installDailyTrigger` instead to batch once a day at 5pm São Paulo.
 
 ## Google prerequisites (what you need — and don't)
 

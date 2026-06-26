@@ -46,11 +46,23 @@ const CONFIG = {
   // new transcript is processed within POLL_MINUTES of being saved — for ANY
   // meeting, not just the dailies. Allowed: 1, 5, 10, 15, 30.
   // (Project time zone MUST be America/Sao_Paulo — Project Settings ⚙.)
-  POLL_MINUTES: 15,
+  POLL_MINUTES: 30,
+  // Quiet hours (São Paulo): skip the run between QUIET_START and QUIET_END to
+  // save compute overnight. 23–5 = no work from 11pm to 5am. Set equal to disable.
+  QUIET_START: 23,
+  QUIET_END: 5,
   // Alternative: leave POLL_MINUTES and instead run installDailyTrigger() to
   // process once a day at this hour (São Paulo time).
   RUN_HOUR: 17,
 };
+
+// True between QUIET_START and QUIET_END in the project's (São Paulo) time zone.
+function inQuietHours() {
+  const s = CONFIG.QUIET_START, e = CONFIG.QUIET_END;
+  if (s === e) return false;
+  const h = parseInt(Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "H"), 10);
+  return s < e ? h >= s && h < e : h >= s || h < e;
+}
 
 // Default: poll every POLL_MINUTES so meetings are picked up soon after saving.
 function installTrigger() {
@@ -90,6 +102,11 @@ function docDate(file) {
 }
 
 function syncMeetingNotes() {
+  if (inQuietHours()) {
+    Logger.log("Quiet hours (" + CONFIG.QUIET_START + "–" + CONFIG.QUIET_END + ") — skipping.");
+    return;
+  }
+
   const props = PropertiesService.getScriptProperties();
   const seen = new Set(JSON.parse(props.getProperty("processed") || "[]"));
 
