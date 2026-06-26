@@ -53,7 +53,7 @@ export const api = {
   deleteComment: (cardId, commentId) =>
     req(`/kanban/cards/${cardId}/comments/${commentId}`, { method: "DELETE" }),
 
-  // meeting intelligence (interactive Gemini analysis)
+  // meeting intelligence (interactive Claude analysis)
   analyzeMeeting: (body) => req("/analyze/meeting", { method: "POST", body }),
   commitAnalysis: (body) => req("/analyze/commit", { method: "POST", body }),
 

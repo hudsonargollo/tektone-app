@@ -7,7 +7,7 @@ Apps Script (polls every 30 min, 5am–11pm — Google has no "on save" Drive tr
   → finds new Gemini notes Docs ("Shared with me" or a folder)
   → POSTs the transcript to https://tasks.tektone.com.br/api/analyze/auto
         ↓
-Cloudflare Pages Function (functions/api/analyze/[[path]].js) — Gemini
+Cloudflare Pages Function (functions/api/analyze/[[path]].js) — Claude
   → full "meeting intelligence": summary + decisions + risks + action items
   → resolves the project (auto-creates it if missing)
   → maps owners to board members; action items → cards in "A Fazer";
@@ -16,7 +16,7 @@ Cloudflare Pages Function (functions/api/analyze/[[path]].js) — Gemini
 ```
 
 **Two paths, same endpoint family:**
-- **Automatic** — the Apps Script above hits `/api/analyze/auto` (Gemini) for every
+- **Automatic** — the Apps Script above hits `/api/analyze/auto` (Claude) for every
   new meeting transcript. Runs for ALL meetings, not just dailies.
 - **Interactive** — the **"reuniões"** button in the app header opens
   *Inteligência de Reuniões*: paste any transcript, review the analysis, pick the
@@ -65,14 +65,16 @@ CLI alternative:
 npx wrangler pages secret put INGEST_TOKEN --project-name tektone-app
 ```
 
-### 2b. Set the Gemini API key (for AI analysis)
-The AI analysis (`/api/analyze/*`) needs a Google **Gemini API key** — create one at
-<https://aistudio.google.com/apikey>. Add it as a Pages secret:
+### 2b. Set the Anthropic API key (for AI analysis)
+The AI analysis (`/api/analyze/*`) uses the **Anthropic Claude API** (forced tool use →
+structured JSON). Create a key at <https://console.anthropic.com/settings/keys> and add
+it as a Pages secret:
 ```sh
-echo "YOUR_GEMINI_KEY" | npx wrangler pages secret put GEMINI_API_KEY --project-name tektone-app
+echo "sk-ant-..." | npx wrangler pages secret put ANTHROPIC_API_KEY --project-name tektone-app
 ```
-Then redeploy. (Optional: `GEMINI_MODEL` secret to override the default
-`gemini-2.0-flash`.) Without this key the analyze endpoints return a 500.
+Then redeploy. The default model is `claude-opus-4-8`; set the optional `ANTHROPIC_MODEL`
+secret (e.g. `claude-sonnet-4-6` or `claude-haiku-4-5`) to trade some quality for lower
+cost/latency. Without `ANTHROPIC_API_KEY` the analyze endpoints return a 500.
 
 ### 2c. Email notifications on @mention (optional)
 When someone `@mentions` a teammate in a comment (or material request), the app can

@@ -127,35 +127,44 @@ ${transcript.slice(0, 120000)}
 """`;
 }
 
-async function callGemini(env, prompt) {
-  const model = env.GEMINI_MODEL || "gemini-2.0-flash";
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${env.GEMINI_API_KEY}`;
-  const res = await fetch(url, {
+// Anthropic Messages API with forced tool use → guaranteed structured JSON.
+async function callClaude(env, prompt) {
+  const model = env.ANTHROPIC_MODEL || "claude-opus-4-8";
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "x-api-key": env.ANTHROPIC_API_KEY,
+      "anthropic-version": "2023-06-01",
+      "content-type": "application/json",
+    },
     body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: {
-        responseMimeType: "application/json",
-        responseSchema: ANALYSIS_SCHEMA,
-        temperature: 0.2,
-      },
+      model,
+      max_tokens: 8000,
+      tools: [
+        {
+          name: "emit_analysis",
+          description: "Devolve a análise estruturada da reunião.",
+          input_schema: ANALYSIS_SCHEMA,
+        },
+      ],
+      tool_choice: { type: "tool", name: "emit_analysis" },
+      messages: [{ role: "user", content: prompt }],
     }),
   });
   if (!res.ok) {
     const t = await res.text();
-    throw new Error(`Gemini ${res.status}: ${t.slice(0, 300)}`);
+    throw new Error(`Anthropic ${res.status}: ${t.slice(0, 300)}`);
   }
   const data = await res.json();
-  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) throw new Error("Gemini retornou resposta vazia.");
-  return JSON.parse(text);
+  const block = (data.content || []).find((b) => b.type === "tool_use");
+  if (!block?.input) throw new Error("Anthropic: resposta sem tool_use.");
+  return block.input;
 }
 
-// Run Gemini and normalise action items against known members.
+// Run the model and normalise action items against known members.
 async function analyze(env, transcript, title, clients, members) {
-  if (!env.GEMINI_API_KEY) throw new Error("GEMINI_API_KEY não configurado.");
-  const analysis = await callGemini(env, buildPrompt(transcript, title, clients, members));
+  if (!env.ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY não configurado.");
+  const analysis = await callClaude(env, buildPrompt(transcript, title, clients, members));
   analysis.actionItems = (analysis.actionItems || [])
     .map((it) => {
       const assignees = [];

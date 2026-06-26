@@ -69,7 +69,7 @@ export default function MeetingIntelligence({ clients, members, avatarByName, is
       setExcluded(new Set());
       setPhase("review");
     } catch (e) {
-      setError(e.body?.error || "Falha ao analisar. Verifique a chave do Gemini.");
+      setError(e.body?.error || "Falha ao analisar. Verifique a chave da Anthropic.");
     } finally {
       setBusy(false);
     }
@@ -234,7 +234,7 @@ export default function MeetingIntelligence({ clients, members, avatarByName, is
                       className={`${inputCls} resize-none font-mono text-xs leading-relaxed`}
                     />
                     <p className="mt-1.5 text-[11px] text-stone-400">
-                      O Gemini extrai resumo, decisões, riscos e tarefas — e sugere o projeto.
+                      O Claude extrai resumo, decisões, riscos e tarefas — e sugere o projeto.
                     </p>
                   </div>
                 </>
@@ -365,7 +365,7 @@ export default function MeetingIntelligence({ clients, members, avatarByName, is
         {/* Footer */}
         <div className="flex items-center justify-between gap-3 border-t border-ink/15 px-6 py-4">
           <span className="font-mono text-[10px] text-stone-400">
-            {phase === "input" ? "Powered by Gemini" : projectName || "—"}
+            {phase === "input" ? "Powered by Claude" : projectName || "—"}
           </span>
           {phase === "input" ? (
             <button
