@@ -59,10 +59,23 @@ where meeting notes turn into tasks automatically, with comments, material reque
 
 ## Architecture
 
-```
-React SPA (src/)  ──fetch──>  Cloudflare Pages Functions (functions/api/*)  ──>  KV (KANBAN)
-                                         │
-        Apps Script (Drive) ──token──────┘   Claude (analysis) · Resend (email)
+```mermaid
+flowchart LR
+  UI["React SPA<br/>(src/)"]
+  FN["Cloudflare Pages Functions<br/>(functions/api/*)"]
+  KV[("KV namespace<br/>KANBAN")]
+  AS["Google Apps Script<br/>(Drive poller / Web App)"]
+  G["Gemini meeting-notes<br/>Docs in Drive"]
+  CL["Anthropic Claude<br/>(analysis)"]
+  RS["Resend<br/>(@mention email)"]
+
+  UI -->|"fetch /api/*<br/>(session cookie)"| FN
+  FN <--> KV
+  FN -->|structured analysis| CL
+  FN -->|notify| RS
+  G --> AS
+  AS -->|"transcript + INGEST_TOKEN"| FN
+  FN -->|"list / read docs"| AS
 ```
 
 - **Frontend:** `src/` — `App.jsx` orchestrates; components in `src/components/`,
