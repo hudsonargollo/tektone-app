@@ -2,7 +2,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { X, Sparkles, Check, ArrowLeft, FileText, AlertTriangle, CheckCircle2, Download } from "lucide-react";
 import { api } from "@/lib/api";
-import { Avatar, Spinner, PriorityBadge } from "@/components/ui";
+import { Avatar, Spinner, PriorityBadge, useIsMobile } from "@/components/ui";
 
 const labelCls =
   "mb-1.5 block font-mono text-[11px] font-medium uppercase tracking-[0.16em] text-stone-500";
@@ -19,6 +19,7 @@ function fmtDate(d) {
 }
 
 export default function MeetingIntelligence({ clients, members, avatarByName, isAdmin, onClose, onSaved }) {
+  const isMobile = useIsMobile();
   const [phase, setPhase] = useState("input"); // input | review
   const [mode, setMode] = useState("paste"); // paste | drive
   const [meetings, setMeetings] = useState(null);
@@ -110,7 +111,7 @@ export default function MeetingIntelligence({ clients, members, avatarByName, is
   const keptCount = analysis ? analysis.actionItems.length - excluded.size : 0;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex justify-center lg:items-center lg:p-4">
       <motion.div
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
         onClick={onClose}
@@ -119,11 +120,13 @@ export default function MeetingIntelligence({ clients, members, avatarByName, is
         exit={{ opacity: 0 }}
       />
       <motion.div
-        className="relative flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl surface-2 shadow-2xl"
-        initial={{ opacity: 0, y: 20, scale: 0.97 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 12, scale: 0.98 }}
-        transition={{ type: "spring", stiffness: 320, damping: 28 }}
+        className={`relative flex w-full flex-col overflow-hidden surface-2 shadow-2xl ${
+          isMobile ? "h-full" : "max-h-[92vh] max-w-2xl rounded-2xl"
+        }`}
+        initial={isMobile ? { y: "100%" } : { opacity: 0, y: 20, scale: 0.97 }}
+        animate={isMobile ? { y: 0 } : { opacity: 1, y: 0, scale: 1 }}
+        exit={isMobile ? { y: "100%" } : { opacity: 0, y: 12, scale: 0.98 }}
+        transition={{ type: "spring", stiffness: 320, damping: 30 }}
       >
         {/* Header */}
         <div className="flex items-center justify-between gap-3 border-b border-ink/15 px-6 py-4">

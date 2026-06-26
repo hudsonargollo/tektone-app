@@ -975,7 +975,7 @@ export default function CardModal({
         <div className="border-b border-ink/15 px-4 py-3 sm:px-6">
           <div className="flex items-center gap-3">
             <input
-              autoFocus
+              autoFocus={!isMobile}
               value={d.title ?? ""}
               onChange={(e) => set("title", e.target.value)}
               placeholder="Título da tarefa…"

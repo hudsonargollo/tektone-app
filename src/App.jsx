@@ -511,11 +511,15 @@ export default function App() {
       <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t border-ink/10 bg-clay/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl lg:hidden">
         <button
           onClick={() => setRequestsOnly(false)}
-          className={`flex flex-1 flex-col items-center gap-1 py-2.5 text-[10px] font-medium transition-colors ${
-            !requestsOnly ? "text-action" : "text-stone-500"
+          className={`flex flex-1 flex-col items-center gap-1 py-2 text-[10px] transition-colors ${
+            !requestsOnly ? "font-semibold text-action" : "font-medium text-stone-500"
           }`}
         >
-          <span className="flex h-7 items-center justify-center">
+          <span
+            className={`flex h-7 items-center justify-center rounded-full px-4 transition-colors ${
+              !requestsOnly ? "bg-action/15" : ""
+            }`}
+          >
             <LayoutGrid size={20} />
           </span>
           Quadro
@@ -525,11 +529,15 @@ export default function App() {
             setActiveId(null);
             setRequestsOnly(true);
           }}
-          className={`flex flex-1 flex-col items-center gap-1 py-2.5 text-[10px] font-medium transition-colors ${
-            requestsOnly ? "text-warning" : "text-stone-500"
+          className={`flex flex-1 flex-col items-center gap-1 py-2 text-[10px] transition-colors ${
+            requestsOnly ? "font-semibold text-warning" : "font-medium text-stone-500"
           }`}
         >
-          <span className="relative flex h-7 items-center justify-center">
+          <span
+            className={`relative flex h-7 items-center justify-center rounded-full px-4 transition-colors ${
+              requestsOnly ? "bg-warning/15" : ""
+            }`}
+          >
             <Package size={20} />
             {openRequestsGlobal > 0 && (
               <span className="absolute -right-2 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-danger px-1 font-mono text-[9px] font-bold text-clay">
@@ -541,7 +549,7 @@ export default function App() {
         </button>
         <button
           onClick={() => setShowIntel(true)}
-          className="flex flex-1 flex-col items-center gap-1 py-2.5 text-[10px] font-medium text-stone-500 transition-colors active:text-action"
+          className="flex flex-1 flex-col items-center gap-1 py-2 text-[10px] font-medium text-stone-500 transition-colors active:text-action"
         >
           <span className="flex h-7 items-center justify-center">
             <Sparkles size={20} />
@@ -550,7 +558,7 @@ export default function App() {
         </button>
         <button
           onClick={() => setMenuOpen(true)}
-          className="flex flex-1 flex-col items-center gap-1 py-2.5 text-[10px] font-medium text-stone-500 transition-colors active:text-action"
+          className="flex flex-1 flex-col items-center gap-1 py-2 text-[10px] font-medium text-stone-500 transition-colors active:text-action"
         >
           <span className="flex h-7 items-center justify-center">
             <Avatar name={userName || userEmail} src={userAvatar} />
