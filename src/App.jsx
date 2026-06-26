@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { AlertCircle, LogOut, ShieldCheck, Menu, X, MoreVertical, Sparkles } from "lucide-react";
+import { AlertCircle, LogOut, ShieldCheck, Menu, X, MoreVertical, Sparkles, Package } from "lucide-react";
 import { api } from "@/lib/api";
 import { today } from "@/lib/constants";
 import { Spinner, Avatar } from "@/components/ui";
@@ -27,6 +27,7 @@ export default function App() {
   const [editing, setEditing] = useState(null);
   const [query, setQuery] = useState("");
   const [priorityFilter, setPriorityFilter] = useState("all");
+  const [requestsOnly, setRequestsOnly] = useState(false);
   const [authed, setAuthed] = useState(null); // null = checking
   const [userEmail, setUserEmail] = useState(null);
   const [userName, setUserName] = useState(null);
@@ -162,17 +163,27 @@ export default function App() {
     [scopedCards]
   );
 
+  const hasOpenRequest = (c) =>
+    (c.comments ?? []).some((x) => x.kind === "request" && !x.resolvedAt);
+
+  const openRequestsScoped = useMemo(
+    () => scopedCards.filter(hasOpenRequest).length,
+    [scopedCards]
+  );
+  const openRequestsGlobal = useMemo(() => cards.filter(hasOpenRequest).length, [cards]);
+
   const visibleCards = useMemo(() => {
     const q = query.trim().toLowerCase();
     return scopedCards.filter((c) => {
       if (priorityFilter !== "all" && c.priority !== priorityFilter) return false;
+      if (requestsOnly && !hasOpenRequest(c)) return false;
       if (q) {
         const hay = `${c.title} ${c.description ?? ""}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
     });
-  }, [scopedCards, query, priorityFilter]);
+  }, [scopedCards, query, priorityFilter, requestsOnly]);
 
   const activeClient = clients.find((c) => c.id === activeId);
 
@@ -341,6 +352,18 @@ export default function App() {
               </span>
             </button>
           )}
+          {openRequestsGlobal > 0 && (
+            <button
+              onClick={() => {
+                setActiveId(null);
+                setRequestsOnly(true);
+              }}
+              className="flex items-center gap-1.5 rounded-lg border border-warning/50 bg-warning/10 px-2.5 py-1.5 font-mono text-[11px] font-semibold tracking-wide text-warning transition-colors hover:bg-warning/20"
+              title={`${openRequestsGlobal} solicitação(ões) de material em aberto`}
+            >
+              <Package size={12} /> {openRequestsGlobal} materiais
+            </button>
+          )}
           <button
             onClick={() => setShowIntel(true)}
             className="flex items-center gap-1.5 rounded-lg border border-ink/15 px-2.5 py-1.5 font-mono text-[11px] tracking-wide text-stone-500 transition-colors hover:border-action/40 hover:text-action"
@@ -407,6 +430,18 @@ export default function App() {
                           {userEmail}
                         </span>
                       </span>
+                    </button>
+                  )}
+                  {openRequestsGlobal > 0 && (
+                    <button
+                      onClick={() => {
+                        setActiveId(null);
+                        setRequestsOnly(true);
+                        setMenuOpen(false);
+                      }}
+                      className="flex w-full items-center gap-2.5 px-4 py-3 text-left text-sm font-semibold text-warning transition-colors hover:bg-warning/[0.06]"
+                    >
+                      <Package size={15} /> {openRequestsGlobal} materiais solicitados
                     </button>
                   )}
                   <button
@@ -485,6 +520,9 @@ export default function App() {
                 setQuery={setQuery}
                 priorityFilter={priorityFilter}
                 setPriorityFilter={setPriorityFilter}
+                requestsOnly={requestsOnly}
+                setRequestsOnly={setRequestsOnly}
+                requestCount={openRequestsScoped}
                 saving={saving}
                 onNew={newTask}
                 searchRef={searchRef}
