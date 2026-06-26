@@ -59,7 +59,7 @@ function parseMentions(text, members) {
 }
 
 // Best-effort email via Resend (no-op without RESEND_API_KEY).
-async function sendEmail(env, { to, subject, text }) {
+async function sendEmail(env, { to, subject, text, html }) {
   if (!env.RESEND_API_KEY || !to?.length) return;
   await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -72,8 +72,60 @@ async function sendEmail(env, { to, subject, text }) {
       to,
       subject,
       text,
+      html,
     }),
   });
+}
+
+const escHtml = (s) =>
+  String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const initialsOf = (name) =>
+  (name || "?").split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase();
+const hueOf = (name) => (name ? (name.charCodeAt(0) * 47) % 360 : 200);
+
+// Branded "Mineral" transactional email for a comment / material request.
+function notificationEmail({ authorName, kind, text, cardTitle, projectName, projectColor, cardUrl, firstNames }) {
+  const isReq = kind === "request";
+  const tag = isReq
+    ? { label: "Solicitação de material", color: "#B8862F", bg: "rgba(184,134,47,0.14)" }
+    : { label: "Novo comentário", color: "#2E4A43", bg: "rgba(46,74,67,0.12)" };
+  const verb = isReq ? "solicitou material" : "comentou";
+
+  const body = escHtml(text)
+    .replace(/@(\w+)/g, (m, n) =>
+      firstNames.has(n.toLowerCase())
+        ? `<strong style="color:#2E4A43;">${m}</strong>`
+        : m
+    )
+    .replace(/\n/g, "<br>");
+
+  const pill = projectName
+    ? `<span style="display:inline-block;font-size:11px;font-weight:600;color:${projectColor || "#6b6355"};background:${(projectColor || "#8A8579")}22;padding:3px 9px;border-radius:6px;">${escHtml(projectName)}</span>`
+    : "";
+
+  return `<!doctype html><html lang="pt-BR"><body style="margin:0;padding:0;background:#efe8dc;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#efe8dc;padding:32px 16px;"><tr><td align="center">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#f8f3ea;border:1px solid rgba(20,22,24,0.08);border-radius:16px;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+<tr><td style="background:#141618;padding:16px 28px;">
+<span style="color:#f8f3ea;font-weight:700;letter-spacing:0.28em;font-size:13px;">TEKTONE</span>
+<span style="color:#C7B79C;font-size:12px;"> &middot; Opera&ccedil;&otilde;es</span>
+</td></tr>
+<tr><td style="padding:28px;">
+<div style="display:inline-block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.14em;color:${tag.color};background:${tag.bg};padding:5px 11px;border-radius:6px;margin-bottom:18px;">${tag.label}</div>
+<table role="presentation" cellpadding="0" cellspacing="0" style="margin-bottom:16px;"><tr>
+<td style="vertical-align:middle;"><div style="width:38px;height:38px;border-radius:50%;background:hsl(${hueOf(authorName)} 60% 58%);color:#f8f3ea;font-weight:700;font-size:14px;text-align:center;line-height:38px;">${initialsOf(authorName)}</div></td>
+<td style="vertical-align:middle;padding-left:12px;"><div style="font-size:14px;font-weight:700;color:#141618;">${escHtml(authorName)}</div><div style="font-size:12px;color:#8A8579;">${verb} em uma tarefa</div></td>
+</tr></table>
+<div style="font-size:20px;font-weight:700;color:#141618;line-height:1.25;margin-bottom:10px;">${escHtml(cardTitle)}</div>
+${pill}
+<div style="margin-top:18px;padding:14px 16px;background:rgba(20,22,24,0.035);border-left:3px solid ${tag.color};border-radius:8px;font-size:15px;color:#3a3a3a;line-height:1.55;">${body}</div>
+<div style="margin-top:26px;"><a href="${cardUrl}" style="display:inline-block;background:#2E4A43;color:#f8f3ea;font-weight:700;font-size:14px;text-decoration:none;padding:13px 26px;border-radius:10px;">Abrir no quadro &rarr;</a></div>
+</td></tr>
+<tr><td style="padding:18px 28px;border-top:1px solid rgba(20,22,24,0.07);">
+<div style="font-size:11px;color:#8A8579;line-height:1.5;">Voc&ecirc; recebeu este e-mail porque foi marcado em uma tarefa no TEKTONE.</div>
+<a href="https://tasks.tektone.com.br" style="font-size:11px;color:#2E4A43;text-decoration:none;font-weight:600;">tasks.tektone.com.br</a>
+</td></tr>
+</table></td></tr></table></body></html>`;
 }
 
 // ── Seed data (TEKTONE) ───────────────────────────────────────────────────
@@ -179,12 +231,29 @@ export async function onRequest(context) {
           await save();
           // email mentioned teammates (best-effort, off-thread)
           if (comment.mentions.length) {
-            const verb = comment.kind === "request" ? "solicitou material" : "mencionou você";
+            const clients = await kvGet(kv, "kanban:clients", []);
+            const client = clients.find((c) => c.id === card.clientId);
+            const verbSubj = comment.kind === "request" ? "solicitou material" : "mencionou você";
+            const cardUrl = `https://tasks.tektone.com.br/?card=${card.id}`;
+            const firstNames = new Set(
+              members.map((m) => String(m.name).split(/\s+/)[0].toLowerCase())
+            );
+            const html = notificationEmail({
+              authorName,
+              kind: comment.kind,
+              text,
+              cardTitle: card.title,
+              projectName: client?.name,
+              projectColor: client?.color,
+              cardUrl,
+              firstNames,
+            });
             context.waitUntil(
               sendEmail(env, {
                 to: comment.mentions,
-                subject: `${authorName} ${verb} — ${card.title}`,
-                text: `${authorName} ${verb} em "${card.title}":\n\n${text}\n\nAbrir: https://tasks.tektone.com.br`,
+                subject: `${authorName} ${verbSubj} — ${card.title}`,
+                text: `${authorName} ${verbSubj} em "${card.title}":\n\n${text}\n\nAbrir: ${cardUrl}`,
+                html,
               }).catch(() => {})
             );
           }

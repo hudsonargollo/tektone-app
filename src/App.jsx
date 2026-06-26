@@ -43,6 +43,7 @@ export default function App() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const searchRef = useRef(null);
+  const deepLinkHandled = useRef(false);
 
   // ── Auth check ──────────────────────────────────────────────────────────────
   const refreshMe = useCallback(() => {
@@ -137,6 +138,17 @@ export default function App() {
       .then(refreshNotifications)
       .catch(() => {});
   };
+
+  // Deep link from email: tasks.tektone.com.br/?card=<id> opens that card.
+  useEffect(() => {
+    if (deepLinkHandled.current || loading || !cards.length) return;
+    const cardId = new URLSearchParams(window.location.search).get("card");
+    if (!cardId) return;
+    deepLinkHandled.current = true;
+    const card = cards.find((c) => c.id === cardId);
+    if (card) openCard(card);
+    window.history.replaceState({}, "", window.location.pathname);
+  }, [cards, loading]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function logout() {
     await api.logout().catch(() => {});
