@@ -45,6 +45,10 @@ export const api = {
   updateCard: (id, body) => req(`/kanban/cards/${id}`, { method: "PUT", body }),
   deleteCard: (id) => req(`/kanban/cards/${id}`, { method: "DELETE" }),
 
+  // meeting-notes review (validation popup)
+  listReviews: () => req("/kanban/reviews"),
+  ackReviews: (ids) => req("/kanban/reviews/ack", { method: "POST", body: { ids } }),
+
   // members
   listMembers: () => req("/kanban/members"),
   createMember: (body) => req("/kanban/members", { method: "POST", body }),

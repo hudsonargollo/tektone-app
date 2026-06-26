@@ -11,6 +11,7 @@ import CardModal from "@/components/CardModal";
 import Login from "@/components/Login";
 import AdminPanel from "@/components/AdminPanel";
 import ProfilePage from "@/components/ProfilePage";
+import ReviewPopup from "@/components/ReviewPopup";
 import LogoMark from "@/components/LogoMark";
 
 export default function App() {
@@ -32,6 +33,7 @@ export default function App() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  const [reviews, setReviews] = useState([]);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const searchRef = useRef(null);
@@ -79,6 +81,24 @@ export default function App() {
   useEffect(() => {
     if (authed) loadData();
   }, [authed, loadData]);
+
+  // Pending meeting-notes review batches for this user (validation popup).
+  useEffect(() => {
+    if (!authed) return;
+    api
+      .listReviews()
+      .then(({ reviews }) => setReviews(reviews || []))
+      .catch(() => {});
+  }, [authed]);
+
+  async function ackReviews(ids) {
+    setReviews([]);
+    try {
+      await api.ackReviews(ids);
+    } catch {
+      /* if ack fails it simply reappears next login */
+    }
+  }
 
   async function logout() {
     await api.logout().catch(() => {});
@@ -515,6 +535,14 @@ export default function App() {
         )}
         {showAdmin && (
           <AdminPanel currentEmail={userEmail} onClose={() => setShowAdmin(false)} />
+        )}
+        {reviews.length > 0 && !editing && !showProfile && !showAdmin && (
+          <ReviewPopup
+            reviews={reviews}
+            avatarByName={avatarByName}
+            onClose={() => setReviews([])}
+            onAck={ackReviews}
+          />
         )}
         {showProfile && (
           <ProfilePage

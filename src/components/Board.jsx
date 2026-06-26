@@ -9,6 +9,7 @@ import {
   ChevronsLeftRight,
   CheckSquare,
   Link2,
+  Sparkles,
 } from "lucide-react";
 import { COLUMNS, today, fmtDate } from "@/lib/constants";
 import { Avatar, PriorityBadge } from "@/components/ui";
@@ -55,6 +56,16 @@ function Card({ card, client, avatarByName, onEdit, onDelete, onDragStart, onDra
 
       {card.labelColor && (
         <div className="mb-3 h-1 w-10 rounded-full" style={{ background: card.labelColor }} />
+      )}
+
+      {card.source === "meeting-notes" && (
+        <span
+          className="mb-2 inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-wider"
+          style={{ background: "rgba(122,90,110,0.14)", color: "#7A5A6E" }}
+          title="Criada a partir de anotações de reunião"
+        >
+          <Sparkles size={9} /> reunião
+        </span>
       )}
 
       <p className="mb-2 pr-5 text-sm font-semibold leading-snug text-ink">{card.title}</p>

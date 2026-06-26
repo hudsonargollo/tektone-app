@@ -233,11 +233,27 @@ export async function onRequest(context) {
     cards.push(card);
     existingTitles.add(t.title.toLowerCase());
     created.push(t.title);
-    detail.push({ title: t.title, assignees });
+    detail.push({ id: card.id, title: t.title, assignees });
   }
 
   if (projectCreated) await kvSet(kv, "kanban:clients", clients);
-  if (created.length) await kvSet(kv, "kanban:cards", cards);
+  if (created.length) {
+    await kvSet(kv, "kanban:cards", cards);
+    // Record a review batch so each user gets a validation popup on next login.
+    const reviews = await kvGet(kv, "ingest:reviews", []);
+    reviews.push({
+      id: uid(),
+      createdAt: new Date().toISOString(),
+      project: client.name,
+      projectId: client.id,
+      projectCreated,
+      meetingTitle: meta.title,
+      date: meta.date,
+      tasks: detail,
+      seenBy: [],
+    });
+    await kvSet(kv, "ingest:reviews", reviews.slice(-50));
+  }
   docs.push(docHash);
   await kvSet(kv, "ingest:docs", docs.slice(-1000));
 

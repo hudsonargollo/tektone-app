@@ -13,11 +13,15 @@
  *   GET|POST          /members          PUT|DELETE /members/:id
  */
 
+import { verifySession, getCookie } from "../../_lib/session.js";
+
 const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type,Authorization",
 };
+
+const REVIEW_TTL_MS = 21 * 24 * 60 * 60 * 1000; // pending reviews expire after 21 days
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -163,6 +167,40 @@ export async function onRequest(context) {
           await kvSet(kv, "kanban:members", members.filter((m) => m.id !== id));
           return json({ ok: true });
         }
+      }
+    }
+
+    // ── REVIEWS (meeting-notes validation popup, per-user) ────────────────
+    if (resource === "reviews") {
+      const email = await verifySession(env.SESSION_SECRET, getCookie(request, "tk_session"));
+      if (!email) return json({ error: "unauthorized" }, 401);
+      const reviews = await kvGet(kv, "ingest:reviews", []);
+
+      if (!id && method === "GET") {
+        const cutoff = Date.now() - REVIEW_TTL_MS;
+        const pending = reviews
+          .filter(
+            (r) =>
+              !(r.seenBy || []).includes(email) &&
+              new Date(r.createdAt).getTime() > cutoff
+          )
+          .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        return json({ reviews: pending });
+      }
+
+      if (id === "ack" && method === "POST") {
+        const body = await request.json().catch(() => ({}));
+        const ids = Array.isArray(body.ids) ? new Set(body.ids) : null;
+        let changed = false;
+        for (const r of reviews) {
+          if (ids && !ids.has(r.id)) continue;
+          if (!(r.seenBy || []).includes(email)) {
+            r.seenBy = [...(r.seenBy || []), email];
+            changed = true;
+          }
+        }
+        if (changed) await kvSet(kv, "ingest:reviews", reviews);
+        return json({ ok: true });
       }
     }
 
