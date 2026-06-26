@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus,
@@ -350,32 +350,53 @@ function Column({
   );
 }
 
-// ── Mobile board (tabbed, one column at a time) ───────────────────────────────
+// ── Mobile board (one column at a time, swipe to switch) ──────────────────────
+const slideVariants = {
+  enter: (d) => ({ opacity: 0, x: d > 0 ? 36 : -36 }),
+  center: { opacity: 1, x: 0 },
+  exit: (d) => ({ opacity: 0, x: d > 0 ? -36 : 36 }),
+};
+
 function MobileBoard({ cards, clients, avatarByName, onEdit, onDelete, onQuickAdd }) {
-  const [active, setActive] = useState("todo");
-  const colCards = cards.filter((c) => c.columnId === active);
+  const [index, setIndex] = useState(() => Math.max(0, COLUMNS.findIndex((c) => c.id === "todo")));
+  const [dir, setDir] = useState(0);
+  const touch = useRef(null);
   const noop = () => {};
+
+  const col = COLUMNS[index];
+  const colCards = cards.filter((c) => c.columnId === col.id);
+
+  const go = (step) =>
+    setIndex((i) => {
+      const ni = Math.max(0, Math.min(COLUMNS.length - 1, i + step));
+      if (ni !== i) setDir(step);
+      return ni;
+    });
+  const jump = (i) => {
+    setDir(i > index ? 1 : -1);
+    setIndex(i);
+  };
 
   return (
     <div className="flex min-h-0 flex-1 flex-col lg:hidden">
       {/* Column tabs */}
       <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-3">
-        {COLUMNS.map((col) => {
-          const n = cards.filter((c) => c.columnId === col.id).length;
+        {COLUMNS.map((c, i) => {
+          const n = cards.filter((x) => x.columnId === c.id).length;
           const overdue = cards.filter(
-            (c) => c.columnId === col.id && col.id !== "done" && c.dueDate && c.dueDate < today()
+            (x) => x.columnId === c.id && c.id !== "done" && x.dueDate && x.dueDate < today()
           ).length;
-          const isActive = active === col.id;
+          const isActive = i === index;
           return (
             <button
-              key={col.id}
-              onClick={() => setActive(col.id)}
+              key={c.id}
+              onClick={() => jump(i)}
               className={`flex shrink-0 items-center gap-2 rounded-lg border px-3 py-2 text-[13px] font-medium transition-colors ${
                 isActive ? "border-transparent bg-ink text-clay" : "border-ink/15 text-stone-600"
               }`}
             >
-              <span className="h-2 w-2 rounded-full" style={{ background: col.color }} />
-              {col.title}
+              <span className="h-2 w-2 rounded-full" style={{ background: c.color }} />
+              {c.title}
               <span
                 className={`rounded-full px-1.5 py-px font-mono text-[10px] font-bold tnum ${
                   overdue > 0
@@ -392,29 +413,52 @@ function MobileBoard({ cards, clients, avatarByName, onEdit, onDelete, onQuickAd
         })}
       </div>
 
-      {/* Active column */}
-      <div className="flex-1 space-y-2.5 overflow-y-auto pb-6">
-        <AnimatePresence initial={false}>
-          {colCards.map((card) => (
-            <Card
-              key={card.id}
-              card={card}
-              client={clients.find((c) => c.id === card.clientId)}
-              avatarByName={avatarByName}
-              onEdit={onEdit}
-              onDelete={onDelete}
-              onDragStart={noop}
-              onDragEnd={noop}
-              dragging={false}
-            />
-          ))}
+      {/* Active column — swipe left/right to switch */}
+      <div
+        className="relative min-h-0 flex-1 overflow-hidden"
+        onTouchStart={(e) =>
+          (touch.current = { x: e.touches[0].clientX, y: e.touches[0].clientY })
+        }
+        onTouchEnd={(e) => {
+          if (!touch.current) return;
+          const dx = e.changedTouches[0].clientX - touch.current.x;
+          const dy = e.changedTouches[0].clientY - touch.current.y;
+          if (Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy) * 1.4) go(dx < 0 ? 1 : -1);
+          touch.current = null;
+        }}
+      >
+        <AnimatePresence mode="wait" custom={dir} initial={false}>
+          <motion.div
+            key={col.id}
+            custom={dir}
+            variants={slideVariants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={{ duration: 0.18 }}
+            className="absolute inset-0 space-y-2.5 overflow-y-auto px-0.5 pb-28"
+          >
+            {colCards.map((card) => (
+              <Card
+                key={card.id}
+                card={card}
+                client={clients.find((c) => c.id === card.clientId)}
+                avatarByName={avatarByName}
+                onEdit={onEdit}
+                onDelete={onDelete}
+                onDragStart={noop}
+                onDragEnd={noop}
+                dragging={false}
+              />
+            ))}
+            {colCards.length === 0 && (
+              <div className="flex h-20 items-center justify-center font-mono text-[11px] text-stone-300">
+                nenhum card aqui
+              </div>
+            )}
+            <QuickAdd columnId={col.id} onAdd={onQuickAdd} />
+          </motion.div>
         </AnimatePresence>
-        {colCards.length === 0 && (
-          <div className="flex h-20 items-center justify-center font-mono text-[11px] text-stone-300">
-            nenhum card aqui
-          </div>
-        )}
-        <QuickAdd columnId={active} onAdd={onQuickAdd} />
       </div>
     </div>
   );

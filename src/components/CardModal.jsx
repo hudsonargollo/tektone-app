@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useDragControls } from "framer-motion";
 import {
   X,
   Trash2,
@@ -20,7 +20,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { COLUMNS, PRIORITY, LABEL_COLORS } from "@/lib/constants";
-import { Avatar } from "@/components/ui";
+import { Avatar, useIsMobile } from "@/components/ui";
 import { api } from "@/lib/api";
 
 const labelCls =
@@ -900,6 +900,8 @@ export default function CardModal({
 }) {
   const [d, setD] = useState({ ...card });
   const set = (k, v) => setD((p) => ({ ...p, [k]: v }));
+  const isMobile = useIsMobile();
+  const dragControls = useDragControls();
 
   const columnOpts = COLUMNS.map((c) => ({ value: c.id, label: c.title, dot: c.color }));
   const priorityOpts = Object.entries(PRIORITY).map(([k, v]) => ({
@@ -934,7 +936,7 @@ export default function CardModal({
   }, [d, onClose, onSave]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-end justify-center p-0 lg:items-center lg:p-4">
       <motion.div
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
         onClick={onClose}
@@ -943,12 +945,32 @@ export default function CardModal({
         exit={{ opacity: 0 }}
       />
       <motion.div
-        className="relative flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl surface-2 shadow-2xl"
-        initial={{ opacity: 0, y: 20, scale: 0.97 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 12, scale: 0.98 }}
-        transition={{ type: "spring", stiffness: 320, damping: 28 }}
+        className={`relative flex max-h-[92vh] w-full flex-col overflow-hidden surface-2 shadow-2xl ${
+          isMobile ? "rounded-t-2xl" : "max-w-6xl rounded-2xl"
+        }`}
+        initial={isMobile ? { y: "100%" } : { opacity: 0, y: 20, scale: 0.97 }}
+        animate={isMobile ? { y: 0 } : { opacity: 1, y: 0, scale: 1 }}
+        exit={isMobile ? { y: "100%" } : { opacity: 0, y: 12, scale: 0.98 }}
+        transition={{ type: "spring", stiffness: 320, damping: 32 }}
+        drag={isMobile ? "y" : false}
+        dragControls={dragControls}
+        dragListener={false}
+        dragConstraints={{ top: 0, bottom: 0 }}
+        dragElastic={{ top: 0, bottom: 0.4 }}
+        onDragEnd={(_e, info) => {
+          if (isMobile && (info.offset.y > 140 || info.velocity.y > 600)) onClose();
+        }}
       >
+        {/* Drag handle (mobile bottom sheet) */}
+        {isMobile && (
+          <div
+            onPointerDown={(e) => dragControls.start(e)}
+            className="flex shrink-0 cursor-grab touch-none justify-center py-2 active:cursor-grabbing"
+          >
+            <div className="h-1 w-10 rounded-full bg-ink/15" />
+          </div>
+        )}
+
         {/* Header — single line on desktop: title + projeto + responsáveis + actions */}
         <div className="border-b border-ink/15 px-6 py-3">
           <div className="flex items-center gap-3">

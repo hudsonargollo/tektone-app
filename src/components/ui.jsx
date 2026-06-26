@@ -1,4 +1,20 @@
+import { useState, useEffect } from "react";
 import { PRIORITY, initials } from "@/lib/constants";
+
+// True below the `lg` breakpoint (Tailwind 1024px) — mobile/tablet layout.
+export function useIsMobile() {
+  const q = "(max-width: 1023px)";
+  const [m, setM] = useState(
+    () => typeof window !== "undefined" && window.matchMedia(q).matches
+  );
+  useEffect(() => {
+    const mq = window.matchMedia(q);
+    const h = () => setM(mq.matches);
+    mq.addEventListener("change", h);
+    return () => mq.removeEventListener("change", h);
+  }, []);
+  return m;
+}
 
 const AVATAR_SIZES = {
   sm: "h-6 w-6 text-[9px]",

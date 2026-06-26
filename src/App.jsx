@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { AlertCircle, LogOut, ShieldCheck, Menu, X, MoreVertical, Sparkles, Package, Download } from "lucide-react";
+import { AlertCircle, LogOut, ShieldCheck, Menu, X, Sparkles, Package, Download, LayoutGrid } from "lucide-react";
 import { api } from "@/lib/api";
 import { today } from "@/lib/constants";
 import { Spinner, Avatar } from "@/components/ui";
@@ -438,7 +438,7 @@ export default function App() {
           </button>
         </div>
 
-        {/* Mobile actions — bell + kebab menu */}
+        {/* Mobile actions — notifications bell (rest lives in the bottom nav) */}
         <div className="flex items-center gap-1 lg:hidden">
           <NotificationsBell
             authed={authed}
@@ -446,105 +446,6 @@ export default function App() {
             onOpenCard={openCardById}
             refreshSignal={notifSignal}
           />
-          <div className="relative">
-          <button
-            onClick={() => setMenuOpen((v) => !v)}
-            className="rounded-lg p-1.5 text-ink transition-colors hover:bg-ink/[0.05]"
-            aria-label="Menu"
-          >
-            <MoreVertical size={20} />
-          </button>
-          <AnimatePresence>
-            {menuOpen && (
-              <>
-                <div className="fixed inset-0 z-30" onClick={() => setMenuOpen(false)} />
-                <motion.div
-                  initial={{ opacity: 0, y: -6, scale: 0.97 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -6, scale: 0.97 }}
-                  transition={{ duration: 0.16 }}
-                  className="absolute right-0 top-full z-40 mt-2 w-56 overflow-hidden rounded-xl surface-2 shadow-xl"
-                >
-                  {userEmail && (
-                    <button
-                      onClick={() => {
-                        setShowProfile(true);
-                        setMenuOpen(false);
-                      }}
-                      className="flex w-full items-center gap-2.5 border-b border-ink/10 px-4 py-3 text-left transition-colors hover:bg-ink/[0.04]"
-                    >
-                      <Avatar name={userName || userEmail} src={userAvatar} size="md" />
-                      <span className="min-w-0">
-                        <span className="block truncate text-sm font-semibold text-ink">
-                          {userName || "Meu perfil"}
-                        </span>
-                        <span className="block truncate font-mono text-[10px] text-stone-500">
-                          {userEmail}
-                        </span>
-                      </span>
-                    </button>
-                  )}
-                  {openRequestsGlobal > 0 && (
-                    <button
-                      onClick={() => {
-                        setActiveId(null);
-                        setRequestsOnly(true);
-                        setMenuOpen(false);
-                      }}
-                      className="flex w-full items-center gap-2.5 px-4 py-3 text-left text-sm font-semibold text-warning transition-colors hover:bg-warning/[0.06]"
-                    >
-                      <Package size={15} /> {openRequestsGlobal}{" "}
-                      {openRequestsGlobal === 1 ? "solicitação" : "solicitações"} em aberto
-                    </button>
-                  )}
-                  <button
-                    onClick={() => {
-                      setShowIntel(true);
-                      setMenuOpen(false);
-                    }}
-                    className="flex w-full items-center gap-2.5 px-4 py-3 text-left text-sm text-stone-700 transition-colors hover:bg-ink/[0.04]"
-                  >
-                    <Sparkles size={15} className="text-action" /> Inteligência de reuniões
-                  </button>
-                  {isAdmin && (
-                    <button
-                      onClick={() => {
-                        setShowFetch(true);
-                        setMenuOpen(false);
-                      }}
-                      className="flex w-full items-center gap-2.5 px-4 py-3 text-left text-sm text-stone-700 transition-colors hover:bg-ink/[0.04]"
-                    >
-                      <Download size={15} className="text-action" /> Buscar reuniões
-                    </button>
-                  )}
-                  {isAdmin && (
-                    <button
-                      onClick={() => {
-                        setShowAdmin(true);
-                        setMenuOpen(false);
-                      }}
-                      className="flex w-full items-center gap-2.5 px-4 py-3 text-left text-sm text-stone-700 transition-colors hover:bg-ink/[0.04]"
-                    >
-                      <ShieldCheck size={15} className="text-action" /> Admin · acessos
-                    </button>
-                  )}
-                  <a
-                    href="https://tektone.com.br"
-                    className="flex w-full items-center gap-2.5 px-4 py-3 text-sm text-stone-700 transition-colors hover:bg-ink/[0.04]"
-                  >
-                    ← tektone.com.br
-                  </a>
-                  <button
-                    onClick={logout}
-                    className="flex w-full items-center gap-2.5 border-t border-ink/10 px-4 py-3 text-left text-sm text-danger transition-colors hover:bg-danger/[0.06]"
-                  >
-                    <LogOut size={15} /> Sair
-                  </button>
-                </motion.div>
-              </>
-            )}
-          </AnimatePresence>
-          </div>
         </div>
       </header>
 
@@ -605,6 +506,129 @@ export default function App() {
           </div>
         )}
       </div>
+
+      {/* Mobile bottom nav */}
+      <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t border-ink/10 bg-clay/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl lg:hidden">
+        <button
+          onClick={() => setRequestsOnly(false)}
+          className={`flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] font-medium transition-colors ${
+            !requestsOnly ? "text-action" : "text-stone-500"
+          }`}
+        >
+          <LayoutGrid size={20} />
+          Quadro
+        </button>
+        <button
+          onClick={() => {
+            setActiveId(null);
+            setRequestsOnly(true);
+          }}
+          className={`flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] font-medium transition-colors ${
+            requestsOnly ? "text-warning" : "text-stone-500"
+          }`}
+        >
+          <span className="relative">
+            <Package size={20} />
+            {openRequestsGlobal > 0 && (
+              <span className="absolute -right-2 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-danger px-1 font-mono text-[9px] font-bold text-clay">
+                {openRequestsGlobal > 9 ? "9+" : openRequestsGlobal}
+              </span>
+            )}
+          </span>
+          Solicitações
+        </button>
+        <button
+          onClick={() => setShowIntel(true)}
+          className="flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] font-medium text-stone-500 transition-colors active:text-action"
+        >
+          <Sparkles size={20} />
+          Reuniões
+        </button>
+        <button
+          onClick={() => setMenuOpen(true)}
+          className="flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] font-medium text-stone-500 transition-colors active:text-action"
+        >
+          <Avatar name={userName || userEmail} src={userAvatar} />
+          Perfil
+        </button>
+      </nav>
+
+      {/* Mobile Perfil sheet */}
+      <AnimatePresence>
+        {menuOpen && (
+          <div className="fixed inset-0 z-50 lg:hidden">
+            <motion.div
+              className="absolute inset-0 bg-ink/40 backdrop-blur-sm"
+              onClick={() => setMenuOpen(false)}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            />
+            <motion.div
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", stiffness: 340, damping: 34 }}
+              className="absolute inset-x-0 bottom-0 overflow-hidden rounded-t-2xl bg-clay pb-[env(safe-area-inset-bottom)] shadow-2xl"
+            >
+              <div className="mx-auto mb-1 mt-2 h-1 w-10 rounded-full bg-ink/15" />
+              {userEmail && (
+                <button
+                  onClick={() => {
+                    setShowProfile(true);
+                    setMenuOpen(false);
+                  }}
+                  className="flex w-full items-center gap-3 border-b border-ink/10 px-5 py-4 text-left transition-colors active:bg-ink/[0.04]"
+                >
+                  <Avatar name={userName || userEmail} src={userAvatar} size="md" />
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-semibold text-ink">
+                      {userName || "Meu perfil"}
+                    </span>
+                    <span className="block truncate font-mono text-[10px] text-stone-500">
+                      {userEmail}
+                    </span>
+                  </span>
+                </button>
+              )}
+              {isAdmin && (
+                <button
+                  onClick={() => {
+                    setShowFetch(true);
+                    setMenuOpen(false);
+                  }}
+                  className="flex w-full items-center gap-3 px-5 py-3.5 text-left text-sm text-stone-700 transition-colors active:bg-ink/[0.04]"
+                >
+                  <Download size={16} className="text-action" /> Buscar reuniões
+                </button>
+              )}
+              {isAdmin && (
+                <button
+                  onClick={() => {
+                    setShowAdmin(true);
+                    setMenuOpen(false);
+                  }}
+                  className="flex w-full items-center gap-3 px-5 py-3.5 text-left text-sm text-stone-700 transition-colors active:bg-ink/[0.04]"
+                >
+                  <ShieldCheck size={16} className="text-action" /> Admin · acessos
+                </button>
+              )}
+              <a
+                href="https://tektone.com.br"
+                className="flex w-full items-center gap-3 px-5 py-3.5 text-sm text-stone-700 transition-colors active:bg-ink/[0.04]"
+              >
+                ← tektone.com.br
+              </a>
+              <button
+                onClick={logout}
+                className="flex w-full items-center gap-3 border-t border-ink/10 px-5 py-3.5 text-left text-sm text-danger transition-colors active:bg-danger/[0.06]"
+              >
+                <LogOut size={16} /> Sair
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Mobile projects drawer */}
       <AnimatePresence>
