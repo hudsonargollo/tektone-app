@@ -50,7 +50,7 @@ const DEFAULT_CLIENTS = [
 ];
 
 const DEFAULT_MEMBERS = [
-  { id: "pedro", name: "Pedro Silvestrini", email: "pedro@tektone.com.br", role: "CEO" },
+  { id: "pedro", name: "Pedro Silvestrini", email: "pedrosilvestrini@tektone.com.br", role: "CEO" },
   { id: "hudson", name: "Hudson Argollo", email: "hudson@tektone.com.br", role: "CTO" },
   { id: "alison", name: "Alison Aparecido", email: "alison@tektone.com.br", role: "CMO" },
 ];
