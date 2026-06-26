@@ -59,7 +59,7 @@ function parseMentions(text, members) {
 }
 
 // Best-effort email via Resend (no-op without RESEND_API_KEY).
-async function sendEmail(env, { to, subject, text, html }) {
+async function sendEmail(env, { to, subject, text, html, replyTo }) {
   if (!env.RESEND_API_KEY || !to?.length) return;
   await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -73,6 +73,7 @@ async function sendEmail(env, { to, subject, text, html }) {
       subject,
       text,
       html,
+      reply_to: replyTo || undefined,
     }),
   });
 }
@@ -84,7 +85,7 @@ const initialsOf = (name) =>
 const hueOf = (name) => (name ? (name.charCodeAt(0) * 47) % 360 : 200);
 
 // Branded "Mineral" transactional email for a comment / material request.
-function notificationEmail({ authorName, kind, text, cardTitle, projectName, projectColor, cardUrl, firstNames }) {
+function notificationEmail({ authorName, authorEmail, authorHasAvatar, kind, text, cardTitle, projectName, projectColor, cardUrl, firstNames }) {
   const isReq = kind === "request";
   const tag = isReq
     ? { label: "Solicitação de material", color: "#B8862F", bg: "rgba(184,134,47,0.14)" }
@@ -103,6 +104,10 @@ function notificationEmail({ authorName, kind, text, cardTitle, projectName, pro
     ? `<span style="display:inline-block;font-size:11px;font-weight:600;color:${projectColor || "#6b6355"};background:${(projectColor || "#8A8579")}22;padding:3px 9px;border-radius:6px;">${escHtml(projectName)}</span>`
     : "";
 
+  const avatarCell = authorHasAvatar
+    ? `<img src="https://tasks.tektone.com.br/api/avatar?email=${encodeURIComponent(authorEmail || "")}" width="38" height="38" alt="${initialsOf(authorName)}" style="display:block;width:38px;height:38px;border-radius:50%;object-fit:cover;" />`
+    : `<div style="width:38px;height:38px;border-radius:50%;background:hsl(${hueOf(authorName)} 60% 58%);color:#f8f3ea;font-weight:700;font-size:14px;text-align:center;line-height:38px;">${initialsOf(authorName)}</div>`;
+
   return `<!doctype html><html lang="pt-BR"><body style="margin:0;padding:0;background:#efe8dc;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#efe8dc;padding:32px 16px;"><tr><td align="center">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#f8f3ea;border:1px solid rgba(20,22,24,0.08);border-radius:16px;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
@@ -113,7 +118,7 @@ function notificationEmail({ authorName, kind, text, cardTitle, projectName, pro
 <tr><td style="padding:28px;">
 <div style="display:inline-block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.14em;color:${tag.color};background:${tag.bg};padding:5px 11px;border-radius:6px;margin-bottom:18px;">${tag.label}</div>
 <table role="presentation" cellpadding="0" cellspacing="0" style="margin-bottom:16px;"><tr>
-<td style="vertical-align:middle;"><div style="width:38px;height:38px;border-radius:50%;background:hsl(${hueOf(authorName)} 60% 58%);color:#f8f3ea;font-weight:700;font-size:14px;text-align:center;line-height:38px;">${initialsOf(authorName)}</div></td>
+<td style="vertical-align:middle;">${avatarCell}</td>
 <td style="vertical-align:middle;padding-left:12px;"><div style="font-size:14px;font-weight:700;color:#141618;">${escHtml(authorName)}</div><div style="font-size:12px;color:#8A8579;">${verb} em uma tarefa</div></td>
 </tr></table>
 <div style="font-size:20px;font-weight:700;color:#141618;line-height:1.25;margin-bottom:10px;">${escHtml(cardTitle)}</div>
@@ -233,6 +238,10 @@ export async function onRequest(context) {
           if (comment.mentions.length) {
             const clients = await kvGet(kv, "kanban:clients", []);
             const client = clients.find((c) => c.id === card.clientId);
+            const authUsers = await kvGet(kv, "auth:users", []);
+            const authorHasAvatar = Boolean(
+              authUsers.find((u) => String(u.email).toLowerCase() === email.toLowerCase())?.avatar
+            );
             const verbSubj = comment.kind === "request" ? "solicitou material" : "mencionou você";
             const cardUrl = `https://tasks.tektone.com.br/?card=${card.id}`;
             const firstNames = new Set(
@@ -240,6 +249,8 @@ export async function onRequest(context) {
             );
             const html = notificationEmail({
               authorName,
+              authorEmail: email,
+              authorHasAvatar,
               kind: comment.kind,
               text,
               cardTitle: card.title,
@@ -254,6 +265,7 @@ export async function onRequest(context) {
                 subject: `${authorName} ${verbSubj} — ${card.title}`,
                 text: `${authorName} ${verbSubj} em "${card.title}":\n\n${text}\n\nAbrir: ${cardUrl}`,
                 html,
+                replyTo: email,
               }).catch(() => {})
             );
           }

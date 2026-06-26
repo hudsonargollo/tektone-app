@@ -38,8 +38,7 @@ export default function App() {
   const [showProfile, setShowProfile] = useState(false);
   const [showIntel, setShowIntel] = useState(false);
   const [reviews, setReviews] = useState([]);
-  const [notifications, setNotifications] = useState([]);
-  const [notifTotal, setNotifTotal] = useState(0);
+  const [notifSignal, setNotifSignal] = useState(0);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const searchRef = useRef(null);
@@ -108,35 +107,16 @@ export default function App() {
   }
 
   // ── Comment notifications (per-user unread) ───────────────────────────────────
-  const refreshNotifications = useCallback(() => {
-    api
-      .getNotifications()
-      .then(({ notifications, total }) => {
-        setNotifications(notifications || []);
-        setNotifTotal(total || 0);
-      })
-      .catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    if (!authed) return;
-    refreshNotifications();
-    const t = setInterval(refreshNotifications, 60000);
-    return () => clearInterval(t);
-  }, [authed, refreshNotifications]);
+  // The bell owns its own polling/state; we just nudge it after relevant events.
+  const bumpNotifs = () => setNotifSignal((s) => s + 1);
 
   function openCard(card) {
     setEditing(card);
-    api.markCardSeen(card.id).then(refreshNotifications).catch(() => {});
+    api.markCardSeen(card.id).then(bumpNotifs).catch(() => {});
   }
   const openCardById = (id) => {
     const c = cards.find((x) => x.id === id);
     if (c) openCard(c);
-  };
-  const markAllSeen = () => {
-    Promise.all((notifications || []).map((n) => api.markCardSeen(n.cardId)))
-      .then(refreshNotifications)
-      .catch(() => {});
   };
 
   // Deep link from email: tasks.tektone.com.br/?card=<id> opens that card.
@@ -388,11 +368,10 @@ export default function App() {
         {/* Desktop actions */}
         <div className="hidden items-center gap-4 lg:flex">
           <NotificationsBell
-            notifications={notifications}
-            total={notifTotal}
+            authed={authed}
             avatarByName={avatarByName}
-            onOpen={openCardById}
-            onMarkAll={markAllSeen}
+            onOpenCard={openCardById}
+            refreshSignal={notifSignal}
           />
           {userEmail && (
             <button
@@ -413,9 +392,9 @@ export default function App() {
                 setRequestsOnly(true);
               }}
               className="flex items-center gap-1.5 rounded-lg border border-warning/50 bg-warning/10 px-2.5 py-1.5 font-mono text-[11px] font-semibold tracking-wide text-warning transition-colors hover:bg-warning/20"
-              title={`${openRequestsGlobal} solicitação(ões) de material em aberto`}
+              title={`${openRequestsGlobal} solicitação(ões) de recurso em aberto`}
             >
-              <Package size={12} /> {openRequestsGlobal} materiais
+              <Package size={12} /> {openRequestsGlobal} recursos
             </button>
           )}
           <button
@@ -450,11 +429,10 @@ export default function App() {
         {/* Mobile actions — bell + kebab menu */}
         <div className="flex items-center gap-1 lg:hidden">
           <NotificationsBell
-            notifications={notifications}
-            total={notifTotal}
+            authed={authed}
             avatarByName={avatarByName}
-            onOpen={openCardById}
-            onMarkAll={markAllSeen}
+            onOpenCard={openCardById}
+            refreshSignal={notifSignal}
           />
           <div className="relative">
           <button
@@ -503,7 +481,7 @@ export default function App() {
                       }}
                       className="flex w-full items-center gap-2.5 px-4 py-3 text-left text-sm font-semibold text-warning transition-colors hover:bg-warning/[0.06]"
                     >
-                      <Package size={15} /> {openRequestsGlobal} materiais solicitados
+                      <Package size={15} /> {openRequestsGlobal} recursos solicitados
                     </button>
                   )}
                   <button
@@ -661,7 +639,7 @@ export default function App() {
               setCards((p) =>
                 p.map((c) => (c.id === serverCard.id ? { ...c, comments: serverCard.comments } : c))
               );
-              refreshNotifications();
+              bumpNotifs();
             }}
           />
         )}

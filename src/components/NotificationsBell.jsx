@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Bell, Package, MessageSquare } from "lucide-react";
+import { api } from "@/lib/api";
 import { Avatar } from "@/components/ui";
 
 function relTime(iso) {
@@ -12,9 +13,41 @@ function relTime(iso) {
   return `${Math.floor(diff / 86400)}d`;
 }
 
-export default function NotificationsBell({ notifications, total, avatarByName, onOpen, onMarkAll }) {
+// Self-contained: polls its own state so the 60s refresh never re-renders the board.
+export default function NotificationsBell({ authed, avatarByName, onOpenCard, refreshSignal }) {
   const [open, setOpen] = useState(false);
-  const list = notifications ?? [];
+  const [notifications, setNotifications] = useState([]);
+  const [total, setTotal] = useState(0);
+
+  const refetch = useCallback(() => {
+    if (!authed) return;
+    api
+      .getNotifications()
+      .then(({ notifications, total }) => {
+        setNotifications(notifications || []);
+        setTotal(total || 0);
+      })
+      .catch(() => {});
+  }, [authed]);
+
+  useEffect(() => {
+    if (!authed) return;
+    refetch();
+    const t = setInterval(refetch, 60000);
+    return () => clearInterval(t);
+  }, [authed, refetch]);
+
+  // Re-fetch when the parent signals a change (e.g. a comment was added/seen).
+  useEffect(() => {
+    if (refreshSignal !== undefined) refetch();
+  }, [refreshSignal, refetch]);
+
+  const markAll = () => {
+    Promise.all(notifications.map((n) => api.markCardSeen(n.cardId)))
+      .then(refetch)
+      .catch(() => {});
+    setOpen(false);
+  };
 
   return (
     <div className="relative">
@@ -44,12 +77,9 @@ export default function NotificationsBell({ notifications, total, avatarByName, 
             >
               <div className="flex items-center justify-between border-b border-ink/10 px-4 py-2.5">
                 <span className="label-tech">Notificações</span>
-                {list.length > 0 && (
+                {notifications.length > 0 && (
                   <button
-                    onClick={() => {
-                      onMarkAll();
-                      setOpen(false);
-                    }}
+                    onClick={markAll}
                     className="font-mono text-[10px] text-stone-500 transition-colors hover:text-action"
                   >
                     marcar todas
@@ -57,17 +87,17 @@ export default function NotificationsBell({ notifications, total, avatarByName, 
                 )}
               </div>
 
-              {list.length === 0 ? (
+              {notifications.length === 0 ? (
                 <div className="px-4 py-8 text-center font-mono text-[11px] text-stone-400">
                   nenhuma novidade
                 </div>
               ) : (
                 <ul className="max-h-96 overflow-y-auto">
-                  {list.map((n) => (
+                  {notifications.map((n) => (
                     <li key={n.cardId}>
                       <button
                         onClick={() => {
-                          onOpen(n.cardId);
+                          onOpenCard(n.cardId);
                           setOpen(false);
                         }}
                         className="flex w-full items-start gap-2.5 border-b border-ink/[0.06] px-4 py-3 text-left transition-colors hover:bg-ink/[0.04]"
