@@ -1,36 +1,46 @@
 /**
  * TEKTONE — Meeting-notes → Kanban sync (Google Apps Script)
  *
- * Scans a Google Drive folder for new Gemini meeting-notes Docs and POSTs their
- * text to the TEKTONE ingest endpoint, which parses "Próximas etapas" into cards.
+ * Scans Google Drive for new Gemini meeting-notes Docs and POSTs their text to
+ * the TEKTONE ingest endpoint, which parses "Próximas etapas" into cards.
  *
  * SETUP
  *   1. Open https://script.google.com → New project, paste this file.
- *   2. Fill in CONFIG below:
- *        ENDPOINT     — your deployed URL + /api/ingest/meeting-notes
- *        INGEST_TOKEN — the same secret you set in Cloudflare (Pages → Settings →
- *                       Variables and Secrets → INGEST_TOKEN)
- *        FOLDER_ID    — the Drive folder where Gemini saves notes. Open the folder
- *                       in Drive; the ID is the last path segment of the URL:
- *                       https://drive.google.com/drive/folders/<FOLDER_ID>
- *                       (Gemini/Meet usually saves to a "Meet Recordings" folder.)
- *   3. Run `installTrigger` once (authorize Drive access when prompted).
- *   4. Optional: run `syncMeetingNotes` manually to test.
+ *   2. Fill in CONFIG below (ENDPOINT is already set to your subdomain):
+ *        INGEST_TOKEN — the same secret you set in Cloudflare
+ *                       (Pages → tektone-app → Settings → Variables and secrets).
+ *   3. Choose how it finds the Docs (see CONFIG):
+ *        • Default: scans "Shared with me" for Docs whose title contains
+ *          NAME_CONTAINS — use this when Gemini notes are shared with you by
+ *          a teammate (e.g. Pedro), which is the TEKTONE setup.
+ *        • Or set FOLDER_ID to scan one specific folder you own.
+ *   4. Run `installTrigger` once and authorize Drive access when prompted
+ *      (approve the "Google hasn't verified this app" screen — it's your own script).
+ *   5. Optional: run `syncMeetingNotes` manually and check Executions / Logs.
  *
- * It only sends Docs that contain a "Próximas etapas" section, and remembers
- * processed file IDs so nothing is sent twice. The server also dedupes.
+ * Only Docs containing a "Próximas etapas" section are sent. Processed file IDs
+ * are remembered so nothing is sent twice; the server also dedupes.
  */
 
 const CONFIG = {
-  ENDPOINT: "https://tektone-app.pages.dev/api/ingest/meeting-notes",
+  ENDPOINT: "https://tasks.tektone.com.br/api/ingest/meeting-notes",
   INGEST_TOKEN: "PASTE_THE_SAME_TOKEN_HERE",
-  FOLDER_ID: "PASTE_DRIVE_FOLDER_ID_HERE",
-  // Set to "" to scan FOLDER_ID, or override per project (rarely needed).
+
+  // How to locate the notes Docs:
+  //   FOLDER_ID empty  → search "Shared with me" by title (TEKTONE default).
+  //   FOLDER_ID set     → scan that specific Drive folder you own instead.
+  FOLDER_ID: "",
+  // Title filter for the "Shared with me" search. "Anotações" matches every
+  // Gemini notes Doc; narrow it (e.g. "Daily time Tektone") if you want only
+  // certain meetings. Ignored when FOLDER_ID is set.
+  NAME_CONTAINS: "Anotações",
+
+  // Optional: force every doc into a fixed project. Leave "" to auto-detect
+  // the project from the notes text.
   PROJECT_HINT: "",
 };
 
 function installTrigger() {
-  // Remove any existing triggers for this function, then create one.
   ScriptApp.getProjectTriggers()
     .filter((t) => t.getHandlerFunction() === "syncMeetingNotes")
     .forEach((t) => ScriptApp.deleteTrigger(t));
@@ -38,13 +48,30 @@ function installTrigger() {
   Logger.log("Trigger installed: syncMeetingNotes every 30 minutes.");
 }
 
+// Returns a FileIterator over candidate notes Docs (folder or shared-with-me).
+function findNotesDocs() {
+  if (CONFIG.FOLDER_ID) {
+    return DriveApp.getFolderById(CONFIG.FOLDER_ID).getFilesByType(MimeType.GOOGLE_DOCS);
+  }
+  const name = String(CONFIG.NAME_CONTAINS || "").replace(/'/g, "\\'");
+  let query = "sharedWithMe = true and mimeType = 'application/vnd.google-apps.document'";
+  if (name) query += " and title contains '" + name + "'";
+  return DriveApp.searchFiles(query);
+}
+
+// Prefer a yyyy-mm-dd date parsed from the title (the real meeting date),
+// falling back to the file's creation date.
+function docDate(file) {
+  const m = String(file.getName()).match(/(\d{4})[/.\-](\d{2})[/.\-](\d{2})/);
+  if (m) return m[1] + "-" + m[2] + "-" + m[3];
+  return Utilities.formatDate(file.getDateCreated(), Session.getScriptTimeZone(), "yyyy-MM-dd");
+}
+
 function syncMeetingNotes() {
   const props = PropertiesService.getScriptProperties();
   const seen = new Set(JSON.parse(props.getProperty("processed") || "[]"));
 
-  const folder = DriveApp.getFolderById(CONFIG.FOLDER_ID);
-  const files = folder.getFilesByType(MimeType.GOOGLE_DOCS);
-
+  const files = findNotesDocs();
   let sent = 0;
   while (files.hasNext()) {
     const file = files.next();
@@ -59,7 +86,6 @@ function syncMeetingNotes() {
       continue;
     }
 
-    // Only Gemini-style notes with an action-items section.
     if (!/pr[óo]ximas etapas/i.test(text)) {
       seen.add(id); // not a notes doc — don't re-check it forever
       continue;
@@ -67,7 +93,7 @@ function syncMeetingNotes() {
 
     const payload = {
       title: file.getName(),
-      date: Utilities.formatDate(file.getDateCreated(), Session.getScriptTimeZone(), "yyyy-MM-dd"),
+      date: docDate(file),
       text: text,
       project: CONFIG.PROJECT_HINT || undefined,
     };
@@ -91,7 +117,6 @@ function syncMeetingNotes() {
     }
   }
 
-  // Keep the processed set bounded.
   props.setProperty("processed", JSON.stringify([...seen].slice(-1000)));
   Logger.log("Done. Sent " + sent + " new doc(s).");
 }

@@ -4,8 +4,8 @@ Turns Gemini meeting-notes Google Docs into kanban cards automatically.
 
 ```
 Apps Script (time trigger, every 30 min)
-  → finds new Gemini notes Docs in a Drive folder
-  → POSTs the doc text to /api/ingest/meeting-notes
+  → finds new Gemini notes Docs ("Shared with me" or a folder)
+  → POSTs the doc text to https://tasks.tektone.com.br/api/ingest/meeting-notes
         ↓
 Cloudflare Pages Function (functions/api/ingest/[[path]].js)
   → parses the "Próximas etapas" section
@@ -13,6 +13,23 @@ Cloudflare Pages Function (functions/api/ingest/[[path]].js)
   → maps each "[Names]" to board members ("[The group]" → unassigned)
   → creates cards in "A Fazer" (todo), deduped
 ```
+
+## Google prerequisites (what you need — and don't)
+
+With the Apps Script approach there is **no Google Cloud project, no API key, no
+service account, no API enablement, no billing**. You only need:
+
+- **The right Google account.** The script must run as someone who can *see* the
+  notes. At TEKTONE the Gemini notes are created by the meeting organizer (Pedro)
+  and land in your **"Shared with me"** — so run the script under your own account
+  and use the default "Shared with me" search mode below.
+- **An Apps Script project** (free, lives in that Google account).
+- **One-time authorization.** The first run prompts for three auto-detected scopes
+  — Drive (read), External requests (`UrlFetchApp`), and Triggers. You'll also see a
+  "Google hasn't verified this app" screen; click **Advanced → Go to project → Allow**
+  (normal for a personal script).
+- **Gemini note-taking enabled** in Workspace — that's what produces the Docs in the
+  first place (already the case at TEKTONE).
 
 ## One-time setup
 
@@ -35,13 +52,19 @@ npx wrangler pages secret put INGEST_TOKEN --project-name tektone-app
 1. Go to <https://script.google.com> → **New project**.
 2. Paste the contents of [`meeting-notes-sync.gs`](./meeting-notes-sync.gs).
 3. Edit the `CONFIG` block:
-   - `ENDPOINT` — `https://tektone-app.pages.dev/api/ingest/meeting-notes` (or your custom domain).
+   - `ENDPOINT` — already set to `https://tasks.tektone.com.br/api/ingest/meeting-notes`.
    - `INGEST_TOKEN` — the **same** value from step 1.
-   - `FOLDER_ID` — open the Drive folder where Gemini saves the notes; the ID is the
-     last segment of the URL `…/folders/<FOLDER_ID>`. Gemini/Meet typically saves to a
-     **"Meet Recordings"** folder in the meeting organizer's Drive.
-4. Run the `installTrigger` function once. Google will ask you to authorize Drive
-   access — approve it. This schedules `syncMeetingNotes` to run every 30 minutes.
+   - **Where it looks for the Docs:**
+     - *Default (TEKTONE):* leave `FOLDER_ID` empty. The script searches your
+       **"Shared with me"** for Docs whose title contains `NAME_CONTAINS` (default
+       `"Anotações"`). Use this because the Gemini notes are shared with you by Pedro
+       rather than living in a folder you own. Narrow `NAME_CONTAINS` (e.g.
+       `"Daily time Tektone"`) if you only want specific meetings.
+     - *Alternative:* set `FOLDER_ID` to a folder you own to scan just that folder
+       (ID = last segment of the folder URL `…/folders/<FOLDER_ID>`).
+4. Run the `installTrigger` function once. Approve the Drive authorization (and the
+   "Google hasn't verified this app" screen). This schedules `syncMeetingNotes` every
+   30 minutes.
 5. (Optional) Run `syncMeetingNotes` manually once and check **Executions** /
    **Logs** to confirm it found and ingested a doc.
 
@@ -70,7 +93,7 @@ npx wrangler pages secret put INGEST_TOKEN --project-name tektone-app
 ## Testing the endpoint directly
 
 ```sh
-curl -X POST https://tektone-app.pages.dev/api/ingest/meeting-notes \
+curl -X POST https://tasks.tektone.com.br/api/ingest/meeting-notes \
   -H "Authorization: Bearer $INGEST_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"title":"Daily Tektone","date":"2026-06-22","text":"Resumo do projeto \"Código Internacional\".\n\nPróximas etapas\n[Hudson Argollo] Subir VSL: Publicar o arquivo.\n[The group] Melhorar VSL: Listar pontos.\n\nDetalhes\n..."}'
