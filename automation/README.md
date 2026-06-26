@@ -3,7 +3,7 @@
 Turns Gemini meeting-notes Google Docs into kanban cards automatically.
 
 ```
-Apps Script (time trigger, every 30 min)
+Apps Script (time trigger, daily at 5pm)
   → finds new Gemini notes Docs ("Shared with me" or a folder)
   → POSTs the doc text to https://tasks.tektone.com.br/api/ingest/meeting-notes
         ↓
@@ -63,8 +63,9 @@ npx wrangler pages secret put INGEST_TOKEN --project-name tektone-app
      - *Alternative:* set `FOLDER_ID` to a folder you own to scan just that folder
        (ID = last segment of the folder URL `…/folders/<FOLDER_ID>`).
 4. Run the `installTrigger` function once. Approve the Drive authorization (and the
-   "Google hasn't verified this app" screen). This schedules `syncMeetingNotes` every
-   30 minutes.
+   "Google hasn't verified this app" screen). This schedules `syncMeetingNotes` to run
+   **once a day around 5pm** (`CONFIG.RUN_HOUR`), after the 3pm daily. Set the project
+   time zone under **Project Settings (⚙)** so the hour matches your local time.
 5. (Optional) Run `syncMeetingNotes` manually once and check **Executions** /
    **Logs** to confirm it found and ingested a doc.
 

@@ -38,14 +38,24 @@ const CONFIG = {
   // Optional: force every doc into a fixed project. Leave "" to auto-detect
   // the project from the notes text.
   PROJECT_HINT: "",
+
+  // Hour of day (0–23) to run, in the Apps Script project's time zone.
+  // 17 = 5pm — after the 3pm daily, so the notes already exist.
+  // IMPORTANT: set the project time zone under Project Settings (⚙) so this
+  // hour matches your local time.
+  RUN_HOUR: 17,
 };
 
 function installTrigger() {
   ScriptApp.getProjectTriggers()
     .filter((t) => t.getHandlerFunction() === "syncMeetingNotes")
     .forEach((t) => ScriptApp.deleteTrigger(t));
-  ScriptApp.newTrigger("syncMeetingNotes").timeBased().everyMinutes(30).create();
-  Logger.log("Trigger installed: syncMeetingNotes every 30 minutes.");
+  ScriptApp.newTrigger("syncMeetingNotes")
+    .timeBased()
+    .atHour(CONFIG.RUN_HOUR)
+    .everyDays(1)
+    .create();
+  Logger.log("Trigger installed: syncMeetingNotes daily around " + CONFIG.RUN_HOUR + ":00.");
 }
 
 // Returns a FileIterator over candidate notes Docs (folder or shared-with-me).
