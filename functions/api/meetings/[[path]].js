@@ -38,6 +38,12 @@ export async function onRequest(context) {
       const r = await fetch(q("&action=list"), { redirect: "follow" });
       return json(await r.json());
     }
+    if (action === "text" && request.method === "GET") {
+      const id = new URL(request.url).searchParams.get("id");
+      if (!id) return json({ error: "id obrigatório." }, 400);
+      const r = await fetch(q(`&action=text&id=${encodeURIComponent(id)}`), { redirect: "follow" });
+      return json(await r.json());
+    }
     if (action === "process" && request.method === "POST") {
       const body = await request.json().catch(() => ({}));
       const ids = (Array.isArray(body.ids) ? body.ids : []).join(",");

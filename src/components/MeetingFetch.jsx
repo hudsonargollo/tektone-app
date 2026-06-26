@@ -118,23 +118,29 @@ export default function MeetingFetch({ onClose, onDone }) {
               {results.map((r) => {
                 const created = r.result?.created?.length || 0;
                 const already = r.result?.alreadyProcessed;
+                const reason = r.error || r.result?.error || (r.status ? `HTTP ${r.status}` : "erro");
                 return (
                   <div
-                    key={r.id}
-                    className="flex items-center justify-between gap-3 rounded-lg surface-3 px-3 py-2.5"
+                    key={r.id || r.title}
+                    className="rounded-lg surface-3 px-3 py-2.5"
                   >
-                    <span className="min-w-0 flex-1 truncate text-sm text-ink">{r.title}</span>
-                    <span className="shrink-0 font-mono text-[11px]">
-                      {!r.ok ? (
-                        <span className="text-danger">falhou</span>
-                      ) : already ? (
-                        <span className="text-stone-400">já importada</span>
-                      ) : (
-                        <span className="text-success">
-                          {r.result?.project} · {created} tarefa(s)
-                        </span>
-                      )}
-                    </span>
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="min-w-0 flex-1 truncate text-sm text-ink">{r.title || r.id}</span>
+                      <span className="shrink-0 font-mono text-[11px]">
+                        {!r.ok ? (
+                          <span className="text-danger">falhou</span>
+                        ) : already ? (
+                          <span className="text-stone-400">já importada</span>
+                        ) : (
+                          <span className="text-success">
+                            {r.result?.project} · {created} tarefa(s)
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                    {!r.ok && (
+                      <p className="mt-1 break-words font-mono text-[10px] text-danger/80">{reason}</p>
+                    )}
                   </div>
                 );
               })}

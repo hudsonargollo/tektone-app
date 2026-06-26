@@ -59,6 +59,7 @@ export const api = {
 
   // admin: on-demand meeting fetch from Drive (via Apps Script Web App)
   listMeetings: () => req("/meetings/list"),
+  meetingText: (id) => req(`/meetings/text?id=${encodeURIComponent(id)}`),
   processMeetings: (ids) => req("/meetings/process", { method: "POST", body: { ids } }),
 
   // comment notifications (per-user unread)

@@ -223,6 +223,17 @@ function processDocById_(id) {
 function doGet(e) {
   if (!e || e.parameter.token !== CONFIG.WEBAPP_TOKEN) return json_({ error: "unauthorized" });
   if (e.parameter.action === "list") return json_({ meetings: listMeetingDocs_() });
+  if (e.parameter.action === "text") {
+    const id = e.parameter.id;
+    if (!id) return json_({ error: "missing id" });
+    const file = DriveApp.getFileById(id);
+    return json_({
+      id,
+      title: file.getName(),
+      date: docDate(file),
+      text: DocumentApp.openById(id).getBody().getText(),
+    });
+  }
   return json_({ error: "unknown action" });
 }
 

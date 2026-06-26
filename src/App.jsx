@@ -684,6 +684,7 @@ export default function App() {
             clients={clients}
             members={members}
             avatarByName={avatarByName}
+            isAdmin={isAdmin}
             onClose={() => setShowIntel(false)}
             onSaved={loadData}
           />

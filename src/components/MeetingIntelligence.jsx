@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { X, Sparkles, Check, ArrowLeft, FileText, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { X, Sparkles, Check, ArrowLeft, FileText, AlertTriangle, CheckCircle2, Download } from "lucide-react";
 import { api } from "@/lib/api";
 import { Avatar, Spinner, PriorityBadge } from "@/components/ui";
 
@@ -9,8 +9,20 @@ const labelCls =
 const inputCls =
   "w-full rounded-lg border border-ink/15 bg-ink/[0.03] px-3 py-2.5 text-sm text-ink outline-none transition-colors placeholder:text-stone-400 focus:border-action";
 
-export default function MeetingIntelligence({ clients, members, avatarByName, onClose, onSaved }) {
+function fmtDate(d) {
+  if (!d) return "";
+  try {
+    return new Date(d + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
+  } catch {
+    return d;
+  }
+}
+
+export default function MeetingIntelligence({ clients, members, avatarByName, isAdmin, onClose, onSaved }) {
   const [phase, setPhase] = useState("input"); // input | review
+  const [mode, setMode] = useState("paste"); // paste | drive
+  const [meetings, setMeetings] = useState(null);
+  const [loadingId, setLoadingId] = useState(null);
   const [title, setTitle] = useState("");
   const [transcript, setTranscript] = useState("");
   const [analysis, setAnalysis] = useState(null);
@@ -19,6 +31,33 @@ export default function MeetingIntelligence({ clients, members, avatarByName, on
   const [saveSummary, setSaveSummary] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+
+  function switchMode(m) {
+    setMode(m);
+    setError("");
+    if (m === "drive" && meetings === null) {
+      api
+        .listMeetings()
+        .then(({ meetings, error }) => (error ? setError(error) : setMeetings(meetings || [])))
+        .catch((e) => setError(e.body?.error || "Falha ao listar reuniões."));
+    }
+  }
+
+  async function pickMeeting(m) {
+    setLoadingId(m.id);
+    setError("");
+    try {
+      const { text, title, error } = await api.meetingText(m.id);
+      if (error) return setError(error);
+      setTitle(title || m.title);
+      setTranscript(text || "");
+      setMode("paste");
+    } catch (e) {
+      setError(e.body?.error || "Falha ao carregar a transcrição.");
+    } finally {
+      setLoadingId(null);
+    }
+  }
 
   async function analyze() {
     setBusy(true);
@@ -119,28 +158,87 @@ export default function MeetingIntelligence({ clients, members, avatarByName, on
 
           {phase === "input" && (
             <>
-              <div>
-                <label className={labelCls}>Reunião (título)</label>
-                <input
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="Ex.: Reunião com advogada parceira"
-                  className={inputCls}
-                />
-              </div>
-              <div>
-                <label className={labelCls}>Transcrição / anotações</label>
-                <textarea
-                  rows={12}
-                  value={transcript}
-                  onChange={(e) => setTranscript(e.target.value)}
-                  placeholder="Cole aqui a transcrição ou as anotações da reunião…"
-                  className={`${inputCls} resize-none font-mono text-xs leading-relaxed`}
-                />
-                <p className="mt-1.5 text-[11px] text-stone-400">
-                  O Gemini extrai resumo, decisões, riscos e tarefas — e sugere o projeto.
-                </p>
-              </div>
+              {isAdmin && (
+                <div className="flex gap-1.5 rounded-lg border border-ink/15 bg-ink/[0.03] p-0.5">
+                  {[
+                    ["paste", "Colar texto"],
+                    ["drive", "Buscar do Drive"],
+                  ].map(([m, label]) => (
+                    <button
+                      key={m}
+                      onClick={() => switchMode(m)}
+                      className={`flex-1 rounded-md px-2.5 py-1.5 font-mono text-[11px] font-semibold transition-colors ${
+                        mode === m ? "bg-action text-clay" : "text-stone-500 hover:text-ink"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {mode === "drive" ? (
+                meetings === null ? (
+                  <div className="flex justify-center py-12">
+                    <Spinner />
+                  </div>
+                ) : meetings.length === 0 ? (
+                  <p className="py-10 text-center font-mono text-[11px] text-stone-400">
+                    nenhuma reunião encontrada
+                  </p>
+                ) : (
+                  <ul className="space-y-1.5">
+                    {meetings.map((m) => (
+                      <li key={m.id}>
+                        <button
+                          onClick={() => pickMeeting(m)}
+                          disabled={loadingId}
+                          className="flex w-full items-center gap-2.5 rounded-lg border border-ink/10 px-3 py-2.5 text-left transition-colors hover:border-action/40 hover:bg-ink/[0.02] disabled:opacity-50"
+                        >
+                          <span className="min-w-0 flex-1 truncate text-sm text-ink">{m.title}</span>
+                          {m.processed && (
+                            <span className="shrink-0 rounded bg-ink/[0.06] px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-stone-500">
+                              importada
+                            </span>
+                          )}
+                          {loadingId === m.id ? (
+                            <Spinner />
+                          ) : (
+                            <span className="shrink-0 font-mono text-[10px] text-stone-400">
+                              {fmtDate(m.date)}
+                            </span>
+                          )}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )
+              ) : (
+                <>
+                  <div>
+                    <label className={labelCls}>Reunião (título)</label>
+                    <input
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      placeholder="Ex.: Reunião com advogada parceira"
+                      className={inputCls}
+                    />
+                  </div>
+                  <div>
+                    <label className={labelCls}>Transcrição / anotações</label>
+                    <textarea
+                      rows={12}
+                      value={transcript}
+                      onChange={(e) => setTranscript(e.target.value)}
+                      placeholder="Cole aqui a transcrição ou as anotações da reunião…"
+                      className={`${inputCls} resize-none font-mono text-xs leading-relaxed`}
+                    />
+                    <p className="mt-1.5 text-[11px] text-stone-400">
+                      O Gemini extrai resumo, decisões, riscos e tarefas — e sugere o projeto.
+                    </p>
+                  </div>
+                </>
+              )}
             </>
           )}
 
