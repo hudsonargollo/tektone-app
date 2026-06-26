@@ -396,7 +396,8 @@ export default function App() {
               className="flex items-center gap-1.5 rounded-lg border border-warning/50 bg-warning/10 px-2.5 py-1.5 font-mono text-[11px] font-semibold tracking-wide text-warning transition-colors hover:bg-warning/20"
               title={`${openRequestsGlobal} solicitação(ões) em aberto`}
             >
-              <Package size={12} /> {openRequestsGlobal} solicitações
+              <Package size={12} /> {openRequestsGlobal}{" "}
+              {openRequestsGlobal === 1 ? "solicitação" : "solicitações"}
             </button>
           )}
           <button
@@ -492,7 +493,8 @@ export default function App() {
                       }}
                       className="flex w-full items-center gap-2.5 px-4 py-3 text-left text-sm font-semibold text-warning transition-colors hover:bg-warning/[0.06]"
                     >
-                      <Package size={15} /> {openRequestsGlobal} solicitações em aberto
+                      <Package size={15} /> {openRequestsGlobal}{" "}
+                      {openRequestsGlobal === 1 ? "solicitação" : "solicitações"} em aberto
                     </button>
                   )}
                   <button

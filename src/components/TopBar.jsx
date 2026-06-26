@@ -76,7 +76,9 @@ export default function TopBar({
             }`}
           >
             <Package size={13} /> {requestCount > 0 ? requestCount : ""}
-            <span className="hidden sm:inline">solicitações</span>
+            <span className="hidden sm:inline">
+              {requestCount === 1 ? "solicitação" : "solicitações"}
+            </span>
           </button>
 
           {/* Priority filter */}
