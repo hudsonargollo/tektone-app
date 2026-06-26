@@ -87,7 +87,12 @@ export default function NotificationsBell({ notifications, total, avatarByName, 
                             <span className="truncate text-[13px] font-semibold text-ink">
                               {n.cardTitle}
                             </span>
-                            {n.mine && (
+                            {n.mentioned && (
+                              <span className="shrink-0 rounded bg-action px-1 py-px font-mono text-[8px] font-bold uppercase tracking-wider text-clay">
+                                @ você
+                              </span>
+                            )}
+                            {n.mine && !n.mentioned && (
                               <span className="shrink-0 rounded bg-action/15 px-1 py-px font-mono text-[8px] uppercase tracking-wider text-action">
                                 sua
                               </span>

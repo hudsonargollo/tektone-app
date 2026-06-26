@@ -74,6 +74,17 @@ echo "YOUR_GEMINI_KEY" | npx wrangler pages secret put GEMINI_API_KEY --project-
 Then redeploy. (Optional: `GEMINI_MODEL` secret to override the default
 `gemini-2.0-flash`.) Without this key the analyze endpoints return a 500.
 
+### 2c. Email notifications on @mention (optional)
+When someone `@mentions` a teammate in a comment (or material request), the app can
+email them. This uses **Resend** — create a key at <https://resend.com> and verify a
+sender domain (e.g. `tektone.com.br`, via DNS records in Cloudflare). Then:
+```sh
+echo "re_xxx" | npx wrangler pages secret put RESEND_API_KEY --project-name tektone-app
+# optional sender override (defaults to "TEKTONE <notificacoes@tektone.com.br>")
+echo "TEKTONE <notificacoes@tektone.com.br>" | npx wrangler pages secret put NOTIFY_FROM --project-name tektone-app
+```
+Redeploy. Without `RESEND_API_KEY` the in-app bell still works; email is simply skipped.
+
 ### 3. Create the Apps Script
 1. Go to <https://script.google.com> → **New project**.
 2. Paste the contents of [`meeting-notes-sync.gs`](./meeting-notes-sync.gs).

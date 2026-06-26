@@ -687,11 +687,47 @@ function relTime(iso) {
   }
 }
 
-function Comments({ cardId, comments, currentUser, isAdmin, avatarByName, onUpdate }) {
+function renderWithMentions(text, firstNames) {
+  return String(text)
+    .split(/(@\w+)/g)
+    .map((part, i) =>
+      part.startsWith("@") && firstNames.has(part.slice(1).toLowerCase()) ? (
+        <span key={i} className="font-semibold text-action">
+          {part}
+        </span>
+      ) : (
+        <span key={i}>{part}</span>
+      )
+    );
+}
+
+function Comments({ cardId, comments, members = [], currentUser, isAdmin, avatarByName, onUpdate }) {
   const [text, setText] = useState("");
   const [kind, setKind] = useState("comment");
   const [busy, setBusy] = useState(false);
+  const [mentionList, setMentionList] = useState([]);
   const list = comments ?? [];
+  const firstNames = new Set(members.map((m) => m.name.split(/\s+/)[0].toLowerCase()));
+
+  const onText = (val) => {
+    setText(val);
+    const m = val.match(/@(\w*)$/);
+    if (m) {
+      const q = m[1].toLowerCase();
+      setMentionList(
+        members
+          .filter((mm) => mm.name.toLowerCase().includes(q) || mm.name.split(/\s+/)[0].toLowerCase().startsWith(q))
+          .slice(0, 5)
+      );
+    } else {
+      setMentionList([]);
+    }
+  };
+  const pickMention = (mm) => {
+    const first = mm.name.split(/\s+/)[0];
+    setText((t) => t.replace(/@(\w*)$/, `@${first} `));
+    setMentionList([]);
+  };
 
   const submit = async () => {
     const t = text.trim();
@@ -702,6 +738,7 @@ function Comments({ cardId, comments, currentUser, isAdmin, avatarByName, onUpda
       onUpdate(card);
       setText("");
       setKind("comment");
+      setMentionList([]);
     } finally {
       setBusy(false);
     }
@@ -765,7 +802,7 @@ function Comments({ cardId, comments, currentUser, isAdmin, avatarByName, onUpda
                   )}
                 </div>
                 <p className={`whitespace-pre-wrap text-sm ${done ? "text-stone-400 line-through" : "text-stone-700"}`}>
-                  {c.text}
+                  {renderWithMentions(c.text, firstNames)}
                 </p>
                 {isReq && (
                   <button
@@ -785,18 +822,41 @@ function Comments({ cardId, comments, currentUser, isAdmin, avatarByName, onUpda
         </div>
       )}
 
-      <div className="rounded-lg border border-ink/15 bg-ink/[0.02] p-2">
+      <div className="relative rounded-lg border border-ink/15 bg-ink/[0.02] p-2">
+        {mentionList.length > 0 && (
+          <ul className="absolute bottom-full left-2 z-30 mb-1 w-52 overflow-hidden rounded-lg border border-ink/10 bg-paper shadow-xl">
+            {mentionList.map((mm) => (
+              <li key={mm.id}>
+                <button
+                  type="button"
+                  onClick={() => pickMention(mm)}
+                  className="flex w-full items-center gap-2 px-2.5 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-ink/[0.05]"
+                >
+                  <Avatar name={mm.name} src={avatarByName?.[mm.name?.trim().toLowerCase()]} />
+                  <span className="truncate">{mm.name}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
         <textarea
           rows={2}
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          onChange={(e) => onText(e.target.value)}
           onKeyDown={(e) => {
-            if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+            if (e.key === "Escape" && mentionList.length) {
+              e.preventDefault();
+              setMentionList([]);
+            } else if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
               e.preventDefault();
               submit();
             }
           }}
-          placeholder={kind === "request" ? "Que material você precisa?" : "Escreva um comentário…"}
+          placeholder={
+            kind === "request"
+              ? "Que material você precisa? Use @ para marcar alguém…"
+              : "Escreva um comentário…  (@ para marcar)"
+          }
           className="w-full resize-none bg-transparent text-sm text-ink outline-none placeholder:text-stone-400"
         />
         <div className="mt-1.5 flex items-center justify-between gap-2">
@@ -1011,6 +1071,7 @@ export default function CardModal({
             <Comments
               cardId={card.id}
               comments={d.comments}
+              members={members}
               currentUser={currentUser}
               isAdmin={isAdmin}
               avatarByName={avatarByName}

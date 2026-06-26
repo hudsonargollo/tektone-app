@@ -47,6 +47,35 @@ async function kvGet(kv, key, fallback = []) {
 
 const kvSet = (kv, key, value) => kv.put(key, JSON.stringify(value));
 
+const reEscape = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+// Members whose @firstname appears in the text (e.g. "@Pedro").
+function parseMentions(text, members) {
+  const t = String(text || "");
+  return members.filter((m) => {
+    const first = String(m.name || "").split(/\s+/)[0];
+    return first && new RegExp(`@${reEscape(first)}\\b`, "i").test(t);
+  });
+}
+
+// Best-effort email via Resend (no-op without RESEND_API_KEY).
+async function sendEmail(env, { to, subject, text }) {
+  if (!env.RESEND_API_KEY || !to?.length) return;
+  await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${env.RESEND_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from: env.NOTIFY_FROM || "TEKTONE <notificacoes@tektone.com.br>",
+      to,
+      subject,
+      text,
+    }),
+  });
+}
+
 // ── Seed data (TEKTONE) ───────────────────────────────────────────────────
 const DEFAULT_CLIENTS = [
   { id: "tektone", name: "TEKTONE", color: "#00E5FF" },
@@ -131,18 +160,33 @@ export async function onRequest(context) {
           const body = await request.json().catch(() => ({}));
           const text = String(body.text || "").trim();
           if (!text) return json({ error: "Comentário vazio." }, 400);
+          const mentioned = parseMentions(text, members)
+            .map((m) => String(m.email || "").toLowerCase())
+            .filter((e) => e && e !== email.toLowerCase());
           const comment = {
             id: uid(),
             text,
             kind: body.kind === "request" ? "request" : "comment",
             author: email,
             authorName,
+            mentions: [...new Set(mentioned)],
             createdAt: new Date().toISOString(),
             resolvedAt: null,
             resolvedBy: null,
           };
           card.comments.push(comment);
           await save();
+          // email mentioned teammates (best-effort, off-thread)
+          if (comment.mentions.length) {
+            const verb = comment.kind === "request" ? "solicitou material" : "mencionou você";
+            context.waitUntil(
+              sendEmail(env, {
+                to: comment.mentions,
+                subject: `${authorName} ${verb} — ${card.title}`,
+                text: `${authorName} ${verb} em "${card.title}":\n\n${text}\n\nAbrir: https://tasks.tektone.com.br`,
+              }).catch(() => {})
+            );
+          }
           return json({ card, comment }, 201);
         }
         if (commentId && seg[4] === "resolve" && method === "POST") {
@@ -271,6 +315,9 @@ export async function onRequest(context) {
             ? [card.assignee]
             : [];
         const mine = Boolean(myName) && assignees.map(norm).includes(myName);
+        const mentioned = unread.some((c) =>
+          (c.mentions || []).includes(norm(email))
+        );
         notifications.push({
           cardId: card.id,
           cardTitle: card.title,
@@ -278,6 +325,7 @@ export async function onRequest(context) {
           count: unread.length,
           hasRequest: unread.some((c) => c.kind === "request"),
           mine,
+          mentioned,
           last: {
             authorName: last.authorName,
             kind: last.kind,
