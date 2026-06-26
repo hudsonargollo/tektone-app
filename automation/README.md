@@ -62,11 +62,13 @@ npx wrangler pages secret put INGEST_TOKEN --project-name tektone-app
        `"Daily time Tektone"`) if you only want specific meetings.
      - *Alternative:* set `FOLDER_ID` to a folder you own to scan just that folder
        (ID = last segment of the folder URL `…/folders/<FOLDER_ID>`).
-4. Run the `installTrigger` function once. Approve the Drive authorization (and the
+4. **Set the time zone** under **Project Settings (⚙) → Time zone → "(GMT-03:00)
+   São Paulo"** (`America/Sao_Paulo`). This must always be São Paulo so the run hour
+   is correct. (The `appsscript.json` in this folder pins the same value.)
+5. Run the `installTrigger` function once. Approve the Drive authorization (and the
    "Google hasn't verified this app" screen). This schedules `syncMeetingNotes` to run
-   **once a day around 5pm** (`CONFIG.RUN_HOUR`), after the 3pm daily. Set the project
-   time zone under **Project Settings (⚙)** so the hour matches your local time.
-5. (Optional) Run `syncMeetingNotes` manually once and check **Executions** /
+   **once a day around 5pm** (`CONFIG.RUN_HOUR`), after the 3pm daily.
+6. (Optional) Run `syncMeetingNotes` manually once and check **Executions** /
    **Logs** to confirm it found and ingested a doc.
 
 ## How parsing works

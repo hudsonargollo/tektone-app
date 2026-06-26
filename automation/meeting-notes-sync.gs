@@ -41,8 +41,8 @@ const CONFIG = {
 
   // Hour of day (0–23) to run, in the Apps Script project's time zone.
   // 17 = 5pm — after the 3pm daily, so the notes already exist.
-  // IMPORTANT: set the project time zone under Project Settings (⚙) so this
-  // hour matches your local time.
+  // IMPORTANT: the project time zone MUST be America/Sao_Paulo. Set it under
+  // Project Settings (⚙) → Time zone → "(GMT-03:00) São Paulo".
   RUN_HOUR: 17,
 };
 
