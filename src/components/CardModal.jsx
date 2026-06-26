@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X,
@@ -10,6 +10,9 @@ import {
   Link2,
   ExternalLink,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Calendar as CalendarIcon,
 } from "lucide-react";
 import { COLUMNS, PRIORITY, LABEL_COLORS } from "@/lib/constants";
 import { Avatar } from "@/components/ui";
@@ -138,6 +141,193 @@ function Segmented({ value, onChange, options }) {
           </button>
         );
       })}
+    </div>
+  );
+}
+
+// ── Date picker (calendar popover) ────────────────────────────────────────────
+const MONTHS = [
+  "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+  "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
+];
+const WEEKDAYS = ["D", "S", "T", "Q", "Q", "S", "S"];
+const pad2 = (n) => String(n).padStart(2, "0");
+const toISO = (dt) => `${dt.getFullYear()}-${pad2(dt.getMonth() + 1)}-${pad2(dt.getDate())}`;
+const parseISO = (s) => {
+  const [y, m, d] = s.split("-").map(Number);
+  return new Date(y, m - 1, d);
+};
+
+function DatePicker({ value, onChange }) {
+  const [open, setOpen] = useState(false);
+  const [coords, setCoords] = useState(null);
+  const btnRef = useRef(null);
+  const selected = value ? parseISO(value) : null;
+  const [view, setView] = useState(selected ?? new Date());
+  const todayISO = toISO(new Date());
+
+  const year = view.getFullYear();
+  const month = view.getMonth();
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const cells = [
+    ...Array.from({ length: firstDay }, () => null),
+    ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
+  ];
+
+  const open_ = () => {
+    if (open) return setOpen(false);
+    if (selected) setView(selected);
+    const r = btnRef.current?.getBoundingClientRect();
+    if (r) {
+      const calW = 256;
+      const calH = 332;
+      const below = r.bottom + calH + 8 < window.innerHeight;
+      const top = below ? r.bottom + 6 : Math.max(8, r.top - calH - 6);
+      const left = Math.min(r.left, window.innerWidth - calW - 8);
+      setCoords({ top, left });
+    }
+    setOpen(true);
+  };
+  const shift = (n) => setView(new Date(year, month + n, 1));
+
+  return (
+    <div className="relative">
+      <button
+        ref={btnRef}
+        type="button"
+        onClick={open_}
+        className={`${inputCls} flex items-center justify-between gap-2 text-left ${
+          open ? "border-action" : ""
+        }`}
+      >
+        <span className="flex min-w-0 items-center gap-2">
+          <CalendarIcon size={14} className="shrink-0 text-stone-400" />
+          <span className={`truncate ${value ? "text-ink" : "text-stone-400"}`}>
+            {value
+              ? parseISO(value).toLocaleDateString("pt-BR", {
+                  day: "2-digit",
+                  month: "long",
+                  year: "numeric",
+                })
+              : "Sem prazo"}
+          </span>
+        </span>
+        {value && (
+          <span
+            role="button"
+            tabIndex={0}
+            onClick={(e) => {
+              e.stopPropagation();
+              onChange("");
+            }}
+            className="shrink-0 rounded p-0.5 text-stone-400 transition-colors hover:text-danger"
+            title="Limpar prazo"
+          >
+            <X size={13} />
+          </span>
+        )}
+      </button>
+
+      <AnimatePresence>
+        {open && coords && (
+          <>
+            <div className="fixed inset-0 z-[55]" onClick={() => setOpen(false)} />
+            <motion.div
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 6 }}
+              transition={{ duration: 0.12 }}
+              style={{ position: "fixed", top: coords.top, left: coords.left }}
+              className="z-[60] w-64 rounded-xl border border-ink/10 bg-paper p-3 shadow-2xl"
+            >
+              <div className="mb-2 flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() => shift(-1)}
+                  className="rounded-md p-1 text-stone-500 transition-colors hover:bg-ink/[0.05] hover:text-ink"
+                >
+                  <ChevronLeft size={16} />
+                </button>
+                <span className="font-mono text-[12px] font-semibold text-ink">
+                  {MONTHS[month]} {year}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => shift(1)}
+                  className="rounded-md p-1 text-stone-500 transition-colors hover:bg-ink/[0.05] hover:text-ink"
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+
+              <div className="mb-1 grid grid-cols-7">
+                {WEEKDAYS.map((w, i) => (
+                  <span
+                    key={i}
+                    className="text-center font-mono text-[10px] font-semibold text-stone-400"
+                  >
+                    {w}
+                  </span>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-7 gap-0.5">
+                {cells.map((d, i) => {
+                  if (!d) return <span key={i} />;
+                  const iso = toISO(new Date(year, month, d));
+                  const isSel = value === iso;
+                  const isToday = todayISO === iso;
+                  return (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => {
+                        onChange(iso);
+                        setOpen(false);
+                      }}
+                      className={`flex h-8 items-center justify-center rounded-md text-[13px] transition-colors ${
+                        isSel
+                          ? "bg-action font-bold text-clay"
+                          : isToday
+                            ? "font-bold text-action ring-1 ring-action/40"
+                            : "text-stone-600 hover:bg-ink/[0.06]"
+                      }`}
+                    >
+                      {d}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="mt-2 flex items-center justify-between border-t border-ink/10 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    onChange(todayISO);
+                    setOpen(false);
+                  }}
+                  className="font-mono text-[11px] font-semibold text-action hover:underline"
+                >
+                  Hoje
+                </button>
+                {value && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onChange("");
+                      setOpen(false);
+                    }}
+                    className="font-mono text-[11px] text-stone-400 transition-colors hover:text-danger"
+                  >
+                    Limpar
+                  </button>
+                )}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -373,28 +563,53 @@ export default function CardModal({ card, clients, members, onSave, onDelete, on
         exit={{ opacity: 0, y: 12, scale: 0.98 }}
         transition={{ type: "spring", stiffness: 320, damping: 28 }}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-ink/15 px-6 py-4">
-          <span className="label-tech">Editar card</span>
-          <div className="flex gap-1.5">
-            <button
-              onClick={() => {
-                if (window.confirm("Excluir este card?")) {
-                  onDelete(card.id);
-                  onClose();
-                }
-              }}
-              className="rounded-lg p-1.5 text-stone-500 transition-colors hover:bg-danger/10 hover:text-danger"
-              title="Excluir"
-            >
-              <Trash2 size={15} />
-            </button>
-            <button
-              onClick={onClose}
-              className="rounded-lg p-1.5 text-stone-500 transition-colors hover:bg-ink/[0.05] hover:text-ink"
-            >
-              <X size={16} />
-            </button>
+        {/* Header — title + project / assignee */}
+        <div className="border-b border-ink/15 px-6 py-4">
+          <div className="flex items-start justify-between gap-3">
+            <input
+              autoFocus
+              value={d.title ?? ""}
+              onChange={(e) => set("title", e.target.value)}
+              placeholder="Título da tarefa…"
+              className="min-w-0 flex-1 bg-transparent text-lg font-bold leading-tight text-ink outline-none placeholder:text-stone-400"
+            />
+            <div className="flex shrink-0 gap-1.5">
+              <button
+                onClick={() => {
+                  if (window.confirm("Excluir este card?")) {
+                    onDelete(card.id);
+                    onClose();
+                  }
+                }}
+                className="rounded-lg p-1.5 text-stone-500 transition-colors hover:bg-danger/10 hover:text-danger"
+                title="Excluir"
+              >
+                <Trash2 size={15} />
+              </button>
+              <button
+                onClick={onClose}
+                className="rounded-lg p-1.5 text-stone-500 transition-colors hover:bg-ink/[0.05] hover:text-ink"
+              >
+                <X size={16} />
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            <Field label="Projeto">
+              <Select
+                value={d.clientId ?? ""}
+                onChange={(v) => set("clientId", v)}
+                options={clientOpts}
+              />
+            </Field>
+            <Field label="Responsável">
+              <Select
+                value={d.assignee ?? ""}
+                onChange={(v) => set("assignee", v)}
+                options={memberOpts}
+              />
+            </Field>
           </div>
         </div>
 
@@ -403,14 +618,6 @@ export default function CardModal({ card, clients, members, onSave, onDelete, on
           <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
             {/* Left — content */}
             <div className="space-y-4">
-              <Field label="Título">
-                <input
-                  autoFocus
-                  value={d.title ?? ""}
-                  onChange={(e) => set("title", e.target.value)}
-                  className={`${inputCls} font-semibold`}
-                />
-              </Field>
               <Field label="Descrição">
                 <textarea
                   rows={4}
@@ -425,7 +632,7 @@ export default function CardModal({ card, clients, members, onSave, onDelete, on
 
             {/* Right — metadata */}
             <div className="space-y-4">
-              <Field label="Coluna">
+              <Field label="Status">
                 <Select
                   value={d.columnId}
                   onChange={(v) => set("columnId", v)}
@@ -439,31 +646,13 @@ export default function CardModal({ card, clients, members, onSave, onDelete, on
                   options={priorityOpts}
                 />
               </Field>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Projeto">
-                  <Select
-                    value={d.clientId ?? ""}
-                    onChange={(v) => set("clientId", v)}
-                    options={clientOpts}
-                  />
-                </Field>
-                <Field label="Responsável">
-                  <Select
-                    value={d.assignee ?? ""}
-                    onChange={(v) => set("assignee", v)}
-                    options={memberOpts}
-                  />
-                </Field>
-              </div>
               <Field label="Prazo">
-                <input
-                  type="date"
+                <DatePicker
                   value={d.dueDate ?? ""}
-                  onChange={(e) => set("dueDate", e.target.value)}
-                  className={inputCls}
+                  onChange={(v) => set("dueDate", v)}
                 />
               </Field>
-              <Field label="Etiqueta">
+              <Field label="Cor de destaque">
                 <div className="flex flex-wrap gap-2">
                   <button
                     onClick={() => set("labelColor", null)}
