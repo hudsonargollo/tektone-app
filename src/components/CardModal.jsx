@@ -943,7 +943,7 @@ export default function CardModal({
         exit={{ opacity: 0 }}
       />
       <motion.div
-        className="relative flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl surface-2 shadow-2xl"
+        className="relative flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl surface-2 shadow-2xl"
         initial={{ opacity: 0, y: 20, scale: 0.97 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 12, scale: 0.98 }}
