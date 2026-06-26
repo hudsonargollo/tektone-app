@@ -14,6 +14,7 @@
  */
 
 import { verifySession, getCookie } from "../../_lib/session.js";
+import { isAdmin } from "../../_lib/allowlist.js";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -111,6 +112,63 @@ export async function onRequest(context) {
 
     // ── CARDS ────────────────────────────────────────────────────────────
     if (resource === "cards") {
+      // /cards/:id/comments[/:commentId[/resolve]] — managed independently so
+      // card edits never clobber the thread.
+      if (id && seg[2] === "comments") {
+        const email = await verifySession(env.SESSION_SECRET, getCookie(request, "tk_session"));
+        if (!email) return json({ error: "unauthorized" }, 401);
+        const commentId = seg[3];
+        const cards = await kvGet(kv, "kanban:cards", []);
+        const card = cards.find((c) => c.id === id);
+        if (!card) return json({ error: "Card not found" }, 404);
+        card.comments = card.comments || [];
+        const members = await kvGet(kv, "kanban:members", []);
+        const authorName =
+          members.find((m) => String(m.email).toLowerCase() === email.toLowerCase())?.name || email;
+        const save = () => kvSet(kv, "kanban:cards", cards);
+
+        if (!commentId && method === "POST") {
+          const body = await request.json().catch(() => ({}));
+          const text = String(body.text || "").trim();
+          if (!text) return json({ error: "Comentário vazio." }, 400);
+          const comment = {
+            id: uid(),
+            text,
+            kind: body.kind === "request" ? "request" : "comment",
+            author: email,
+            authorName,
+            createdAt: new Date().toISOString(),
+            resolvedAt: null,
+            resolvedBy: null,
+          };
+          card.comments.push(comment);
+          await save();
+          return json({ card, comment }, 201);
+        }
+        if (commentId && seg[4] === "resolve" && method === "POST") {
+          const c = card.comments.find((x) => x.id === commentId);
+          if (!c) return json({ error: "Comment not found" }, 404);
+          if (c.resolvedAt) {
+            c.resolvedAt = null;
+            c.resolvedBy = null;
+          } else {
+            c.resolvedAt = new Date().toISOString();
+            c.resolvedBy = authorName;
+          }
+          await save();
+          return json({ card });
+        }
+        if (commentId && method === "DELETE") {
+          const c = card.comments.find((x) => x.id === commentId);
+          if (c && c.author !== email && !isAdmin(email))
+            return json({ error: "Apenas o autor pode excluir." }, 403);
+          card.comments = card.comments.filter((x) => x.id !== commentId);
+          await save();
+          return json({ card });
+        }
+        return json({ error: "Not found" }, 404);
+      }
+
       if (!id) {
         if (method === "GET") return json({ cards: await kvGet(kv, "kanban:cards", []) });
         if (method === "POST") {
@@ -125,7 +183,10 @@ export async function onRequest(context) {
         const cards = await kvGet(kv, "kanban:cards", []);
         if (method === "PUT") {
           const body = await request.json();
-          const updated = cards.map((c) => (c.id === id ? { ...c, ...body, id } : c));
+          // never let a card edit overwrite the comment thread
+          const updated = cards.map((c) =>
+            c.id === id ? { ...c, ...body, id, comments: c.comments } : c
+          );
           await kvSet(kv, "kanban:cards", updated);
           return json({ card: updated.find((c) => c.id === id) });
         }

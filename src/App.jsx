@@ -186,6 +186,7 @@ export default function App() {
         priority: "medium",
         clientId: activeId ?? clients[0]?.id ?? "",
         assignee: "",
+        assignees: [],
         dueDate: "",
         labelColor: null,
       };
@@ -210,6 +211,7 @@ export default function App() {
       priority: "medium",
       clientId: activeId ?? clients[0]?.id ?? "",
       assignee: "",
+      assignees: [],
       dueDate: "",
       labelColor: null,
     };
@@ -229,7 +231,9 @@ export default function App() {
     setCards((p) => p.map((c) => (c.id === updated.id ? updated : c)));
     setSaving(true);
     try {
-      await api.updateCard(updated.id, updated);
+      // comments are owned by the comment endpoints — never send them on a card edit
+      const { comments, ...rest } = updated;
+      await api.updateCard(updated.id, rest);
     } catch (e) {
       setError(e.message);
     } finally {
@@ -252,7 +256,8 @@ export default function App() {
     const updated = { ...card, columnId };
     setCards((p) => p.map((c) => (c.id === id ? updated : c)));
     try {
-      await api.updateCard(id, updated);
+      const { comments, ...rest } = updated;
+      await api.updateCard(id, rest);
     } catch {
       /* keep optimistic state; KV will reconcile on next load */
     }
@@ -546,9 +551,16 @@ export default function App() {
             clients={clients}
             members={members}
             avatarByName={avatarByName}
+            currentUser={{ email: userEmail, name: userName, avatar: userAvatar }}
+            isAdmin={isAdmin}
             onSave={saveCard}
             onDelete={deleteCard}
             onClose={() => setEditing(null)}
+            onCardUpdated={(serverCard) =>
+              setCards((p) =>
+                p.map((c) => (c.id === serverCard.id ? { ...c, comments: serverCard.comments } : c))
+              )
+            }
           />
         )}
         {showAdmin && (

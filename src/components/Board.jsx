@@ -10,6 +10,8 @@ import {
   CheckSquare,
   Link2,
   Sparkles,
+  MessageSquare,
+  Package,
 } from "lucide-react";
 import { COLUMNS, today, fmtDate } from "@/lib/constants";
 import { Avatar, PriorityBadge } from "@/components/ui";
@@ -19,12 +21,14 @@ const COLLAPSE_KEY = "tk_collapsed_cols";
 // ── Card ────────────────────────────────────────────────────────────────────
 function Card({ card, client, avatarByName, onEdit, onDelete, onDragStart, onDragEnd, dragging }) {
   const overdue = card.dueDate && card.dueDate < today() && card.columnId !== "done";
-  const assigneeAvatar = avatarByName?.[card.assignee?.trim().toLowerCase()];
+  const assignees = card.assignees?.length ? card.assignees : card.assignee ? [card.assignee] : [];
   const checklist = card.checklist ?? [];
   const checkTotal = checklist.length;
   const checkDone = checklist.filter((i) => i.done).length;
   const allDone = checkTotal > 0 && checkDone === checkTotal;
   const linkCount = (card.links ?? []).length;
+  const comments = card.comments ?? [];
+  const openRequests = comments.filter((c) => c.kind === "request" && !c.resolvedAt).length;
 
   return (
     <motion.div
@@ -105,6 +109,23 @@ function Card({ card, client, avatarByName, onEdit, onDelete, onDragStart, onDra
               <Link2 size={11} /> {linkCount}
             </span>
           )}
+          {comments.length > 0 && (
+            <span
+              className="flex items-center gap-1 font-mono text-[10px] font-semibold text-stone-500"
+              title={`${comments.length} comentário(s)`}
+            >
+              <MessageSquare size={11} /> {comments.length}
+            </span>
+          )}
+          {openRequests > 0 && (
+            <span
+              className="flex items-center gap-1 rounded px-1 py-0.5 font-mono text-[10px] font-semibold text-warning"
+              style={{ background: "rgba(184,134,47,0.14)" }}
+              title={`${openRequests} solicitação(ões) de material`}
+            >
+              <Package size={11} /> {openRequests}
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-2">
           {card.dueDate && (
@@ -117,7 +138,18 @@ function Card({ card, client, avatarByName, onEdit, onDelete, onDragStart, onDra
               {fmtDate(card.dueDate)}
             </span>
           )}
-          {card.assignee && <Avatar name={card.assignee} src={assigneeAvatar} />}
+          {assignees.length > 0 && (
+            <span className="flex -space-x-1.5">
+              {assignees.slice(0, 3).map((n) => (
+                <Avatar key={n} name={n} src={avatarByName?.[n?.trim().toLowerCase()]} />
+              ))}
+              {assignees.length > 3 && (
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-ink/10 text-[9px] font-bold text-stone-600 ring-1 ring-ink/10">
+                  +{assignees.length - 3}
+                </span>
+              )}
+            </span>
+          )}
         </div>
       </div>
     </motion.div>

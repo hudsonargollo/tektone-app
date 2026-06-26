@@ -45,6 +45,14 @@ export const api = {
   updateCard: (id, body) => req(`/kanban/cards/${id}`, { method: "PUT", body }),
   deleteCard: (id) => req(`/kanban/cards/${id}`, { method: "DELETE" }),
 
+  // comments / material requests
+  addComment: (cardId, text, kind) =>
+    req(`/kanban/cards/${cardId}/comments`, { method: "POST", body: { text, kind } }),
+  resolveComment: (cardId, commentId) =>
+    req(`/kanban/cards/${cardId}/comments/${commentId}/resolve`, { method: "POST" }),
+  deleteComment: (cardId, commentId) =>
+    req(`/kanban/cards/${cardId}/comments/${commentId}`, { method: "DELETE" }),
+
   // meeting intelligence (interactive Gemini analysis)
   analyzeMeeting: (body) => req("/analyze/meeting", { method: "POST", body }),
   commitAnalysis: (body) => req("/analyze/commit", { method: "POST", body }),

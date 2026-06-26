@@ -14,9 +14,14 @@ import {
   ChevronRight,
   Calendar as CalendarIcon,
   Pencil,
+  MessageSquare,
+  Package,
+  Send,
+  CheckCircle2,
 } from "lucide-react";
 import { COLUMNS, PRIORITY, LABEL_COLORS } from "@/lib/constants";
 import { Avatar } from "@/components/ui";
+import { api } from "@/lib/api";
 
 const labelCls =
   "mb-1.5 block font-mono text-[11px] font-medium uppercase tracking-[0.16em] text-stone-500";
@@ -590,7 +595,249 @@ function Links({ items, onChange }) {
   );
 }
 
-export default function CardModal({ card, clients, members, avatarByName, onSave, onDelete, onClose }) {
+// ── Multiple assignees ────────────────────────────────────────────────────────
+function MultiAssignee({ members, value, onChange, avatarByName }) {
+  const [open, setOpen] = useState(false);
+  const selected = value ?? [];
+  const toggle = (name) =>
+    onChange(selected.includes(name) ? selected.filter((n) => n !== name) : [...selected, name]);
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className={`${inputCls} flex min-h-[42px] items-center justify-between gap-2 text-left ${
+          open ? "border-action" : ""
+        }`}
+      >
+        {selected.length === 0 ? (
+          <span className="text-stone-400">— Ninguém —</span>
+        ) : (
+          <span className="flex flex-wrap items-center gap-1">
+            {selected.map((n) => (
+              <span
+                key={n}
+                className="flex items-center gap-1 rounded-md bg-ink/[0.06] py-0.5 pl-0.5 pr-1.5 text-xs text-ink"
+              >
+                <Avatar name={n} src={avatarByName?.[n.trim().toLowerCase()]} />
+                {n.split(" ")[0]}
+              </span>
+            ))}
+          </span>
+        )}
+        <ChevronDown
+          size={15}
+          className={`shrink-0 text-stone-400 transition-transform ${open ? "rotate-180" : ""}`}
+        />
+      </button>
+
+      <AnimatePresence>
+        {open && (
+          <>
+            <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+            <motion.ul
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.12 }}
+              className="absolute z-20 mt-1.5 max-h-48 w-full overflow-y-auto rounded-lg border border-ink/10 bg-paper p-1 shadow-xl"
+            >
+              {members.map((m) => {
+                const on = selected.includes(m.name);
+                return (
+                  <li key={m.id}>
+                    <button
+                      type="button"
+                      onClick={() => toggle(m.name)}
+                      className={`flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm transition-colors hover:bg-ink/[0.05] ${
+                        on ? "font-semibold text-ink" : "text-stone-600"
+                      }`}
+                    >
+                      <Avatar name={m.name} src={avatarByName?.[m.name?.trim().toLowerCase()]} />
+                      <span className="flex-1 truncate">{m.name}</span>
+                      {on && <Check size={14} className="text-action" />}
+                    </button>
+                  </li>
+                );
+              })}
+              {members.length === 0 && (
+                <li className="px-2.5 py-2 text-xs text-stone-400">Nenhum membro</li>
+              )}
+            </motion.ul>
+          </>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// ── Comments & material requests ──────────────────────────────────────────────
+function relTime(iso) {
+  if (!iso) return "";
+  try {
+    return new Date(iso).toLocaleString("pt-BR", {
+      day: "2-digit",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return "";
+  }
+}
+
+function Comments({ cardId, comments, currentUser, isAdmin, avatarByName, onUpdate }) {
+  const [text, setText] = useState("");
+  const [kind, setKind] = useState("comment");
+  const [busy, setBusy] = useState(false);
+  const list = comments ?? [];
+
+  const submit = async () => {
+    const t = text.trim();
+    if (!t || busy) return;
+    setBusy(true);
+    try {
+      const { card } = await api.addComment(cardId, t, kind);
+      onUpdate(card);
+      setText("");
+      setKind("comment");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const resolve = async (cid) => {
+    const { card } = await api.resolveComment(cardId, cid);
+    onUpdate(card);
+  };
+  const remove = async (cid) => {
+    const { card } = await api.deleteComment(cardId, cid);
+    onUpdate(card);
+  };
+
+  return (
+    <div>
+      <label className={labelCls}>Comentários & solicitações</label>
+
+      {list.length > 0 && (
+        <div className="mb-3 space-y-2">
+          {list.map((c) => {
+            const isReq = c.kind === "request";
+            const done = Boolean(c.resolvedAt);
+            const mine = currentUser?.email && c.author === currentUser.email;
+            return (
+              <div
+                key={c.id}
+                className={`group/c rounded-lg border p-2.5 ${
+                  isReq
+                    ? done
+                      ? "border-success/30 bg-success/[0.05]"
+                      : "border-warning/40 bg-warning/[0.06]"
+                    : "border-ink/10 bg-ink/[0.02]"
+                }`}
+              >
+                <div className="mb-1 flex items-center gap-2">
+                  <Avatar
+                    name={c.authorName}
+                    src={avatarByName?.[c.authorName?.trim().toLowerCase()]}
+                  />
+                  <span className="text-xs font-semibold text-ink">{c.authorName}</span>
+                  {isReq && (
+                    <span
+                      className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-wider ${
+                        done ? "bg-success/15 text-success" : "bg-warning/15 text-warning"
+                      }`}
+                    >
+                      <Package size={9} /> {done ? "fornecido" : "material"}
+                    </span>
+                  )}
+                  <span className="ml-auto font-mono text-[10px] text-stone-400">
+                    {relTime(c.createdAt)}
+                  </span>
+                  {(mine || isAdmin) && (
+                    <button
+                      onClick={() => remove(c.id)}
+                      className="rounded p-0.5 text-stone-300 opacity-0 transition-all hover:text-danger group-hover/c:opacity-100"
+                      title="Excluir"
+                    >
+                      <X size={12} />
+                    </button>
+                  )}
+                </div>
+                <p className={`whitespace-pre-wrap text-sm ${done ? "text-stone-400 line-through" : "text-stone-700"}`}>
+                  {c.text}
+                </p>
+                {isReq && (
+                  <button
+                    onClick={() => resolve(c.id)}
+                    className={`mt-1.5 inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-semibold transition-colors ${
+                      done
+                        ? "text-stone-500 hover:text-ink"
+                        : "bg-success/15 text-success hover:bg-success/25"
+                    }`}
+                  >
+                    <CheckCircle2 size={12} /> {done ? "Reabrir" : "Marcar como fornecido"}
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <div className="rounded-lg border border-ink/15 bg-ink/[0.02] p-2">
+        <textarea
+          rows={2}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+              e.preventDefault();
+              submit();
+            }
+          }}
+          placeholder={kind === "request" ? "Que material você precisa?" : "Escreva um comentário…"}
+          className="w-full resize-none bg-transparent text-sm text-ink outline-none placeholder:text-stone-400"
+        />
+        <div className="mt-1.5 flex items-center justify-between gap-2">
+          <button
+            type="button"
+            onClick={() => setKind((k) => (k === "request" ? "comment" : "request"))}
+            className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-semibold transition-colors ${
+              kind === "request"
+                ? "border-warning/40 bg-warning/10 text-warning"
+                : "border-ink/15 text-stone-500 hover:text-ink"
+            }`}
+            title="Marcar como solicitação de material"
+          >
+            <Package size={12} /> {kind === "request" ? "Solicitação" : "Solicitar material"}
+          </button>
+          <button
+            type="button"
+            onClick={submit}
+            disabled={busy || !text.trim()}
+            className="inline-flex items-center gap-1.5 rounded-md bg-action px-3 py-1.5 text-[12px] font-bold text-clay transition-all hover:brightness-110 disabled:opacity-40"
+          >
+            <Send size={12} /> Enviar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function CardModal({
+  card,
+  clients,
+  members,
+  avatarByName,
+  currentUser,
+  isAdmin,
+  onSave,
+  onDelete,
+  onClose,
+  onCardUpdated,
+}) {
   const [d, setD] = useState({ ...card });
   const set = (k, v) => setD((p) => ({ ...p, [k]: v }));
 
@@ -604,14 +851,15 @@ export default function CardModal({ card, clients, members, avatarByName, onSave
     { value: "", label: "— Nenhum —" },
     ...clients.map((c) => ({ value: c.id, label: c.name, dot: c.color })),
   ];
-  const memberOpts = [
-    { value: "", label: "— Nenhum —" },
-    ...members.map((m) => ({
-      value: m.name,
-      label: m.name,
-      avatar: <Avatar name={m.name} src={avatarByName?.[m.name?.trim().toLowerCase()]} />,
-    })),
-  ];
+  const assignees = d.assignees ?? (d.assignee ? [d.assignee] : []);
+  const setAssignees = (arr) =>
+    setD((p) => ({ ...p, assignees: arr, assignee: arr[0] ?? "" }));
+
+  // Comment mutations are server-authoritative; sync modal + board from response.
+  const applyCommentUpdate = (serverCard) => {
+    setD((p) => ({ ...p, comments: serverCard.comments || [] }));
+    onCardUpdated?.(serverCard);
+  };
 
   useEffect(() => {
     const onKey = (e) => {
@@ -681,11 +929,12 @@ export default function CardModal({ card, clients, members, avatarByName, onSave
                 options={clientOpts}
               />
             </Field>
-            <Field label="Responsável">
-              <Select
-                value={d.assignee ?? ""}
-                onChange={(v) => set("assignee", v)}
-                options={memberOpts}
+            <Field label="Responsáveis">
+              <MultiAssignee
+                members={members}
+                value={assignees}
+                onChange={setAssignees}
+                avatarByName={avatarByName}
               />
             </Field>
           </div>
@@ -756,6 +1005,17 @@ export default function CardModal({ card, clients, members, avatarByName, onSave
               </Field>
               <Links items={d.links} onChange={(v) => set("links", v)} />
             </div>
+          </div>
+
+          <div className="mt-4 border-t border-ink/10 pt-4">
+            <Comments
+              cardId={card.id}
+              comments={d.comments}
+              currentUser={currentUser}
+              isAdmin={isAdmin}
+              avatarByName={avatarByName}
+              onUpdate={applyCommentUpdate}
+            />
           </div>
         </div>
 
