@@ -42,6 +42,10 @@ const CONFIG = {
   // the project from the notes text.
   PROJECT_HINT: "",
 
+  // Shared secret for the on-demand Web App (admin "buscar reuniões" button).
+  // Must match the MEETINGS_WEBAPP_TOKEN secret on Cloudflare. Set any long string.
+  WEBAPP_TOKEN: "PASTE_A_SECOND_LONG_SECRET_HERE",
+
   // Google has no native "on file saved" trigger for Drive, so we poll. Every
   // new transcript is processed within POLL_MINUTES of being saved — for ANY
   // meeting, not just the dailies. Allowed: 1, 5, 10, 15, 30.
@@ -158,4 +162,82 @@ function syncMeetingNotes() {
 
   props.setProperty("processed", JSON.stringify([...seen].slice(-1000)));
   Logger.log("Done. Sent " + sent + " new doc(s).");
+}
+
+// ── On-demand Web App (admin "buscar reuniões") ───────────────────────────────
+// Deploy: Deploy → New deployment → Web app → Execute as: Me, Who has access:
+// Anyone. Copy the /exec URL into the Cloudflare MEETINGS_WEBAPP_URL secret.
+// Re-deploy a new version whenever you change this file.
+
+function json_(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(
+    ContentService.MimeType.JSON
+  );
+}
+
+// Catalog of candidate meeting docs (most recent first), with processed flag.
+function listMeetingDocs_() {
+  const seen = new Set(
+    JSON.parse(PropertiesService.getScriptProperties().getProperty("processed") || "[]")
+  );
+  const files = findNotesDocs();
+  const out = [];
+  let n = 0;
+  while (files.hasNext() && n < 100) {
+    const f = files.next();
+    out.push({ id: f.getId(), title: f.getName(), date: docDate(f), processed: seen.has(f.getId()) });
+    n++;
+  }
+  out.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+  return out;
+}
+
+// Read one doc and push it through the analysis endpoint.
+function processDocById_(id) {
+  const file = DriveApp.getFileById(id);
+  const text = DocumentApp.openById(id).getBody().getText();
+  const res = UrlFetchApp.fetch(CONFIG.ENDPOINT, {
+    method: "post",
+    contentType: "application/json",
+    headers: { Authorization: "Bearer " + CONFIG.INGEST_TOKEN },
+    payload: JSON.stringify({ title: file.getName(), date: docDate(file), transcript: text }),
+    muteHttpExceptions: true,
+  });
+  const code = res.getResponseCode();
+  let body = {};
+  try {
+    body = JSON.parse(res.getContentText());
+  } catch (e) {
+    /* ignore */
+  }
+  const ok = code >= 200 && code < 300;
+  if (ok) {
+    const props = PropertiesService.getScriptProperties();
+    const seen = new Set(JSON.parse(props.getProperty("processed") || "[]"));
+    seen.add(id);
+    props.setProperty("processed", JSON.stringify([...seen].slice(-1000)));
+  }
+  return { id, title: file.getName(), ok, status: code, result: body };
+}
+
+function doGet(e) {
+  if (!e || e.parameter.token !== CONFIG.WEBAPP_TOKEN) return json_({ error: "unauthorized" });
+  if (e.parameter.action === "list") return json_({ meetings: listMeetingDocs_() });
+  return json_({ error: "unknown action" });
+}
+
+function doPost(e) {
+  if (!e || e.parameter.token !== CONFIG.WEBAPP_TOKEN) return json_({ error: "unauthorized" });
+  if (e.parameter.action === "process") {
+    const ids = String(e.parameter.ids || "").split(",").map((s) => s.trim()).filter(Boolean);
+    const results = ids.map((id) => {
+      try {
+        return processDocById_(id);
+      } catch (err) {
+        return { id, ok: false, error: String(err) };
+      }
+    });
+    return json_({ results });
+  }
+  return json_({ error: "unknown action" });
 }

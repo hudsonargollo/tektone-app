@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { AlertCircle, LogOut, ShieldCheck, Menu, X, MoreVertical, Sparkles, Package } from "lucide-react";
+import { AlertCircle, LogOut, ShieldCheck, Menu, X, MoreVertical, Sparkles, Package, Download } from "lucide-react";
 import { api } from "@/lib/api";
 import { today } from "@/lib/constants";
 import { Spinner, Avatar } from "@/components/ui";
@@ -13,6 +13,7 @@ import AdminPanel from "@/components/AdminPanel";
 import ProfilePage from "@/components/ProfilePage";
 import ReviewPopup from "@/components/ReviewPopup";
 import MeetingIntelligence from "@/components/MeetingIntelligence";
+import MeetingFetch from "@/components/MeetingFetch";
 import NotificationsBell from "@/components/NotificationsBell";
 import LogoMark from "@/components/LogoMark";
 
@@ -37,6 +38,7 @@ export default function App() {
   const [showAdmin, setShowAdmin] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [showIntel, setShowIntel] = useState(false);
+  const [showFetch, setShowFetch] = useState(false);
   const [reviews, setReviews] = useState([]);
   const [notifSignal, setNotifSignal] = useState(0);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -412,6 +414,15 @@ export default function App() {
           </a>
           {isAdmin && (
             <button
+              onClick={() => setShowFetch(true)}
+              className="flex items-center gap-1.5 rounded-lg border border-ink/15 px-2.5 py-1.5 font-mono text-[11px] tracking-wide text-stone-500 transition-colors hover:border-action/40 hover:text-action"
+              title="Buscar reuniões do Drive"
+            >
+              <Download size={12} /> buscar
+            </button>
+          )}
+          {isAdmin && (
+            <button
               onClick={() => setShowAdmin(true)}
               className="flex items-center gap-1.5 rounded-lg border border-ink/15 px-2.5 py-1.5 font-mono text-[11px] tracking-wide text-stone-500 transition-colors hover:border-action/40 hover:text-action"
             >
@@ -493,6 +504,17 @@ export default function App() {
                   >
                     <Sparkles size={15} className="text-action" /> Inteligência de reuniões
                   </button>
+                  {isAdmin && (
+                    <button
+                      onClick={() => {
+                        setShowFetch(true);
+                        setMenuOpen(false);
+                      }}
+                      className="flex w-full items-center gap-2.5 px-4 py-3 text-left text-sm text-stone-700 transition-colors hover:bg-ink/[0.04]"
+                    >
+                      <Download size={15} className="text-action" /> Buscar reuniões
+                    </button>
+                  )}
                   {isAdmin && (
                     <button
                       onClick={() => {
@@ -645,6 +667,9 @@ export default function App() {
         )}
         {showAdmin && (
           <AdminPanel currentEmail={userEmail} onClose={() => setShowAdmin(false)} />
+        )}
+        {showFetch && (
+          <MeetingFetch onClose={() => setShowFetch(false)} onDone={loadData} />
         )}
         {reviews.length > 0 && !editing && !showProfile && !showAdmin && (
           <ReviewPopup

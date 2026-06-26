@@ -57,6 +57,10 @@ export const api = {
   analyzeMeeting: (body) => req("/analyze/meeting", { method: "POST", body }),
   commitAnalysis: (body) => req("/analyze/commit", { method: "POST", body }),
 
+  // admin: on-demand meeting fetch from Drive (via Apps Script Web App)
+  listMeetings: () => req("/meetings/list"),
+  processMeetings: (ids) => req("/meetings/process", { method: "POST", body: { ids } }),
+
   // comment notifications (per-user unread)
   getNotifications: () => req("/kanban/notifications"),
   markCardSeen: (cardId) => req(`/kanban/cards/${cardId}/seen`, { method: "POST" }),

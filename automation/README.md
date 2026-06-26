@@ -86,6 +86,19 @@ echo "TEKTONE <notificacoes@tektone.com.br>" | npx wrangler pages secret put NOT
 ```
 Redeploy. Without `RESEND_API_KEY` the in-app bell still works; email is simply skipped.
 
+### 2d. On-demand meeting fetch (admin "buscar" button, optional)
+Lets a superadmin list and import meetings from the board (no waiting for the poll).
+1. In the Apps Script, set `CONFIG.WEBAPP_TOKEN` to a long random string.
+2. **Deploy → New deployment → Web app** — *Execute as: Me*, *Who has access: Anyone*.
+   Copy the `/exec` URL. (Re-deploy a new version whenever you edit the script.)
+3. Set both secrets on Cloudflare and redeploy:
+   ```sh
+   echo "https://script.google.com/macros/s/XXXX/exec" | npx wrangler pages secret put MEETINGS_WEBAPP_URL --project-name tektone-app
+   echo "the-same-WEBAPP_TOKEN" | npx wrangler pages secret put MEETINGS_WEBAPP_TOKEN --project-name tektone-app
+   ```
+The **buscar** button (header, admin only) then lists Drive meetings with checkboxes;
+pick which to import. Already-imported docs are flagged and skipped (no duplicates).
+
 ### 3. Create the Apps Script
 1. Go to <https://script.google.com> → **New project**.
 2. Paste the contents of [`meeting-notes-sync.gs`](./meeting-notes-sync.gs).
