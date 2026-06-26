@@ -7,6 +7,8 @@ import {
   CornerDownLeft,
   ChevronsRightLeft,
   ChevronsLeftRight,
+  CheckSquare,
+  Link2,
 } from "lucide-react";
 import { COLUMNS, today, fmtDate } from "@/lib/constants";
 import { Avatar, PriorityBadge } from "@/components/ui";
@@ -16,6 +18,11 @@ const COLLAPSE_KEY = "tk_collapsed_cols";
 // ── Card ────────────────────────────────────────────────────────────────────
 function Card({ card, client, onEdit, onDelete, onDragStart, onDragEnd, dragging }) {
   const overdue = card.dueDate && card.dueDate < today() && card.columnId !== "done";
+  const checklist = card.checklist ?? [];
+  const checkTotal = checklist.length;
+  const checkDone = checklist.filter((i) => i.done).length;
+  const allDone = checkTotal > 0 && checkDone === checkTotal;
+  const linkCount = (card.links ?? []).length;
 
   return (
     <motion.div
@@ -66,7 +73,27 @@ function Card({ card, client, onEdit, onDelete, onDragStart, onDragEnd, dragging
       )}
 
       <div className="mt-1 flex items-center justify-between gap-2">
-        <PriorityBadge priority={card.priority} />
+        <div className="flex items-center gap-2">
+          <PriorityBadge priority={card.priority} />
+          {checkTotal > 0 && (
+            <span
+              className={`flex items-center gap-1 font-mono text-[10px] font-semibold tnum ${
+                allDone ? "text-success" : "text-stone-500"
+              }`}
+              title={`${checkDone} de ${checkTotal} concluído(s)`}
+            >
+              <CheckSquare size={11} /> {checkDone}/{checkTotal}
+            </span>
+          )}
+          {linkCount > 0 && (
+            <span
+              className="flex items-center gap-1 font-mono text-[10px] font-semibold text-stone-500"
+              title={`${linkCount} link(s)`}
+            >
+              <Link2 size={11} /> {linkCount}
+            </span>
+          )}
+        </div>
         <div className="flex items-center gap-2">
           {card.dueDate && (
             <span
