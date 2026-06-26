@@ -497,6 +497,7 @@ export default function App() {
                 cards={visibleCards}
                 clients={clients}
                 avatarByName={avatarByName}
+                requestsOnly={requestsOnly}
                 onEdit={openCard}
                 onDelete={deleteCard}
                 onQuickAdd={quickAdd}

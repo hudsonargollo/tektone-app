@@ -357,7 +357,7 @@ const slideVariants = {
   exit: (d) => ({ opacity: 0, x: d > 0 ? -36 : 36 }),
 };
 
-function MobileBoard({ cards, clients, avatarByName, onEdit, onDelete, onQuickAdd }) {
+function MobileBoard({ cards, clients, avatarByName, flat, onEdit, onDelete, onQuickAdd }) {
   const [index, setIndex] = useState(() => Math.max(0, COLUMNS.findIndex((c) => c.id === "todo")));
   const [dir, setDir] = useState(0);
   const touch = useRef(null);
@@ -365,6 +365,37 @@ function MobileBoard({ cards, clients, avatarByName, onEdit, onDelete, onQuickAd
 
   const col = COLUMNS[index];
   const colCards = cards.filter((c) => c.columnId === col.id);
+
+  // Flat mode (e.g. Solicitações): every matching card across all columns, one list.
+  if (flat) {
+    return (
+      <div className="flex min-h-0 flex-1 flex-col lg:hidden">
+        <p className="mb-2 px-0.5 font-mono text-[11px] font-semibold uppercase tracking-[0.15em] text-warning">
+          Solicitações · {cards.length}
+        </p>
+        <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto px-0.5 pb-28">
+          {cards.map((card) => (
+            <Card
+              key={card.id}
+              card={card}
+              client={clients.find((c) => c.id === card.clientId)}
+              avatarByName={avatarByName}
+              onEdit={onEdit}
+              onDelete={onDelete}
+              onDragStart={noop}
+              onDragEnd={noop}
+              dragging={false}
+            />
+          ))}
+          {cards.length === 0 && (
+            <div className="flex h-24 items-center justify-center font-mono text-[11px] text-stone-300">
+              nenhuma solicitação em aberto
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   const go = (step) =>
     setIndex((i) => {
@@ -465,7 +496,7 @@ function MobileBoard({ cards, clients, avatarByName, onEdit, onDelete, onQuickAd
 }
 
 // ── Board ────────────────────────────────────────────────────────────────────
-export default function Board({ cards, clients, avatarByName, onEdit, onDelete, onQuickAdd, onMove }) {
+export default function Board({ cards, clients, avatarByName, requestsOnly, onEdit, onDelete, onQuickAdd, onMove }) {
   const [draggingId, setDraggingId] = useState(null);
   const [overCol, setOverCol] = useState(null);
   const [collapsed, setCollapsed] = useState(() => {
@@ -546,6 +577,7 @@ export default function Board({ cards, clients, avatarByName, onEdit, onDelete, 
         cards={cards}
         clients={clients}
         avatarByName={avatarByName}
+        flat={requestsOnly}
         onEdit={onEdit}
         onDelete={onDelete}
         onQuickAdd={onQuickAdd}
