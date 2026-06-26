@@ -949,9 +949,9 @@ export default function CardModal({
         exit={{ opacity: 0, y: 12, scale: 0.98 }}
         transition={{ type: "spring", stiffness: 320, damping: 28 }}
       >
-        {/* Header — title + project / assignee */}
-        <div className="border-b border-ink/15 px-6 py-4">
-          <div className="flex items-start justify-between gap-3">
+        {/* Header — single line on desktop: title + projeto + responsáveis + actions */}
+        <div className="border-b border-ink/15 px-6 py-3">
+          <div className="flex items-center gap-3">
             <input
               autoFocus
               value={d.title ?? ""}
@@ -959,6 +959,22 @@ export default function CardModal({
               placeholder="Título da tarefa…"
               className="min-w-0 flex-1 bg-transparent text-lg font-bold leading-tight text-ink outline-none placeholder:text-stone-400"
             />
+            <div className="hidden w-48 shrink-0 lg:block xl:w-56">
+              <Select
+                value={d.clientId ?? ""}
+                onChange={(v) => set("clientId", v)}
+                options={clientOpts}
+                placeholder="Projeto"
+              />
+            </div>
+            <div className="hidden w-48 shrink-0 lg:block xl:w-56">
+              <MultiAssignee
+                members={members}
+                value={assignees}
+                onChange={setAssignees}
+                avatarByName={avatarByName}
+              />
+            </div>
             <div className="flex shrink-0 gap-1.5">
               <button
                 onClick={() => {
@@ -981,7 +997,8 @@ export default function CardModal({
             </div>
           </div>
 
-          <div className="mt-3 grid grid-cols-2 gap-3">
+          {/* stacked projeto / responsáveis below lg */}
+          <div className="mt-3 grid grid-cols-2 gap-3 lg:hidden">
             <Field label="Projeto">
               <Select
                 value={d.clientId ?? ""}
@@ -1019,24 +1036,26 @@ export default function CardModal({
 
             {/* Right — metadata */}
             <div className="space-y-4">
-              <Field label="Status">
-                <Select
-                  value={d.columnId}
-                  onChange={(v) => set("columnId", v)}
-                  options={columnOpts}
-                />
-              </Field>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Status">
+                  <Select
+                    value={d.columnId}
+                    onChange={(v) => set("columnId", v)}
+                    options={columnOpts}
+                  />
+                </Field>
+                <Field label="Prazo">
+                  <DatePicker
+                    value={d.dueDate ?? ""}
+                    onChange={(v) => set("dueDate", v)}
+                  />
+                </Field>
+              </div>
               <Field label="Prioridade">
                 <Segmented
                   value={d.priority}
                   onChange={(v) => set("priority", v)}
                   options={priorityOpts}
-                />
-              </Field>
-              <Field label="Prazo">
-                <DatePicker
-                  value={d.dueDate ?? ""}
-                  onChange={(v) => set("dueDate", v)}
                 />
               </Field>
               <Field label="Cor de destaque">
