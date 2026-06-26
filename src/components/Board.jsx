@@ -121,7 +121,7 @@ function Card({ card, client, avatarByName, onEdit, onDelete, onDragStart, onDra
             <span
               className="flex items-center gap-1 rounded px-1 py-0.5 font-mono text-[10px] font-semibold text-warning"
               style={{ background: "rgba(184,134,47,0.14)" }}
-              title={`${openRequests} solicitação(ões) de recurso`}
+              title={`${openRequests} solicitação(ões) em aberto`}
             >
               <Package size={11} /> {openRequests}
             </span>

@@ -88,9 +88,9 @@ const hueOf = (name) => (name ? (name.charCodeAt(0) * 47) % 360 : 200);
 function notificationEmail({ authorName, authorEmail, authorHasAvatar, kind, text, cardTitle, projectName, projectColor, cardUrl, firstNames }) {
   const isReq = kind === "request";
   const tag = isReq
-    ? { label: "Solicitação de material", color: "#B8862F", bg: "rgba(184,134,47,0.14)" }
+    ? { label: "Nova solicitação", color: "#B8862F", bg: "rgba(184,134,47,0.14)" }
     : { label: "Novo comentário", color: "#2E4A43", bg: "rgba(46,74,67,0.12)" };
-  const verb = isReq ? "solicitou material" : "comentou";
+  const verb = isReq ? "fez uma solicitação" : "comentou";
 
   const body = escHtml(text)
     .replace(/@(\w+)/g, (m, n) =>
@@ -242,7 +242,7 @@ export async function onRequest(context) {
             const authorHasAvatar = Boolean(
               authUsers.find((u) => String(u.email).toLowerCase() === email.toLowerCase())?.avatar
             );
-            const verbSubj = comment.kind === "request" ? "solicitou material" : "mencionou você";
+            const verbSubj = comment.kind === "request" ? "fez uma solicitação" : "mencionou você";
             const cardUrl = `https://tasks.tektone.com.br/?card=${card.id}`;
             const firstNames = new Set(
               members.map((m) => String(m.name).split(/\s+/)[0].toLowerCase())

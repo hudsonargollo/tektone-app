@@ -68,7 +68,7 @@ export default function TopBar({
           {/* Material-requests filter */}
           <button
             onClick={() => setRequestsOnly(!requestsOnly)}
-            title="Mostrar só cards com solicitação de recurso em aberto"
+            title="Mostrar só cards com solicitação em aberto"
             className={`inline-flex shrink-0 items-center gap-1.5 rounded-lg border px-2.5 py-2 font-mono text-[11px] font-semibold transition-colors ${
               requestsOnly
                 ? "border-warning/50 bg-warning/15 text-warning"
@@ -76,7 +76,7 @@ export default function TopBar({
             }`}
           >
             <Package size={13} /> {requestCount > 0 ? requestCount : ""}
-            <span className="hidden sm:inline">recursos</span>
+            <span className="hidden sm:inline">solicitações</span>
           </button>
 
           {/* Priority filter */}

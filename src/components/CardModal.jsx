@@ -785,7 +785,7 @@ function Comments({ cardId, comments, members = [], currentUser, isAdmin, avatar
                         done ? "bg-success/15 text-success" : "bg-warning/15 text-warning"
                       }`}
                     >
-                      <Package size={9} /> {done ? "entregue" : "recurso"}
+                      <Package size={9} /> {done ? "atendida" : "solicitação"}
                     </span>
                   )}
                   <span className="ml-auto font-mono text-[10px] text-stone-400">
@@ -813,7 +813,7 @@ function Comments({ cardId, comments, members = [], currentUser, isAdmin, avatar
                         : "bg-success/15 text-success hover:bg-success/25"
                     }`}
                   >
-                    <CheckCircle2 size={12} /> {done ? "Reabrir" : "Marcar como entregue"}
+                    <CheckCircle2 size={12} /> {done ? "Reabrir" : "Marcar como atendida"}
                   </button>
                 )}
               </div>
@@ -854,7 +854,7 @@ function Comments({ cardId, comments, members = [], currentUser, isAdmin, avatar
           }}
           placeholder={
             kind === "request"
-              ? "Que recurso você precisa? Use @ para marcar alguém…"
+              ? "Descreva sua solicitação…  Use @ para marcar alguém"
               : "Escreva um comentário…  (@ para marcar)"
           }
           className="w-full resize-none bg-transparent text-sm text-ink outline-none placeholder:text-stone-400"
@@ -868,9 +868,9 @@ function Comments({ cardId, comments, members = [], currentUser, isAdmin, avatar
                 ? "border-warning/40 bg-warning/10 text-warning"
                 : "border-ink/15 text-stone-500 hover:text-ink"
             }`}
-            title="Marcar como solicitação de recurso"
+            title="Transformar em solicitação"
           >
-            <Package size={12} /> {kind === "request" ? "Solicitação" : "Solicitar recurso"}
+            <Package size={12} /> {kind === "request" ? "Solicitação" : "Fazer solicitação"}
           </button>
           <button
             type="button"
