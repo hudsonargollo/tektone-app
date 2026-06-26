@@ -32,8 +32,7 @@ function Card({ card, client, avatarByName, onEdit, onDelete, onDragStart, onDra
 
   return (
     <motion.div
-      layout
-      layoutId={card.id}
+      layout="position"
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: dragging ? 0.4 : 1, y: 0, scale: dragging ? 0.97 : 1 }}
       exit={{ opacity: 0, scale: 0.9 }}
@@ -326,7 +325,7 @@ function Column({
         }`}
         style={{ minHeight: 120 }}
       >
-        <AnimatePresence mode="popLayout">
+        <AnimatePresence initial={false}>
           {cards.map((card) => (
             <Card
               key={card.id}
@@ -395,7 +394,7 @@ function MobileBoard({ cards, clients, avatarByName, onEdit, onDelete, onQuickAd
 
       {/* Active column */}
       <div className="flex-1 space-y-2.5 overflow-y-auto pb-6">
-        <AnimatePresence mode="popLayout">
+        <AnimatePresence initial={false}>
           {colCards.map((card) => (
             <Card
               key={card.id}
