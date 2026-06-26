@@ -23,7 +23,10 @@
  */
 
 const CONFIG = {
-  ENDPOINT: "https://tasks.tektone.com.br/api/ingest/meeting-notes",
+  // /api/analyze/auto runs the full Gemini "meeting intelligence" (summary +
+  // decisions + risks + action items) for EVERY meeting, not just dailies.
+  // (Use /api/ingest/meeting-notes instead for the simpler regex-only import.)
+  ENDPOINT: "https://tasks.tektone.com.br/api/analyze/auto",
   INGEST_TOKEN: "PASTE_THE_SAME_TOKEN_HERE",
 
   // How to locate the notes Docs:
@@ -39,22 +42,31 @@ const CONFIG = {
   // the project from the notes text.
   PROJECT_HINT: "",
 
-  // Hour of day (0–23) to run, in the Apps Script project's time zone.
-  // 17 = 5pm — after the 3pm daily, so the notes already exist.
-  // IMPORTANT: the project time zone MUST be America/Sao_Paulo. Set it under
-  // Project Settings (⚙) → Time zone → "(GMT-03:00) São Paulo".
+  // Google has no native "on file saved" trigger for Drive, so we poll. Every
+  // new transcript is processed within POLL_MINUTES of being saved — for ANY
+  // meeting, not just the dailies. Allowed: 1, 5, 10, 15, 30.
+  // (Project time zone MUST be America/Sao_Paulo — Project Settings ⚙.)
+  POLL_MINUTES: 15,
+  // Alternative: leave POLL_MINUTES and instead run installDailyTrigger() to
+  // process once a day at this hour (São Paulo time).
   RUN_HOUR: 17,
 };
 
+// Default: poll every POLL_MINUTES so meetings are picked up soon after saving.
 function installTrigger() {
   ScriptApp.getProjectTriggers()
     .filter((t) => t.getHandlerFunction() === "syncMeetingNotes")
     .forEach((t) => ScriptApp.deleteTrigger(t));
-  ScriptApp.newTrigger("syncMeetingNotes")
-    .timeBased()
-    .atHour(CONFIG.RUN_HOUR)
-    .everyDays(1)
-    .create();
+  ScriptApp.newTrigger("syncMeetingNotes").timeBased().everyMinutes(CONFIG.POLL_MINUTES).create();
+  Logger.log("Trigger installed: syncMeetingNotes every " + CONFIG.POLL_MINUTES + " minutes.");
+}
+
+// Alternative: once a day at RUN_HOUR (São Paulo). Run this instead of installTrigger.
+function installDailyTrigger() {
+  ScriptApp.getProjectTriggers()
+    .filter((t) => t.getHandlerFunction() === "syncMeetingNotes")
+    .forEach((t) => ScriptApp.deleteTrigger(t));
+  ScriptApp.newTrigger("syncMeetingNotes").timeBased().atHour(CONFIG.RUN_HOUR).everyDays(1).create();
   Logger.log("Trigger installed: syncMeetingNotes daily around " + CONFIG.RUN_HOUR + ":00.");
 }
 
@@ -96,15 +108,15 @@ function syncMeetingNotes() {
       continue;
     }
 
-    if (!/pr[óo]ximas etapas/i.test(text)) {
-      seen.add(id); // not a notes doc — don't re-check it forever
+    if (text.length < 200) {
+      seen.add(id); // too short to analyze — skip permanently
       continue;
     }
 
     const payload = {
       title: file.getName(),
       date: docDate(file),
-      text: text,
+      transcript: text,
       project: CONFIG.PROJECT_HINT || undefined,
     };
 

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { AlertCircle, LogOut, ShieldCheck, Menu, X, MoreVertical } from "lucide-react";
+import { AlertCircle, LogOut, ShieldCheck, Menu, X, MoreVertical, Sparkles } from "lucide-react";
 import { api } from "@/lib/api";
 import { today } from "@/lib/constants";
 import { Spinner, Avatar } from "@/components/ui";
@@ -12,6 +12,7 @@ import Login from "@/components/Login";
 import AdminPanel from "@/components/AdminPanel";
 import ProfilePage from "@/components/ProfilePage";
 import ReviewPopup from "@/components/ReviewPopup";
+import MeetingIntelligence from "@/components/MeetingIntelligence";
 import LogoMark from "@/components/LogoMark";
 
 export default function App() {
@@ -33,6 +34,7 @@ export default function App() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  const [showIntel, setShowIntel] = useState(false);
   const [reviews, setReviews] = useState([]);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -334,6 +336,13 @@ export default function App() {
               </span>
             </button>
           )}
+          <button
+            onClick={() => setShowIntel(true)}
+            className="flex items-center gap-1.5 rounded-lg border border-ink/15 px-2.5 py-1.5 font-mono text-[11px] tracking-wide text-stone-500 transition-colors hover:border-action/40 hover:text-action"
+            title="Analisar transcrição de reunião"
+          >
+            <Sparkles size={12} /> reuniões
+          </button>
           <a
             href="https://tektone.com.br"
             className="font-mono text-[11px] tracking-wide text-stone-500 transition-colors hover:text-action"
@@ -395,6 +404,15 @@ export default function App() {
                       </span>
                     </button>
                   )}
+                  <button
+                    onClick={() => {
+                      setShowIntel(true);
+                      setMenuOpen(false);
+                    }}
+                    className="flex w-full items-center gap-2.5 px-4 py-3 text-left text-sm text-stone-700 transition-colors hover:bg-ink/[0.04]"
+                  >
+                    <Sparkles size={15} className="text-action" /> Inteligência de reuniões
+                  </button>
                   {isAdmin && (
                     <button
                       onClick={() => {
@@ -542,6 +560,15 @@ export default function App() {
             avatarByName={avatarByName}
             onClose={() => setReviews([])}
             onAck={ackReviews}
+          />
+        )}
+        {showIntel && (
+          <MeetingIntelligence
+            clients={clients}
+            members={members}
+            avatarByName={avatarByName}
+            onClose={() => setShowIntel(false)}
+            onSaved={loadData}
           />
         )}
         {showProfile && (

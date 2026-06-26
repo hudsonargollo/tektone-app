@@ -3,16 +3,32 @@
 Turns Gemini meeting-notes Google Docs into kanban cards automatically.
 
 ```
-Apps Script (time trigger, daily at 5pm)
+Apps Script (polls every 15 min — Google has no "on save" Drive trigger)
   → finds new Gemini notes Docs ("Shared with me" or a folder)
-  → POSTs the doc text to https://tasks.tektone.com.br/api/ingest/meeting-notes
+  → POSTs the transcript to https://tasks.tektone.com.br/api/analyze/auto
         ↓
-Cloudflare Pages Function (functions/api/ingest/[[path]].js)
-  → parses the "Próximas etapas" section
+Cloudflare Pages Function (functions/api/analyze/[[path]].js) — Gemini
+  → full "meeting intelligence": summary + decisions + risks + action items
   → resolves the project (auto-creates it if missing)
-  → maps each "[Names]" to board members ("[The group]" → unassigned)
-  → creates cards in "A Fazer" (todo), deduped
+  → maps owners to board members; action items → cards in "A Fazer";
+    summary/decisions/risks → a 📝 Resumo card in Backlog; deduped
+  → records a review batch → validation popup on next login
 ```
+
+**Two paths, same endpoint family:**
+- **Automatic** — the Apps Script above hits `/api/analyze/auto` (Gemini) for every
+  new meeting transcript. Runs for ALL meetings, not just dailies.
+- **Interactive** — the **"reuniões"** button in the app header opens
+  *Inteligência de Reuniões*: paste any transcript, review the analysis, pick the
+  project, save. Uses `/api/analyze/meeting` + `/api/analyze/commit`.
+- A simpler regex-only importer (`/api/ingest/meeting-notes`, no AI) still exists if
+  you ever want it — point `CONFIG.ENDPOINT` there instead.
+
+### "Every time a meeting is saved"
+Google Drive has **no native on-create trigger** for arbitrary folders, so the script
+**polls every `POLL_MINUTES` (15)** — each new transcript is processed within ~15 min
+of being saved. Lower it to 5 or 10 in `CONFIG` for faster pickup, or run
+`installDailyTrigger` instead to batch once a day at 5pm São Paulo.
 
 ## Google prerequisites (what you need — and don't)
 
@@ -47,6 +63,15 @@ CLI alternative:
 ```sh
 npx wrangler pages secret put INGEST_TOKEN --project-name tektone-app
 ```
+
+### 2b. Set the Gemini API key (for AI analysis)
+The AI analysis (`/api/analyze/*`) needs a Google **Gemini API key** — create one at
+<https://aistudio.google.com/apikey>. Add it as a Pages secret:
+```sh
+echo "YOUR_GEMINI_KEY" | npx wrangler pages secret put GEMINI_API_KEY --project-name tektone-app
+```
+Then redeploy. (Optional: `GEMINI_MODEL` secret to override the default
+`gemini-2.0-flash`.) Without this key the analyze endpoints return a 500.
 
 ### 3. Create the Apps Script
 1. Go to <https://script.google.com> → **New project**.
