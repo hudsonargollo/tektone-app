@@ -972,7 +972,7 @@ export default function CardModal({
         )}
 
         {/* Header — single line on desktop: title + projeto + responsáveis + actions */}
-        <div className="border-b border-ink/15 px-6 py-3">
+        <div className="border-b border-ink/15 px-4 py-3 sm:px-6">
           <div className="flex items-center gap-3">
             <input
               autoFocus
@@ -1020,7 +1020,7 @@ export default function CardModal({
           </div>
 
           {/* stacked projeto / responsáveis below lg */}
-          <div className="mt-3 grid grid-cols-2 gap-3 lg:hidden">
+          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:hidden">
             <Field label="Projeto">
               <Select
                 value={d.clientId ?? ""}
@@ -1040,7 +1040,7 @@ export default function CardModal({
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto px-6 py-5">
+        <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
           <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
             {/* Left — content */}
             <div className="space-y-4">
@@ -1058,7 +1058,7 @@ export default function CardModal({
 
             {/* Right — metadata */}
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <Field label="Status">
                   <Select
                     value={d.columnId}
@@ -1122,7 +1122,7 @@ export default function CardModal({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between gap-3 border-t border-ink/15 px-6 py-4">
+        <div className="flex items-center justify-between gap-3 border-t border-ink/15 px-4 py-4 sm:px-6">
           <span className="font-mono text-[10px] tracking-wide text-stone-400">
             ⌘+↵ salvar · esc fechar
           </span>
