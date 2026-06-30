@@ -40,6 +40,7 @@ export default function App() {
   const [showIntel, setShowIntel] = useState(false);
   const [showFetch, setShowFetch] = useState(false);
   const [reviews, setReviews] = useState([]);
+  const [reviewActiveId, setReviewActiveId] = useState(null); // current carousel slide (meeting id)
   const [notifSignal, setNotifSignal] = useState(0);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -715,9 +716,14 @@ export default function App() {
         {reviews.length > 0 && !editing && !showProfile && !showAdmin && (
           <ReviewPopup
             reviews={reviews}
+            cards={cards}
             avatarByName={avatarByName}
+            activeId={reviewActiveId}
+            onActiveChange={setReviewActiveId}
             onClose={() => setReviews([])}
             onAck={ackReviews}
+            onEditTask={openCard}
+            onDismissTask={deleteCard}
           />
         )}
         {showIntel && (
