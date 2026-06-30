@@ -477,7 +477,7 @@ export default function App() {
               <Sidebar {...sidebarProps} onSelect={setActiveId} />
             </div>
 
-            <div className="flex min-w-0 flex-1 flex-col">
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col">
               <TopBar
                 title={activeClient ? activeClient.name : "Todos os Projetos"}
                 titleColor={activeClient?.color}

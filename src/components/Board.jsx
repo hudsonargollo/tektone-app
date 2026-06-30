@@ -13,7 +13,7 @@ import {
   MessageSquare,
   Package,
 } from "lucide-react";
-import { COLUMNS, today, fmtDate } from "@/lib/constants";
+import { COLUMNS, PRIORITY, today, fmtDate } from "@/lib/constants";
 import { Avatar, PriorityBadge } from "@/components/ui";
 
 const COLLAPSE_KEY = "tk_collapsed_cols";
@@ -30,12 +30,17 @@ function Card({ card, client, avatarByName, onEdit, onDelete, onDragStart, onDra
   const comments = card.comments ?? [];
   const openRequests = comments.filter((c) => c.kind === "request" && !c.resolvedAt).length;
 
+  // Left accent strip — client colour first, falling back to priority, for fast scanning.
+  const accent = client?.color || (PRIORITY[card.priority] ?? PRIORITY.low).color;
+
   return (
     <motion.div
       layout="position"
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: dragging ? 0.4 : 1, y: 0, scale: dragging ? 0.97 : 1 }}
       exit={{ opacity: 0, scale: 0.9 }}
+      whileHover={dragging ? undefined : { y: -3 }}
+      whileTap={{ scale: 0.98 }}
       transition={{ type: "spring", stiffness: 500, damping: 40 }}
       draggable
       onDragStart={(e) => {
@@ -44,8 +49,13 @@ function Card({ card, client, avatarByName, onEdit, onDelete, onDragStart, onDra
       }}
       onDragEnd={onDragEnd}
       onClick={() => onEdit(card)}
-      className="group relative cursor-pointer rounded-xl surface-2 p-3.5 transition-colors hover:border-action/30"
+      className="group relative cursor-pointer overflow-hidden rounded-xl surface-2 pl-4 pr-3.5 py-3.5 shadow-sm transition-shadow duration-200 hover:shadow-[0_8px_24px_rgba(20,22,24,0.10)]"
     >
+      <span
+        className="absolute inset-y-0 left-0 w-1 transition-all duration-200 group-hover:w-1.5"
+        style={{ background: accent, opacity: 0.6 }}
+        aria-hidden
+      />
       <button
         onClick={(e) => {
           e.stopPropagation();
@@ -237,7 +247,7 @@ function CollapsedColumn({ col, cards, isOver, setOver, onDrop, onExpand }) {
         setOver(null);
       }}
       title={`Expandir ${col.title}`}
-      className={`group flex w-12 shrink-0 cursor-pointer flex-col items-center gap-3 rounded-2xl border py-3 transition-colors ${
+      className={`group flex min-h-0 w-12 shrink-0 cursor-pointer flex-col items-center gap-3 overflow-hidden rounded-2xl border py-3 transition-colors ${
         isOver ? "border-action/50 bg-action/[0.06]" : "surface-1 hover:border-action/30"
       }`}
     >
@@ -286,8 +296,8 @@ function Column({
   ...handlers
 }) {
   return (
-    <div className="flex min-w-[15rem] flex-1 flex-col">
-      <div className="mb-3 flex items-center justify-between px-1">
+    <div className="flex min-h-0 min-w-[15rem] flex-1 flex-col">
+      <div className="mb-3 flex shrink-0 items-center justify-between px-1">
         <div className="flex items-center gap-2">
           <span className="h-2.5 w-2.5 rounded-full" style={{ background: col.color }} />
           <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.15em] text-stone-600">
@@ -318,12 +328,11 @@ function Column({
           onDrop(col.id);
           setOver(null);
         }}
-        className={`flex-1 space-y-2.5 rounded-2xl border p-2 transition-colors ${
+        className={`min-h-0 flex-1 space-y-2.5 overflow-y-auto rounded-2xl border p-2 transition-colors ${
           isOver
             ? "border-action/40 bg-action/[0.04]"
             : "border-ink/[0.06] bg-ink/[0.025]"
         }`}
-        style={{ minHeight: 120 }}
       >
         <AnimatePresence initial={false}>
           {cards.map((card) => (
