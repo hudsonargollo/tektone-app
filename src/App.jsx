@@ -109,6 +109,17 @@ export default function App() {
     }
   }
 
+  // Validate a single meeting batch (one carousel slide) without touching the rest.
+  async function ackOneReview(id) {
+    setReviews((prev) => prev.filter((r) => r.id !== id));
+    if (reviewActiveId === id) setReviewActiveId(null); // fall back to the first slide
+    try {
+      await api.ackReviews([id]);
+    } catch {
+      /* if ack fails it simply reappears next login */
+    }
+  }
+
   // ── Comment notifications (per-user unread) ───────────────────────────────────
   // The bell owns its own polling/state; we just nudge it after relevant events.
   const bumpNotifs = () => setNotifSignal((s) => s + 1);
@@ -722,6 +733,7 @@ export default function App() {
             onActiveChange={setReviewActiveId}
             onClose={() => setReviews([])}
             onAck={ackReviews}
+            onAckOne={ackOneReview}
             onEditTask={openCard}
             onDismissTask={deleteCard}
           />

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Sparkles,
@@ -25,12 +25,6 @@ function fmtDate(d) {
   }
 }
 
-const slideVariants = {
-  enter: (dir) => ({ x: dir >= 0 ? 48 : -48, opacity: 0 }),
-  center: { x: 0, opacity: 1 },
-  exit: (dir) => ({ x: dir >= 0 ? -48 : 48, opacity: 0 }),
-};
-
 export default function ReviewPopup({
   reviews,
   cards,
@@ -39,11 +33,14 @@ export default function ReviewPopup({
   onActiveChange,
   onClose,
   onAck,
+  onAckOne,
   onEditTask,
   onDismissTask,
 }) {
   const [busy, setBusy] = useState(false);
   const [dir, setDir] = useState(0); // slide direction for the animation
+  const viewportRef = useRef(null);
+  const [w, setW] = useState(0); // measured slide width → px-based slide animation
 
   // Render from the LIVE board so edits show instantly and dismissed (deleted)
   // cards drop out on their own. Each review task's id IS the real card id.
@@ -75,6 +72,23 @@ export default function ReviewPopup({
   );
   const current = liveReviews[index];
 
+  // Keep the slide width in sync so the filmstrip slides exactly one panel.
+  useLayoutEffect(() => {
+    const el = viewportRef.current;
+    if (!el) return;
+    const update = () => setW(el.clientWidth);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [count]);
+
+  const slideVariants = {
+    enter: (d) => ({ x: d >= 0 ? w : -w, opacity: 0 }),
+    center: { x: 0, opacity: 1 },
+    exit: (d) => ({ x: d >= 0 ? -w : w, opacity: 0 }),
+  };
+
   function goTo(i, direction) {
     if (i < 0 || i >= count || i === index) return;
     setDir(direction);
@@ -82,13 +96,99 @@ export default function ReviewPopup({
   }
   const go = (delta) => goTo(index + delta, delta);
 
-  async function ack() {
+  async function ackAll() {
     setBusy(true);
     try {
       await onAck(reviews.map((r) => r.id));
     } finally {
       setBusy(false);
     }
+  }
+
+  async function ackThis() {
+    if (count <= 1 || !current) return ackAll(); // single meeting → same as "all"
+    setBusy(true);
+    try {
+      await onAckOne?.(current.id);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function renderSlide(r) {
+    return (
+      <>
+        <div className="mb-3 flex items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded-md bg-ink/[0.05] px-2 py-1 font-mono text-[11px] font-semibold text-stone-600">
+            {r.projectCreated ? <FolderPlus size={12} /> : <Folder size={12} />}
+            {r.project}
+          </span>
+          {r.projectCreated && (
+            <span className="rounded bg-success/15 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-success">
+              novo projeto
+            </span>
+          )}
+          {(r.meetingTitle || r.date) && (
+            <span className="truncate font-mono text-[10px] text-stone-400">
+              {r.meetingTitle}
+              {r.date ? ` · ${fmtDate(r.date)}` : ""}
+            </span>
+          )}
+        </div>
+
+        <ul className="space-y-1.5">
+          {r.tasks.map((card) => {
+            const assignees = card.assignees?.length
+              ? card.assignees
+              : card.assignee
+                ? [card.assignee]
+                : [];
+            return (
+              <li
+                key={card.id}
+                className="group flex items-center gap-2 rounded-lg surface-3 py-1.5 pl-3 pr-1.5"
+              >
+                <button
+                  type="button"
+                  onClick={() => onEditTask?.(card)}
+                  title="Editar tarefa"
+                  className="flex min-w-0 flex-1 items-center gap-2 py-1 text-left"
+                >
+                  <Pencil
+                    size={12}
+                    className="shrink-0 text-stone-400 opacity-0 transition-opacity group-hover:opacity-100"
+                  />
+                  <span className="min-w-0 flex-1 truncate text-sm text-ink">{card.title}</span>
+                  {assignees.length > 0 ? (
+                    <span className="flex shrink-0 -space-x-1.5">
+                      {assignees.map((name) => (
+                        <Avatar
+                          key={name}
+                          name={name}
+                          src={avatarByName?.[name?.trim().toLowerCase()]}
+                        />
+                      ))}
+                    </span>
+                  ) : (
+                    <span className="shrink-0 font-mono text-[10px] text-stone-400">
+                      sem responsável
+                    </span>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onDismissTask?.(card.id)}
+                  title="Dispensar (remover do quadro)"
+                  className="shrink-0 rounded-md p-1.5 text-stone-400 transition-colors hover:bg-danger/10 hover:text-danger"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      </>
+    );
   }
 
   return (
@@ -175,18 +275,18 @@ export default function ReviewPopup({
           </div>
         )}
 
-        {/* Body — one meeting per slide */}
-        <div className="relative flex-1 overflow-hidden">
-          {total === 0 ? (
-            <div className="flex flex-col items-center justify-center gap-2 py-16 text-center">
-              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-success/15 text-success">
-                <Check size={18} />
-              </span>
-              <p className="text-sm font-semibold text-ink">Tudo revisado</p>
-              <p className="text-xs text-stone-500">Nenhuma tarefa pendente de revisão.</p>
-            </div>
-          ) : (
-            <AnimatePresence initial={false} mode="wait" custom={dir}>
+        {/* Body — filmstrip: one meeting per slide */}
+        {total === 0 ? (
+          <div className="flex flex-1 flex-col items-center justify-center gap-2 py-16 text-center">
+            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-success/15 text-success">
+              <Check size={18} />
+            </span>
+            <p className="text-sm font-semibold text-ink">Tudo revisado</p>
+            <p className="text-xs text-stone-500">Nenhuma tarefa pendente de revisão.</p>
+          </div>
+        ) : count > 1 ? (
+          <div ref={viewportRef} className="relative h-[min(58vh,26rem)] overflow-hidden">
+            <AnimatePresence initial={false} custom={dir}>
               <motion.div
                 key={current.id}
                 custom={dir}
@@ -194,107 +294,54 @@ export default function ReviewPopup({
                 initial="enter"
                 animate="center"
                 exit="exit"
-                transition={{ duration: 0.18, ease: "easeOut" }}
-                drag={count > 1 ? "x" : false}
+                transition={{
+                  x: { type: "spring", stiffness: 320, damping: 34 },
+                  opacity: { duration: 0.15 },
+                }}
+                drag="x"
                 dragConstraints={{ left: 0, right: 0 }}
                 dragElastic={0.18}
                 onDragEnd={(e, info) => {
-                  if (info.offset.x < -60) go(1);
-                  else if (info.offset.x > 60) go(-1);
+                  if (info.offset.x < -60 || info.velocity.x < -400) go(1);
+                  else if (info.offset.x > 60 || info.velocity.x > 400) go(-1);
                 }}
-                className="h-full overflow-y-auto px-6 py-5"
+                className="absolute inset-0 overflow-y-auto px-6 py-5"
               >
-                <div className="mb-3 flex items-center gap-2">
-                  <span className="inline-flex items-center gap-1.5 rounded-md bg-ink/[0.05] px-2 py-1 font-mono text-[11px] font-semibold text-stone-600">
-                    {current.projectCreated ? <FolderPlus size={12} /> : <Folder size={12} />}
-                    {current.project}
-                  </span>
-                  {current.projectCreated && (
-                    <span className="rounded bg-success/15 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-success">
-                      novo projeto
-                    </span>
-                  )}
-                  {(current.meetingTitle || current.date) && (
-                    <span className="truncate font-mono text-[10px] text-stone-400">
-                      {current.meetingTitle}
-                      {current.date ? ` · ${fmtDate(current.date)}` : ""}
-                    </span>
-                  )}
-                </div>
-
-                <ul className="space-y-1.5">
-                  {current.tasks.map((card) => {
-                    const assignees = card.assignees?.length
-                      ? card.assignees
-                      : card.assignee
-                        ? [card.assignee]
-                        : [];
-                    return (
-                      <li
-                        key={card.id}
-                        className="group flex items-center gap-2 rounded-lg surface-3 py-1.5 pl-3 pr-1.5"
-                      >
-                        <button
-                          type="button"
-                          onClick={() => onEditTask?.(card)}
-                          title="Editar tarefa"
-                          className="flex min-w-0 flex-1 items-center gap-2 py-1 text-left"
-                        >
-                          <Pencil
-                            size={12}
-                            className="shrink-0 text-stone-400 opacity-0 transition-opacity group-hover:opacity-100"
-                          />
-                          <span className="min-w-0 flex-1 truncate text-sm text-ink">
-                            {card.title}
-                          </span>
-                          {assignees.length > 0 ? (
-                            <span className="flex shrink-0 -space-x-1.5">
-                              {assignees.map((name) => (
-                                <Avatar
-                                  key={name}
-                                  name={name}
-                                  src={avatarByName?.[name?.trim().toLowerCase()]}
-                                />
-                              ))}
-                            </span>
-                          ) : (
-                            <span className="shrink-0 font-mono text-[10px] text-stone-400">
-                              sem responsável
-                            </span>
-                          )}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => onDismissTask?.(card.id)}
-                          title="Dispensar (remover do quadro)"
-                          className="shrink-0 rounded-md p-1.5 text-stone-400 transition-colors hover:bg-danger/10 hover:text-danger"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
+                {renderSlide(current)}
               </motion.div>
             </AnimatePresence>
-          )}
-        </div>
+          </div>
+        ) : (
+          <div className="max-h-[60vh] flex-1 overflow-y-auto px-6 py-5">{renderSlide(current)}</div>
+        )}
 
         {/* Footer */}
         <div className="flex items-center justify-between gap-3 border-t border-ink/15 px-6 py-4">
           <button
             onClick={onClose}
-            className="rounded-lg px-4 py-2 text-sm font-semibold text-stone-500 transition-colors hover:text-ink"
+            className="rounded-lg px-3 py-2 text-sm font-semibold text-stone-500 transition-colors hover:text-ink"
           >
             Depois
           </button>
-          <button
-            onClick={ack}
-            disabled={busy}
-            className="inline-flex items-center gap-2 rounded-lg bg-action px-5 py-2 text-sm font-bold text-clay transition-all hover:brightness-110 ring-action disabled:opacity-50"
-          >
-            {busy ? <Spinner /> : <Check size={14} />} Validar e dispensar
-          </button>
+          <div className="flex items-center gap-1.5">
+            {count > 1 && (
+              <button
+                onClick={ackAll}
+                disabled={busy}
+                className="rounded-lg px-3 py-2 text-sm font-semibold text-stone-500 transition-colors hover:text-ink disabled:opacity-50"
+              >
+                Validar todas
+              </button>
+            )}
+            <button
+              onClick={ackThis}
+              disabled={busy}
+              className="inline-flex items-center gap-2 rounded-lg bg-action px-5 py-2 text-sm font-bold text-clay transition-all hover:brightness-110 ring-action disabled:opacity-50"
+            >
+              {busy ? <Spinner /> : <Check size={14} />}{" "}
+              {count > 1 ? "Validar esta" : "Validar e dispensar"}
+            </button>
+          </div>
         </div>
       </motion.div>
     </div>
