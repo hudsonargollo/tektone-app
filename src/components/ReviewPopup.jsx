@@ -1,5 +1,5 @@
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   Sparkles,
   Check,
@@ -12,18 +12,25 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { Avatar, Spinner } from "@/components/ui";
+import { hashColor } from "@/lib/constants";
 
-function fmtDate(d) {
-  if (!d) return "";
+// Hero day/month split for the oversized date numeral.
+function dateParts(d) {
+  if (!d) return null;
   try {
-    return new Date(d + "T12:00:00").toLocaleDateString("pt-BR", {
-      day: "2-digit",
-      month: "short",
-    });
+    const dt = new Date(d + "T12:00:00");
+    return {
+      day: dt.toLocaleDateString("pt-BR", { day: "2-digit" }),
+      month: dt.toLocaleDateString("pt-BR", { month: "short" }).replace(".", ""),
+    };
   } catch {
-    return d;
+    return null;
   }
 }
+
+// Carousel item width as a fraction of the viewport — leaves a coverflow
+// peek of the neighboring meeting cards on either side.
+const PEEK_RATIO = 0.86;
 
 export default function ReviewPopup({
   reviews,
@@ -38,9 +45,8 @@ export default function ReviewPopup({
   onDismissTask,
 }) {
   const [busy, setBusy] = useState(false);
-  const [dir, setDir] = useState(0); // slide direction for the animation
   const viewportRef = useRef(null);
-  const [w, setW] = useState(0); // measured slide width → px-based slide animation
+  const [w, setW] = useState(0); // measured viewport width → px-based track animation
 
   // Render from the LIVE board so edits show instantly and dismissed (deleted)
   // cards drop out on their own. Each review task's id IS the real card id.
@@ -83,18 +89,14 @@ export default function ReviewPopup({
     return () => ro.disconnect();
   }, [count]);
 
-  const slideVariants = {
-    enter: (d) => ({ x: d >= 0 ? w : -w, opacity: 0 }),
-    center: { x: 0, opacity: 1 },
-    exit: (d) => ({ x: d >= 0 ? -w : w, opacity: 0 }),
-  };
+  const itemWidth = w * PEEK_RATIO;
+  const centerOffset = (w - itemWidth) / 2;
 
-  function goTo(i, direction) {
+  function goTo(i) {
     if (i < 0 || i >= count || i === index) return;
-    setDir(direction);
     onActiveChange?.(liveReviews[i].id);
   }
-  const go = (delta) => goTo(index + delta, delta);
+  const go = (delta) => goTo(index + delta);
 
   async function ackAll() {
     setBusy(true);
@@ -116,24 +118,39 @@ export default function ReviewPopup({
   }
 
   function renderSlide(r) {
+    const accent = hashColor(r.project);
+    const dp = dateParts(r.date);
     return (
       <>
-        <div className="mb-3 flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-md bg-ink/[0.05] px-2 py-1 font-mono text-[11px] font-semibold text-stone-600">
-            {r.projectCreated ? <FolderPlus size={12} /> : <Folder size={12} />}
-            {r.project}
-          </span>
-          {r.projectCreated && (
-            <span className="rounded bg-success/15 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-success">
-              novo projeto
-            </span>
+        <div className="mb-4 flex items-start gap-4">
+          {dp && (
+            <div
+              className="flex shrink-0 flex-col items-center border-b-2 pb-1.5"
+              style={{ borderColor: accent }}
+            >
+              <span className="serif text-4xl font-bold leading-none text-ink">{dp.day}</span>
+              <span className="mt-1 font-mono text-[10px] uppercase tracking-wider text-stone-500">
+                {dp.month}
+              </span>
+            </div>
           )}
-          {(r.meetingTitle || r.date) && (
-            <span className="truncate font-mono text-[10px] text-stone-400">
-              {r.meetingTitle}
-              {r.date ? ` · ${fmtDate(r.date)}` : ""}
-            </span>
-          )}
+          <div className="min-w-0 flex-1 pt-0.5">
+            <h3 className="truncate text-lg font-bold text-ink">{r.project}</h3>
+            <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+              <span
+                className="inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 font-mono text-[10px] font-semibold"
+                style={{ background: `${accent}22`, color: accent }}
+              >
+                {r.projectCreated ? <FolderPlus size={11} /> : <Folder size={11} />}
+                {r.projectCreated ? "novo projeto" : "projeto"}
+              </span>
+              {r.meetingTitle && (
+                <span className="truncate font-mono text-[10px] text-stone-400">
+                  {r.meetingTitle}
+                </span>
+              )}
+            </div>
+          </div>
         </div>
 
         <ul className="space-y-1.5">
@@ -146,7 +163,7 @@ export default function ReviewPopup({
             return (
               <li
                 key={card.id}
-                className="group flex items-center gap-2 rounded-lg surface-3 py-1.5 pl-3 pr-1.5"
+                className="group flex items-center gap-2 rounded-lg surface-3 py-1.5 pl-3 pr-1.5 transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md"
               >
                 <button
                   type="button"
@@ -201,7 +218,7 @@ export default function ReviewPopup({
         exit={{ opacity: 0 }}
       />
       <motion.div
-        className="relative flex max-h-[88vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl surface-2 shadow-2xl"
+        className="relative flex max-h-[88vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl surface-2 shadow-[0_24px_70px_-16px_rgba(20,22,24,0.4)]"
         initial={{ opacity: 0, y: 20, scale: 0.97 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 12, scale: 0.98 }}
@@ -237,26 +254,37 @@ export default function ReviewPopup({
         {/* Carousel nav (only when there's more than one meeting) */}
         {count > 1 && (
           <div className="flex items-center justify-between gap-3 border-b border-ink/10 px-4 py-2.5">
-            <button
+            <motion.button
+              whileHover={{ scale: 1.08 }}
+              whileTap={{ scale: 0.92 }}
               onClick={() => go(-1)}
               disabled={index === 0}
               title="Reunião anterior"
               className="rounded-lg p-1.5 text-stone-500 transition-colors hover:bg-ink/[0.05] hover:text-ink disabled:opacity-30 disabled:hover:bg-transparent"
             >
               <ChevronLeft size={18} />
-            </button>
+            </motion.button>
 
             <div className="flex items-center gap-2.5">
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1">
                 {liveReviews.map((r, i) => (
                   <button
                     key={r.id}
-                    onClick={() => goTo(i, i > index ? 1 : -1)}
+                    onClick={() => goTo(i)}
                     title={r.project}
-                    className={`h-1.5 rounded-full transition-all ${
-                      i === index ? "w-4 bg-action" : "w-1.5 bg-ink/20 hover:bg-ink/40"
-                    }`}
-                  />
+                    className="relative flex h-4 w-5 items-center justify-center"
+                  >
+                    {i === index ? (
+                      <motion.span
+                        layoutId="review-dot"
+                        className="h-1.5 w-4 rounded-full"
+                        style={{ background: hashColor(r.project) }}
+                        transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                      />
+                    ) : (
+                      <span className="h-1.5 w-1.5 rounded-full bg-ink/20 transition-colors hover:bg-ink/40" />
+                    )}
+                  </button>
                 ))}
               </div>
               <span className="font-mono text-[10px] text-stone-400">
@@ -264,14 +292,16 @@ export default function ReviewPopup({
               </span>
             </div>
 
-            <button
+            <motion.button
+              whileHover={{ scale: 1.08 }}
+              whileTap={{ scale: 0.92 }}
               onClick={() => go(1)}
               disabled={index === count - 1}
               title="Próxima reunião"
               className="rounded-lg p-1.5 text-stone-500 transition-colors hover:bg-ink/[0.05] hover:text-ink disabled:opacity-30 disabled:hover:bg-transparent"
             >
               <ChevronRight size={18} />
-            </button>
+            </motion.button>
           </div>
         )}
 
@@ -285,31 +315,42 @@ export default function ReviewPopup({
             <p className="text-xs text-stone-500">Nenhuma tarefa pendente de revisão.</p>
           </div>
         ) : count > 1 ? (
-          <div ref={viewportRef} className="relative h-[min(58vh,26rem)] overflow-hidden">
-            <AnimatePresence initial={false} custom={dir}>
+          <div
+            ref={viewportRef}
+            className="relative h-[min(58vh,26rem)] overflow-hidden surface-1"
+          >
+            {w > 0 && (
               <motion.div
-                key={current.id}
-                custom={dir}
-                variants={slideVariants}
-                initial="enter"
-                animate="center"
-                exit="exit"
-                transition={{
-                  x: { type: "spring", stiffness: 320, damping: 34 },
-                  opacity: { duration: 0.15 },
-                }}
+                className="absolute inset-y-0 left-0 flex items-stretch py-3"
+                style={{ width: count * itemWidth }}
+                animate={{ x: centerOffset - index * itemWidth }}
+                transition={{ type: "spring", stiffness: 320, damping: 34 }}
                 drag="x"
                 dragConstraints={{ left: 0, right: 0 }}
-                dragElastic={0.18}
+                dragElastic={0.15}
                 onDragEnd={(e, info) => {
                   if (info.offset.x < -60 || info.velocity.x < -400) go(1);
                   else if (info.offset.x > 60 || info.velocity.x > 400) go(-1);
                 }}
-                className="absolute inset-0 overflow-y-auto px-6 py-5"
               >
-                {renderSlide(current)}
+                {liveReviews.map((r, i) => {
+                  const isActive = i === index;
+                  return (
+                    <div key={r.id} style={{ width: itemWidth }} className="shrink-0 px-2">
+                      <motion.div
+                        animate={{ scale: isActive ? 1 : 0.94, opacity: isActive ? 1 : 0.45 }}
+                        transition={{ type: "spring", stiffness: 320, damping: 34 }}
+                        className={`h-full overflow-y-auto rounded-xl border border-ink/10 bg-paper px-4 py-5 shadow-[0_10px_30px_-8px_rgba(20,22,24,0.28)] ${
+                          isActive ? "" : "pointer-events-none"
+                        }`}
+                      >
+                        {renderSlide(r)}
+                      </motion.div>
+                    </div>
+                  );
+                })}
               </motion.div>
-            </AnimatePresence>
+            )}
           </div>
         ) : (
           <div className="max-h-[60vh] flex-1 overflow-y-auto px-6 py-5">{renderSlide(current)}</div>
@@ -333,14 +374,16 @@ export default function ReviewPopup({
                 Validar todas
               </button>
             )}
-            <button
+            <motion.button
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.96 }}
               onClick={ackThis}
               disabled={busy}
               className="inline-flex items-center gap-2 rounded-lg bg-action px-5 py-2 text-sm font-bold text-clay transition-all hover:brightness-110 ring-action disabled:opacity-50"
             >
               {busy ? <Spinner /> : <Check size={14} />}{" "}
               {count > 1 ? "Validar esta" : "Validar e dispensar"}
-            </button>
+            </motion.button>
           </div>
         </div>
       </motion.div>

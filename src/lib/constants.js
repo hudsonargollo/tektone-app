@@ -52,6 +52,15 @@ export const PARTNER_COLORS = [
   "#8A8579",
 ];
 
+// Deterministic accent color for a name (project, label, etc.) — stays within
+// a given earthy palette rather than an arbitrary hue.
+export function hashColor(str, palette = LABEL_COLORS) {
+  if (!str) return palette[0];
+  let sum = 0;
+  for (let i = 0; i < str.length; i++) sum += str.charCodeAt(i);
+  return palette[sum % palette.length];
+}
+
 export function today() {
   return new Date().toISOString().slice(0, 10);
 }
