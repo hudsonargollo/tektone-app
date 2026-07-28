@@ -3,7 +3,6 @@
 export const ALLOWED_EMAILS = [
   "hudson@tektone.com.br",
   "pedrosilvestrini@tektone.com.br",
-  "alison@tektone.com.br",
 ];
 
 // Admins can reset other users' accounts (no email infra → admin-assisted reset).
