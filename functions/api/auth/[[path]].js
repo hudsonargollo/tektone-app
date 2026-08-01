@@ -39,7 +39,7 @@ const normEmail = (e) => String(e || "").trim().toLowerCase();
 const validPassword = (p) => typeof p === "string" && p.length >= 8;
 
 // Editable profile fields (never expose salt/hash).
-const PROFILE_FIELDS = ["name", "role", "phone", "location", "bio", "avatar"];
+const PROFILE_FIELDS = ["name", "role", "phone", "location", "bio", "avatar", "emailNotifications"];
 const MAX_AVATAR_LEN = 700000; // ~512 KB image as a data URL
 const publicProfile = (u) => ({
   email: u.email,
@@ -49,6 +49,7 @@ const publicProfile = (u) => ({
   location: u.location ?? "",
   bio: u.bio ?? "",
   avatar: u.avatar ?? "",
+  emailNotifications: u.emailNotifications !== false,
   admin: isAdmin(u.email),
   createdAt: u.createdAt ?? null,
 });
@@ -123,7 +124,9 @@ async function handle(context) {
       if (typeof body.avatar === "string" && body.avatar.length > MAX_AVATAR_LEN)
         return json({ error: "Imagem muito grande. Use uma menor." }, 413);
       for (const f of PROFILE_FIELDS) {
-        if (f in body) users[idx][f] = typeof body[f] === "string" ? body[f] : users[idx][f];
+        if (!(f in body)) continue;
+        if (f === "emailNotifications") users[idx][f] = Boolean(body[f]);
+        else if (typeof body[f] === "string") users[idx][f] = body[f];
       }
       await saveUsers(kv, users);
       return json({ profile: publicProfile(users[idx]) });

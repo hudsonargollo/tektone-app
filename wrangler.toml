@@ -7,3 +7,13 @@ compatibility_date = "2024-11-01"
 [[kv_namespaces]]
 binding = "KANBAN"
 id = "b06af75d5fe74e4c83863bf6a36030d0"
+
+# Durable Object binding for realtime board broadcasts (confetti on card
+# review). The class itself lives in the separate `realtime-worker/` Worker —
+# Pages Functions can't define Durable Objects, only consume one. Deploy that
+# Worker (`cd realtime-worker && npm run deploy`) before deploying this Pages
+# project, or the binding won't resolve.
+[[durable_objects.bindings]]
+name = "BOARD_ROOM"
+class_name = "BoardRoom"
+script_name = "tektone-realtime"

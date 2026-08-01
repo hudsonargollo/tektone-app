@@ -44,6 +44,8 @@ export const api = {
   createCard: (body) => req("/kanban/cards", { method: "POST", body }),
   updateCard: (id, body) => req(`/kanban/cards/${id}`, { method: "PUT", body }),
   deleteCard: (id) => req(`/kanban/cards/${id}`, { method: "DELETE" }),
+  reviewCard: (id) => req(`/kanban/cards/${id}/review`, { method: "POST" }),
+  reviewCardsBulk: (ids) => req("/kanban/cards/review-bulk", { method: "POST", body: { ids } }),
 
   // comments / material requests
   addComment: (cardId, text, kind) =>

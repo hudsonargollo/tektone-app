@@ -8,6 +8,9 @@ import {
   ChevronsRightLeft,
   ChevronsLeftRight,
   CheckSquare,
+  Square,
+  CheckCircle2,
+  ListChecks,
   Link2,
   Sparkles,
   MessageSquare,
@@ -19,7 +22,20 @@ import { Avatar, PriorityBadge } from "@/components/ui";
 const COLLAPSE_KEY = "tk_collapsed_cols";
 
 // ── Card ────────────────────────────────────────────────────────────────────
-function Card({ card, client, avatarByName, onEdit, onDelete, onDragStart, onDragEnd, dragging }) {
+function Card({
+  card,
+  client,
+  avatarByName,
+  onEdit,
+  onDelete,
+  onDragStart,
+  onDragEnd,
+  dragging,
+  onReview,
+  selectable,
+  selected,
+  onToggleSelect,
+}) {
   const overdue = card.dueDate && card.dueDate < today() && card.columnId !== "done";
   const assignees = card.assignees?.length ? card.assignees : card.assignee ? [card.assignee] : [];
   const checklist = card.checklist ?? [];
@@ -42,30 +58,56 @@ function Card({ card, client, avatarByName, onEdit, onDelete, onDragStart, onDra
       whileHover={dragging ? undefined : { y: -3 }}
       whileTap={{ scale: 0.98 }}
       transition={{ type: "spring", stiffness: 500, damping: 40 }}
-      draggable
+      draggable={!selectable}
       onDragStart={(e) => {
         e.dataTransfer.effectAllowed = "move";
         onDragStart(card.id);
       }}
       onDragEnd={onDragEnd}
-      onClick={() => onEdit(card)}
-      className="group relative cursor-pointer overflow-hidden rounded-xl surface-2 pl-4 pr-3.5 py-3.5 shadow-sm transition-shadow duration-200 hover:shadow-[0_8px_24px_rgba(20,22,24,0.10)]"
+      onClick={() => (selectable ? onToggleSelect(card.id) : onEdit(card))}
+      className={`group relative cursor-pointer overflow-hidden rounded-xl surface-2 pl-4 pr-3.5 py-3.5 shadow-sm transition-shadow duration-200 hover:shadow-[0_8px_24px_rgba(20,22,24,0.10)] ${
+        selected ? "ring-2 ring-action" : ""
+      }`}
     >
       <span
         className="absolute inset-y-0 left-0 w-1 transition-all duration-200 group-hover:w-1.5"
         style={{ background: accent, opacity: 0.6 }}
         aria-hidden
       />
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          onDelete(card.id);
-        }}
-        className="absolute right-2 top-2 rounded-md p-1 text-stone-400 opacity-0 transition-all hover:bg-danger/10 hover:text-danger group-hover:opacity-100"
-        title="Excluir"
-      >
-        <Trash2 size={12} />
-      </button>
+      {selectable ? (
+        <span
+          className={`absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-md ${
+            selected ? "bg-action text-clay" : "text-stone-300"
+          }`}
+        >
+          {selected ? <CheckSquare size={15} /> : <Square size={15} />}
+        </span>
+      ) : (
+        <>
+          {card.columnId === "review" && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onReview(card.id);
+              }}
+              className="absolute right-8 top-2 rounded-md p-1 text-stone-400 opacity-0 transition-all hover:bg-success/10 hover:text-success group-hover:opacity-100"
+              title="Marcar como revisado"
+            >
+              <CheckCircle2 size={13} />
+            </button>
+          )}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(card.id);
+            }}
+            className="absolute right-2 top-2 rounded-md p-1 text-stone-400 opacity-0 transition-all hover:bg-danger/10 hover:text-danger group-hover:opacity-100"
+            title="Excluir"
+          >
+            <Trash2 size={12} />
+          </button>
+        </>
+      )}
 
       {card.labelColor && (
         <div className="mb-3 h-1 w-10 rounded-full" style={{ background: card.labelColor }} />
@@ -292,9 +334,33 @@ function Column({
   onDrop,
   onQuickAdd,
   onCollapse,
+  onReview,
+  onReviewBulk,
   draggingId,
   ...handlers
 }) {
+  const isReviewCol = col.id === "review";
+  const [selectMode, setSelectMode] = useState(false);
+  const [selected, setSelected] = useState(new Set());
+
+  const toggleSelect = (id) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+
+  const exitSelectMode = () => {
+    setSelectMode(false);
+    setSelected(new Set());
+  };
+
+  const approveSelected = async () => {
+    if (!selected.size) return;
+    await onReviewBulk([...selected]);
+    exitSelectMode();
+  };
+
   return (
     <div className="flex min-h-0 min-w-[15rem] flex-1 flex-col">
       <div className="mb-3 flex shrink-0 items-center justify-between px-1">
@@ -307,13 +373,28 @@ function Column({
             {cards.length}
           </span>
         </div>
-        <button
-          onClick={onCollapse}
-          title={`Minimizar ${col.title}`}
-          className="rounded-md p-1 text-stone-400 transition-colors hover:bg-ink/[0.05] hover:text-action"
-        >
-          <ChevronsRightLeft size={13} />
-        </button>
+        <div className="flex items-center gap-1">
+          {isReviewCol && cards.length > 0 && (
+            <button
+              onClick={() => (selectMode ? exitSelectMode() : setSelectMode(true))}
+              title={selectMode ? "Cancelar seleção" : "Selecionar cards para aprovar"}
+              className={`rounded-md p-1 transition-colors ${
+                selectMode
+                  ? "bg-action/15 text-action"
+                  : "text-stone-400 hover:bg-ink/[0.05] hover:text-action"
+              }`}
+            >
+              <ListChecks size={13} />
+            </button>
+          )}
+          <button
+            onClick={onCollapse}
+            title={`Minimizar ${col.title}`}
+            className="rounded-md p-1 text-stone-400 transition-colors hover:bg-ink/[0.05] hover:text-action"
+          >
+            <ChevronsRightLeft size={13} />
+          </button>
+        </div>
       </div>
 
       <div
@@ -342,6 +423,10 @@ function Column({
               client={clients.find((c) => c.id === card.clientId)}
               avatarByName={avatarByName}
               dragging={draggingId === card.id}
+              onReview={onReview}
+              selectable={selectMode}
+              selected={selected.has(card.id)}
+              onToggleSelect={toggleSelect}
               {...handlers}
             />
           ))}
@@ -355,6 +440,15 @@ function Column({
 
         <QuickAdd columnId={col.id} onAdd={onQuickAdd} />
       </div>
+
+      {selectMode && selected.size > 0 && (
+        <button
+          onClick={approveSelected}
+          className="mt-2 flex shrink-0 items-center justify-center gap-2 rounded-lg bg-success px-3 py-2 text-xs font-bold text-clay shadow-md transition-all hover:brightness-110"
+        >
+          <CheckCircle2 size={14} /> Aprovar {selected.size}
+        </button>
+      )}
     </div>
   );
 }
@@ -366,7 +460,7 @@ const slideVariants = {
   exit: (d) => ({ opacity: 0, x: d > 0 ? -36 : 36 }),
 };
 
-function MobileBoard({ cards, clients, avatarByName, flat, onEdit, onDelete, onQuickAdd }) {
+function MobileBoard({ cards, clients, avatarByName, flat, onEdit, onDelete, onQuickAdd, onReview }) {
   const [index, setIndex] = useState(() => Math.max(0, COLUMNS.findIndex((c) => c.id === "todo")));
   const [dir, setDir] = useState(0);
   const touch = useRef(null);
@@ -394,6 +488,7 @@ function MobileBoard({ cards, clients, avatarByName, flat, onEdit, onDelete, onQ
               onDragStart={noop}
               onDragEnd={noop}
               dragging={false}
+              onReview={onReview}
             />
           ))}
           {cards.length === 0 && (
@@ -489,6 +584,7 @@ function MobileBoard({ cards, clients, avatarByName, flat, onEdit, onDelete, onQ
                 onDragStart={noop}
                 onDragEnd={noop}
                 dragging={false}
+                onReview={onReview}
               />
             ))}
             {colCards.length === 0 && (
@@ -505,7 +601,18 @@ function MobileBoard({ cards, clients, avatarByName, flat, onEdit, onDelete, onQ
 }
 
 // ── Board ────────────────────────────────────────────────────────────────────
-export default function Board({ cards, clients, avatarByName, requestsOnly, onEdit, onDelete, onQuickAdd, onMove }) {
+export default function Board({
+  cards,
+  clients,
+  avatarByName,
+  requestsOnly,
+  onEdit,
+  onDelete,
+  onQuickAdd,
+  onMove,
+  onReview,
+  onReviewBulk,
+}) {
   const [draggingId, setDraggingId] = useState(null);
   const [overCol, setOverCol] = useState(null);
   const [collapsed, setCollapsed] = useState(() => {
@@ -576,6 +683,8 @@ export default function Board({ cards, clients, avatarByName, requestsOnly, onEd
               onDragStart={setDraggingId}
               onDragEnd={() => setDraggingId(null)}
               draggingId={draggingId}
+              onReview={onReview}
+              onReviewBulk={onReviewBulk}
             />
           );
         })}
@@ -590,6 +699,7 @@ export default function Board({ cards, clients, avatarByName, requestsOnly, onEd
         onEdit={onEdit}
         onDelete={onDelete}
         onQuickAdd={onQuickAdd}
+        onReview={onReview}
       />
     </>
   );

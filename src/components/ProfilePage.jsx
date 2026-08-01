@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { X, Camera, Trash2, Check, Mail } from "lucide-react";
+import { X, Camera, Trash2, Check, Mail, Bell } from "lucide-react";
 import { api } from "@/lib/api";
-import { Avatar, Spinner } from "@/components/ui";
+import { Avatar, Spinner, Toggle } from "@/components/ui";
 
 const labelCls =
   "mb-1.5 block font-mono text-[11px] font-medium uppercase tracking-[0.16em] text-stone-500";
@@ -76,6 +76,7 @@ export default function ProfilePage({ onClose, onSaved }) {
         location: p.location,
         bio: p.bio,
         avatar: p.avatar,
+        emailNotifications: p.emailNotifications,
       });
       setP(profile);
       onSaved?.(profile);
@@ -222,6 +223,18 @@ export default function ProfilePage({ onClose, onSaved }) {
                 onChange={(e) => set("bio", e.target.value)}
                 placeholder="Sobre você…"
                 className={`${inputCls} resize-none`}
+              />
+            </div>
+
+            <div className="flex items-center justify-between gap-3 rounded-lg border border-ink/10 bg-ink/[0.02] px-3 py-2.5">
+              <span className="flex items-center gap-2 text-sm text-ink">
+                <Bell size={14} className="shrink-0 text-stone-400" />
+                Notificações por e-mail
+              </span>
+              <Toggle
+                checked={p.emailNotifications !== false}
+                onChange={(v) => set("emailNotifications", v)}
+                label="Notificações por e-mail"
               />
             </div>
           </div>

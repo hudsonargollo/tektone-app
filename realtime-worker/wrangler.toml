@@ -1,0 +1,11 @@
+name = "tektone-realtime"
+main = "src/index.js"
+compatibility_date = "2024-11-01"
+
+[[durable_objects.bindings]]
+name = "BOARD_ROOM"
+class_name = "BoardRoom"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["BoardRoom"]

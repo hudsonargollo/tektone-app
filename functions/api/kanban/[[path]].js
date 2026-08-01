@@ -4,13 +4,19 @@
  *
  * KV keys:
  *   kanban:clients  → [{ id, name, color }]
- *   kanban:cards    → [{ id, columnId, title, description, priority, clientId, assignee, dueDate, labelColor, createdAt }]
+ *   kanban:cards    → [{ id, columnId, title, description, priority, clientId, assignee, dueDate, labelColor, createdAt, reviewed, reviewedAt, reviewedBy }]
  *   kanban:members  → [{ id, name, email, role }]
  *
  * Routes (relative to /api/kanban):
  *   GET|POST          /clients          PUT|DELETE /clients/:id
  *   GET|POST          /cards            PUT|DELETE /cards/:id
+ *   POST              /cards/:id/review           — mark reviewed, move to Done, notify + broadcast
+ *   POST              /cards/review-bulk          — same, for a batch of ids
  *   GET|POST          /members          PUT|DELETE /members/:id
+ *
+ * A "reviewed" event is recorded as a system comment (kind: "reviewed") on the
+ * card so it flows through the existing unread-comments notification bell and
+ * email pipeline without a parallel notification system.
  */
 
 import { verifySession, getCookie } from "../../_lib/session.js";
@@ -84,13 +90,28 @@ const initialsOf = (name) =>
   (name || "?").split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase();
 const hueOf = (name) => (name ? (name.charCodeAt(0) * 47) % 360 : 200);
 
-// Branded "Mineral" transactional email for a comment / material request.
+// Drop recipients who opted out of email notifications on their profile
+// (in-app/bell notifications are never filtered — this is email-only).
+function filterOptedIn(emails, authUsers) {
+  const optedOut = new Set(
+    authUsers
+      .filter((u) => u.emailNotifications === false)
+      .map((u) => String(u.email).toLowerCase())
+  );
+  return emails.filter((e) => !optedOut.has(String(e).toLowerCase()));
+}
+
+// Branded "Mineral" transactional email for a comment / material request / review.
 function notificationEmail({ authorName, authorEmail, authorHasAvatar, kind, text, cardTitle, projectName, projectColor, cardUrl, firstNames }) {
   const isReq = kind === "request";
-  const tag = isReq
-    ? { label: "Nova solicitação", color: "#B8862F", bg: "rgba(184,134,47,0.14)" }
-    : { label: "Novo comentário", color: "#2E4A43", bg: "rgba(46,74,67,0.12)" };
-  const verb = isReq ? "fez uma solicitação" : "comentou";
+  const isReviewed = kind === "reviewed";
+  const tag = isReviewed
+    ? { label: "Tarefa concluída", color: "#2E4A43", bg: "rgba(46,74,67,0.14)" }
+    : isReq
+      ? { label: "Nova solicitação", color: "#B8862F", bg: "rgba(184,134,47,0.14)" }
+      : { label: "Novo comentário", color: "#2E4A43", bg: "rgba(46,74,67,0.12)" };
+  const verb = isReviewed ? "revisou e concluiu" : isReq ? "fez uma solicitação" : "comentou";
+  const caption = isReviewed ? "concluiu esta tarefa" : `${verb} em uma tarefa`;
 
   const body = escHtml(text)
     .replace(/@(\w+)/g, (m, n) =>
@@ -119,7 +140,7 @@ function notificationEmail({ authorName, authorEmail, authorHasAvatar, kind, tex
 <div style="display:inline-block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.14em;color:${tag.color};background:${tag.bg};padding:5px 11px;border-radius:6px;margin-bottom:18px;">${tag.label}</div>
 <table role="presentation" cellpadding="0" cellspacing="0" style="margin-bottom:16px;"><tr>
 <td style="vertical-align:middle;">${avatarCell}</td>
-<td style="vertical-align:middle;padding-left:12px;"><div style="font-size:14px;font-weight:700;color:#141618;">${escHtml(authorName)}</div><div style="font-size:12px;color:#8A8579;">${verb} em uma tarefa</div></td>
+<td style="vertical-align:middle;padding-left:12px;"><div style="font-size:14px;font-weight:700;color:#141618;">${escHtml(authorName)}</div><div style="font-size:12px;color:#8A8579;">${caption}</div></td>
 </tr></table>
 <div style="font-size:20px;font-weight:700;color:#141618;line-height:1.25;margin-bottom:10px;">${escHtml(cardTitle)}</div>
 ${pill}
@@ -131,6 +152,96 @@ ${pill}
 <a href="https://tasks.tektone.com.br" style="font-size:11px;color:#2E4A43;text-decoration:none;font-weight:600;">tasks.tektone.com.br</a>
 </td></tr>
 </table></td></tr></table></body></html>`;
+}
+
+// Mutates `card` in place: moves it to Done and appends a system "reviewed"
+// comment mentioning its assignees (so the existing bell/email pipeline picks
+// it up). Returns the comment + the assignee emails it mentioned.
+function markReviewed(card, members, reviewerEmail, reviewerName) {
+  card.reviewed = true;
+  card.reviewedAt = new Date().toISOString();
+  card.reviewedBy = reviewerName;
+  card.columnId = "done";
+  card.comments = card.comments || [];
+
+  const assigneeNames = card.assignees?.length
+    ? card.assignees
+    : card.assignee
+      ? [card.assignee]
+      : [];
+  const norm = (s) => String(s || "").trim().toLowerCase();
+  const mentioned = [
+    ...new Set(
+      assigneeNames
+        .map((n) => members.find((m) => norm(m.name) === norm(n))?.email)
+        .filter(Boolean)
+        .map((e) => e.toLowerCase())
+        .filter((e) => e !== norm(reviewerEmail))
+    ),
+  ];
+
+  const comment = {
+    id: uid(),
+    text: "revisou e concluiu esta tarefa",
+    kind: "reviewed",
+    author: reviewerEmail,
+    authorName: reviewerName,
+    mentions: mentioned,
+    createdAt: card.reviewedAt,
+    resolvedAt: null,
+    resolvedBy: null,
+  };
+  card.comments.push(comment);
+  return { comment, mentioned };
+}
+
+// Best-effort email + realtime broadcast for a just-reviewed card (mirrors the
+// mention-email flow above). Never throws — a missed notification/broadcast
+// shouldn't fail the review action itself.
+async function notifyReview(context, env, kv, card, mentioned, members, authUsers, reviewerEmail, reviewerName) {
+  const clients = await kvGet(kv, "kanban:clients", []);
+  const client = clients.find((c) => c.id === card.clientId);
+  const cardUrl = `https://tasks.tektone.com.br/?card=${card.id}`;
+
+  if (mentioned.length) {
+    const recipients = filterOptedIn(mentioned, authUsers);
+    if (recipients.length) {
+      const authorHasAvatar = Boolean(
+        authUsers.find((u) => String(u.email).toLowerCase() === reviewerEmail.toLowerCase())?.avatar
+      );
+      const firstNames = new Set(members.map((m) => String(m.name).split(/\s+/)[0].toLowerCase()));
+      const html = notificationEmail({
+        authorName: reviewerName,
+        authorEmail: reviewerEmail,
+        authorHasAvatar,
+        kind: "reviewed",
+        text: "revisou e concluiu esta tarefa",
+        cardTitle: card.title,
+        projectName: client?.name,
+        projectColor: client?.color,
+        cardUrl,
+        firstNames,
+      });
+      context.waitUntil(
+        sendEmail(env, {
+          to: recipients,
+          subject: `${reviewerName} concluiu — ${card.title}`,
+          text: `${reviewerName} revisou e concluiu "${card.title}".\n\nAbrir: ${cardUrl}`,
+          html,
+          replyTo: reviewerEmail,
+        }).catch(() => {})
+      );
+    }
+  }
+
+  if (env.BOARD_ROOM) {
+    context.waitUntil(
+      env.BOARD_ROOM
+        .getByName("main")
+        .broadcast({ type: "card:reviewed", cardId: card.id, cardTitle: card.title, reviewerName })
+        .catch(() => {})
+    );
+  }
 }
 
 // ── Seed data (TEKTONE) ───────────────────────────────────────────────────
@@ -259,15 +370,18 @@ export async function onRequest(context) {
               cardUrl,
               firstNames,
             });
-            context.waitUntil(
-              sendEmail(env, {
-                to: comment.mentions,
-                subject: `${authorName} ${verbSubj} — ${card.title}`,
-                text: `${authorName} ${verbSubj} em "${card.title}":\n\n${text}\n\nAbrir: ${cardUrl}`,
-                html,
-                replyTo: email,
-              }).catch(() => {})
-            );
+            const recipients = filterOptedIn(comment.mentions, authUsers);
+            if (recipients.length) {
+              context.waitUntil(
+                sendEmail(env, {
+                  to: recipients,
+                  subject: `${authorName} ${verbSubj} — ${card.title}`,
+                  text: `${authorName} ${verbSubj} em "${card.title}":\n\n${text}\n\nAbrir: ${cardUrl}`,
+                  html,
+                  replyTo: email,
+                }).catch(() => {})
+              );
+            }
           }
           return json({ card, comment }, 201);
         }
@@ -295,6 +409,23 @@ export async function onRequest(context) {
         return json({ error: "Not found" }, 404);
       }
 
+      // /cards/:id/review — mark reviewed, move to Done, notify + broadcast
+      if (id && seg[2] === "review" && method === "POST") {
+        const email = await verifySession(env.SESSION_SECRET, getCookie(request, "tk_session"));
+        if (!email) return json({ error: "unauthorized" }, 401);
+        const cards = await kvGet(kv, "kanban:cards", []);
+        const card = cards.find((c) => c.id === id);
+        if (!card) return json({ error: "Card not found" }, 404);
+        const members = await kvGet(kv, "kanban:members", []);
+        const authUsers = await kvGet(kv, "auth:users", []);
+        const reviewerName =
+          members.find((m) => String(m.email).toLowerCase() === email.toLowerCase())?.name || email;
+        const { mentioned } = markReviewed(card, members, email, reviewerName);
+        await kvSet(kv, "kanban:cards", cards);
+        await notifyReview(context, env, kv, card, mentioned, members, authUsers, email, reviewerName);
+        return json({ card });
+      }
+
       // /cards/:id/seen — mark this card's comments as read by the current user
       if (id && seg[2] === "seen" && method === "POST") {
         const email = await verifySession(env.SESSION_SECRET, getCookie(request, "tk_session"));
@@ -316,6 +447,28 @@ export async function onRequest(context) {
           await kvSet(kv, "kanban:cards", cards);
           return json({ card }, 201);
         }
+      } else if (id === "review-bulk" && method === "POST") {
+        const email = await verifySession(env.SESSION_SECRET, getCookie(request, "tk_session"));
+        if (!email) return json({ error: "unauthorized" }, 401);
+        const body = await request.json().catch(() => ({}));
+        const ids = new Set(Array.isArray(body.ids) ? body.ids : []);
+        if (!ids.size) return json({ error: "Nenhum card selecionado." }, 400);
+        const cards = await kvGet(kv, "kanban:cards", []);
+        const members = await kvGet(kv, "kanban:members", []);
+        const authUsers = await kvGet(kv, "auth:users", []);
+        const reviewerName =
+          members.find((m) => String(m.email).toLowerCase() === email.toLowerCase())?.name || email;
+        const reviewed = [];
+        for (const card of cards) {
+          if (!ids.has(card.id)) continue;
+          const { mentioned } = markReviewed(card, members, email, reviewerName);
+          reviewed.push({ card, mentioned });
+        }
+        await kvSet(kv, "kanban:cards", cards);
+        for (const r of reviewed) {
+          await notifyReview(context, env, kv, r.card, r.mentioned, members, authUsers, email, reviewerName);
+        }
+        return json({ cards: reviewed.map((r) => r.card) });
       } else {
         const cards = await kvGet(kv, "kanban:cards", []);
         if (method === "PUT") {

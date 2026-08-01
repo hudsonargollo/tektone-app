@@ -20,7 +20,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { COLUMNS, PRIORITY, LABEL_COLORS } from "@/lib/constants";
-import { Avatar, useIsMobile } from "@/components/ui";
+import { Avatar, Spinner, useIsMobile } from "@/components/ui";
 import { api } from "@/lib/api";
 
 const labelCls =
@@ -760,17 +760,20 @@ function Comments({ cardId, comments, members = [], currentUser, isAdmin, avatar
         <div className="mb-3 space-y-2">
           {list.map((c) => {
             const isReq = c.kind === "request";
+            const isReviewed = c.kind === "reviewed";
             const done = Boolean(c.resolvedAt);
             const mine = currentUser?.email && c.author === currentUser.email;
             return (
               <div
                 key={c.id}
                 className={`group/c rounded-lg border p-2.5 ${
-                  isReq
-                    ? done
-                      ? "border-success/30 bg-success/[0.05]"
-                      : "border-warning/40 bg-warning/[0.06]"
-                    : "border-ink/10 bg-ink/[0.02]"
+                  isReviewed
+                    ? "border-success/30 bg-success/[0.05]"
+                    : isReq
+                      ? done
+                        ? "border-success/30 bg-success/[0.05]"
+                        : "border-warning/40 bg-warning/[0.06]"
+                      : "border-ink/10 bg-ink/[0.02]"
                 }`}
               >
                 <div className="mb-1 flex items-center gap-2">
@@ -786,6 +789,11 @@ function Comments({ cardId, comments, members = [], currentUser, isAdmin, avatar
                       }`}
                     >
                       <Package size={9} /> {done ? "atendida" : "solicitação"}
+                    </span>
+                  )}
+                  {isReviewed && (
+                    <span className="inline-flex items-center gap-1 rounded bg-success/15 px-1.5 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-wider text-success">
+                      <CheckCircle2 size={9} /> concluído
                     </span>
                   )}
                   <span className="ml-auto font-mono text-[10px] text-stone-400">
@@ -921,6 +929,19 @@ export default function CardModal({
   const applyCommentUpdate = (serverCard) => {
     setD((p) => ({ ...p, comments: serverCard.comments || [] }));
     onCardUpdated?.(serverCard);
+  };
+
+  const [reviewing, setReviewing] = useState(false);
+  const markReviewed = async () => {
+    if (reviewing) return;
+    setReviewing(true);
+    try {
+      const { card: serverCard } = await api.reviewCard(card.id);
+      onCardUpdated?.(serverCard);
+      onClose();
+    } catch {
+      setReviewing(false);
+    }
   };
 
   useEffect(() => {
@@ -1127,6 +1148,16 @@ export default function CardModal({
             ⌘+↵ salvar · esc fechar
           </span>
           <div className="flex gap-2">
+            {d.columnId !== "done" && (
+              <button
+                onClick={markReviewed}
+                disabled={reviewing}
+                className="inline-flex items-center gap-2 rounded-lg border border-success/40 bg-success/10 px-4 py-2 text-sm font-bold text-success transition-all hover:bg-success/20 disabled:opacity-50"
+                title="Marca como revisado e move para Concluído"
+              >
+                {reviewing ? <Spinner /> : <CheckCircle2 size={14} />} Marcar como revisado
+              </button>
+            )}
             <button
               onClick={onClose}
               className="rounded-lg px-4 py-2 text-sm font-semibold text-stone-500 transition-colors hover:text-ink"

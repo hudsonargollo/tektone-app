@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Bell, Package, MessageSquare } from "lucide-react";
+import { Bell, Package, MessageSquare, PartyPopper } from "lucide-react";
 import { api } from "@/lib/api";
 import { Avatar } from "@/components/ui";
 
@@ -111,6 +111,8 @@ export default function NotificationsBell({ authed, avatarByName, onOpenCard, re
                           <span className="flex items-center gap-1.5">
                             {n.last.kind === "request" ? (
                               <Package size={11} className="shrink-0 text-warning" />
+                            ) : n.last.kind === "reviewed" ? (
+                              <PartyPopper size={11} className="shrink-0 text-success" />
                             ) : (
                               <MessageSquare size={11} className="shrink-0 text-stone-400" />
                             )}

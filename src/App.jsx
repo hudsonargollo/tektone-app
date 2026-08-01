@@ -3,6 +3,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import { AlertCircle, LogOut, ShieldCheck, Menu, X, Sparkles, Package, Download, LayoutGrid } from "lucide-react";
 import { api } from "@/lib/api";
 import { today } from "@/lib/constants";
+import { useRealtime } from "@/lib/useRealtime";
+import { fireDuotoneConfetti } from "@/lib/confetti";
 import { Spinner, Avatar } from "@/components/ui";
 import Sidebar from "@/components/Sidebar";
 import TopBar from "@/components/TopBar";
@@ -91,6 +93,12 @@ export default function App() {
     if (authed) loadData();
   }, [authed, loadData]);
 
+  // Silent card refetch — used by the realtime channel below, which shouldn't
+  // flip the full-board loading spinner on every broadcast.
+  const refreshCards = useCallback(() => {
+    api.listCards().then(({ cards: cd }) => setCards(cd)).catch(() => {});
+  }, []);
+
   // Pending meeting-notes review batches for this user (validation popup).
   useEffect(() => {
     if (!authed) return;
@@ -123,6 +131,19 @@ export default function App() {
   // ── Comment notifications (per-user unread) ───────────────────────────────────
   // The bell owns its own polling/state; we just nudge it after relevant events.
   const bumpNotifs = () => setNotifSignal((s) => s + 1);
+
+  // Realtime board events (currently just "card:reviewed", for confetti).
+  const onRealtimeEvent = useCallback(
+    (evt) => {
+      if (evt.type === "card:reviewed") {
+        fireDuotoneConfetti();
+        refreshCards();
+        bumpNotifs();
+      }
+    },
+    [refreshCards]
+  );
+  useRealtime(authed, onRealtimeEvent);
 
   function openCard(card) {
     setEditing(card);
@@ -312,6 +333,29 @@ export default function App() {
       await api.updateCard(id, rest);
     } catch {
       /* keep optimistic state; KV will reconcile on next load */
+    }
+  }
+
+  // Approve + move to Done. The confetti itself fires from the realtime
+  // broadcast (useRealtime above), same as for every other connected viewer.
+  async function reviewCard(id) {
+    try {
+      const { card } = await api.reviewCard(id);
+      setCards((p) => p.map((c) => (c.id === card.id ? card : c)));
+      bumpNotifs();
+    } catch (e) {
+      setError(e.message);
+    }
+  }
+
+  async function reviewCardsBulk(ids) {
+    try {
+      const { cards: updatedCards } = await api.reviewCardsBulk(ids);
+      const byId = new Map(updatedCards.map((c) => [c.id, c]));
+      setCards((p) => p.map((c) => byId.get(c.id) ?? c));
+      bumpNotifs();
+    } catch (e) {
+      setError(e.message);
     }
   }
 
@@ -514,6 +558,8 @@ export default function App() {
                 onDelete={deleteCard}
                 onQuickAdd={quickAdd}
                 onMove={moveCard}
+                onReview={reviewCard}
+                onReviewBulk={reviewCardsBulk}
               />
             </div>
           </div>
@@ -711,9 +757,7 @@ export default function App() {
             onDelete={deleteCard}
             onClose={() => setEditing(null)}
             onCardUpdated={(serverCard) => {
-              setCards((p) =>
-                p.map((c) => (c.id === serverCard.id ? { ...c, comments: serverCard.comments } : c))
-              );
+              setCards((p) => p.map((c) => (c.id === serverCard.id ? serverCard : c)));
               bumpNotifs();
             }}
           />
