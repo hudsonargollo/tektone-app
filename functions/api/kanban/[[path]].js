@@ -473,10 +473,44 @@ export async function onRequest(context) {
         const cards = await kvGet(kv, "kanban:cards", []);
         if (method === "PUT") {
           const body = await request.json();
+          const card = cards.find((c) => c.id === id);
+          if (!card) return json({ error: "Card not found" }, 404);
+
+          // Dragging a previously-reviewed card back out of Done (e.g. into
+          // Em Revisão) reopens it — clear the reviewed flags and log it in
+          // the comment thread, mirroring the request resolve/reopen pattern.
+          let reopenComment = null;
+          if (card.reviewed && "columnId" in body && body.columnId !== "done" && body.columnId !== card.columnId) {
+            const email = await verifySession(env.SESSION_SECRET, getCookie(request, "tk_session"));
+            const members = await kvGet(kv, "kanban:members", []);
+            const actorName =
+              members.find((m) => String(m.email).toLowerCase() === String(email).toLowerCase())?.name ||
+              email ||
+              "Alguém";
+            body.reviewed = false;
+            body.reviewedAt = null;
+            body.reviewedBy = null;
+            reopenComment = {
+              id: uid(),
+              text: "reabriu esta tarefa",
+              kind: "reviewed",
+              reopened: true,
+              author: email || "",
+              authorName: actorName,
+              mentions: [],
+              createdAt: new Date().toISOString(),
+              resolvedAt: null,
+              resolvedBy: null,
+            };
+          }
+
           // never let a card edit overwrite the comment thread
-          const updated = cards.map((c) =>
-            c.id === id ? { ...c, ...body, id, comments: c.comments } : c
-          );
+          const updated = cards.map((c) => {
+            if (c.id !== id) return c;
+            const merged = { ...c, ...body, id, comments: c.comments };
+            if (reopenComment) merged.comments = [...(c.comments || []), reopenComment];
+            return merged;
+          });
           await kvSet(kv, "kanban:cards", updated);
           return json({ card: updated.find((c) => c.id === id) });
         }
@@ -564,6 +598,7 @@ export async function onRequest(context) {
           last: {
             authorName: last.authorName,
             kind: last.kind,
+            reopened: Boolean(last.reopened),
             text: String(last.text || "").slice(0, 100),
             createdAt: last.createdAt,
           },

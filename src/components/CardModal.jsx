@@ -18,6 +18,7 @@ import {
   Package,
   Send,
   CheckCircle2,
+  Undo2,
 } from "lucide-react";
 import { COLUMNS, PRIORITY, LABEL_COLORS } from "@/lib/constants";
 import { Avatar, Spinner, useIsMobile } from "@/components/ui";
@@ -760,7 +761,8 @@ function Comments({ cardId, comments, members = [], currentUser, isAdmin, avatar
         <div className="mb-3 space-y-2">
           {list.map((c) => {
             const isReq = c.kind === "request";
-            const isReviewed = c.kind === "reviewed";
+            const isReviewed = c.kind === "reviewed" && !c.reopened;
+            const isReopened = c.kind === "reviewed" && c.reopened;
             const done = Boolean(c.resolvedAt);
             const mine = currentUser?.email && c.author === currentUser.email;
             return (
@@ -769,11 +771,13 @@ function Comments({ cardId, comments, members = [], currentUser, isAdmin, avatar
                 className={`group/c rounded-lg border p-2.5 ${
                   isReviewed
                     ? "border-success/30 bg-success/[0.05]"
-                    : isReq
-                      ? done
-                        ? "border-success/30 bg-success/[0.05]"
-                        : "border-warning/40 bg-warning/[0.06]"
-                      : "border-ink/10 bg-ink/[0.02]"
+                    : isReopened
+                      ? "border-warning/40 bg-warning/[0.06]"
+                      : isReq
+                        ? done
+                          ? "border-success/30 bg-success/[0.05]"
+                          : "border-warning/40 bg-warning/[0.06]"
+                        : "border-ink/10 bg-ink/[0.02]"
                 }`}
               >
                 <div className="mb-1 flex items-center gap-2">
@@ -794,6 +798,11 @@ function Comments({ cardId, comments, members = [], currentUser, isAdmin, avatar
                   {isReviewed && (
                     <span className="inline-flex items-center gap-1 rounded bg-success/15 px-1.5 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-wider text-success">
                       <CheckCircle2 size={9} /> concluído
+                    </span>
+                  )}
+                  {isReopened && (
+                    <span className="inline-flex items-center gap-1 rounded bg-warning/15 px-1.5 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-wider text-warning">
+                      <Undo2 size={9} /> reaberto
                     </span>
                   )}
                   <span className="ml-auto font-mono text-[10px] text-stone-400">
