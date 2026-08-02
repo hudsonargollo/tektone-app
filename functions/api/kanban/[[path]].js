@@ -383,7 +383,75 @@ export async function onRequest(context) {
               );
             }
           }
+          if (comment.mentions.length && env.BOARD_ROOM) {
+            context.waitUntil(
+              env.BOARD_ROOM
+                .getByName("main")
+                .broadcast({
+                  type: "comment:mention",
+                  recipients: comment.mentions,
+                  cardId: card.id,
+                  cardTitle: card.title,
+                  commentId: comment.id,
+                  authorName,
+                  text: text.slice(0, 100),
+                })
+                .catch(() => {})
+            );
+          }
           return json({ card, comment }, 201);
+        }
+        if (commentId && seg[4] === "nudge" && method === "POST") {
+          const c = card.comments.find((x) => x.id === commentId);
+          if (!c) return json({ error: "Comment not found" }, 404);
+          const body = await request.json().catch(() => ({}));
+          const to = String(body.to || "").toLowerCase().trim();
+          const norm = (s) => String(s || "").trim().toLowerCase();
+          if (!to || to === email.toLowerCase()) return json({ error: "Destinatário inválido." }, 400);
+
+          // Recipient must be card-relevant: an assignee or that comment's
+          // author. Server-side allowlist — never trust the client picker.
+          const assigneeNames = card.assignees?.length
+            ? card.assignees
+            : card.assignee
+              ? [card.assignee]
+              : [];
+          const assigneeEmails = assigneeNames
+            .map((n) => members.find((m) => norm(m.name) === norm(n))?.email)
+            .filter(Boolean)
+            .map((e) => e.toLowerCase());
+          const validTargets = new Set([...assigneeEmails, String(c.author).toLowerCase()]);
+          if (!validTargets.has(to))
+            return json({ error: "Só é possível chamar quem participa deste card." }, 403);
+
+          const nudges = await kvGet(kv, "kanban:nudges", []);
+          const cooldownMs = 45_000;
+          const recent = nudges.find(
+            (n) => n.from === email && n.to === to && Date.now() - new Date(n.createdAt).getTime() < cooldownMs
+          );
+          if (recent) return json({ error: "Aguarde um instante antes de chamar novamente." }, 429);
+
+          const nudge = {
+            id: uid(),
+            from: email,
+            fromName: authorName,
+            to,
+            cardId: id,
+            cardTitle: card.title,
+            commentId,
+            text: String(c.text || "").slice(0, 100),
+            createdAt: new Date().toISOString(),
+            seenAt: null,
+          };
+          nudges.push(nudge);
+          await kvSet(kv, "kanban:nudges", nudges);
+
+          if (env.BOARD_ROOM) {
+            context.waitUntil(
+              env.BOARD_ROOM.getByName("main").broadcast({ type: "nudge", ...nudge }).catch(() => {})
+            );
+          }
+          return json({ ok: true, nudge }, 201);
         }
         if (commentId && seg[4] === "resolve" && method === "POST") {
           const c = card.comments.find((x) => x.id === commentId);
@@ -434,6 +502,22 @@ export async function onRequest(context) {
         reads[email] = reads[email] || {};
         reads[email][id] = new Date().toISOString();
         await kvSet(kv, "kanban:reads", reads);
+
+        // Read receipts: mark every comment I didn't author as seen by me.
+        const cards = await kvGet(kv, "kanban:cards", []);
+        const card = cards.find((c) => c.id === id);
+        if (card) {
+          let changed = false;
+          for (const c of card.comments || []) {
+            if (c.author === email) continue;
+            c.seenBy = c.seenBy || [];
+            if (!c.seenBy.some((s) => s.email === email)) {
+              c.seenBy.push({ email, seenAt: reads[email][id] });
+              changed = true;
+            }
+          }
+          if (changed) await kvSet(kv, "kanban:cards", cards);
+        }
         return json({ ok: true });
       }
 
@@ -476,17 +560,17 @@ export async function onRequest(context) {
           const card = cards.find((c) => c.id === id);
           if (!card) return json({ error: "Card not found" }, 404);
 
+          const email = await verifySession(env.SESSION_SECRET, getCookie(request, "tk_session"));
+          const members = await kvGet(kv, "kanban:members", []);
+          const norm = (s) => String(s || "").trim().toLowerCase();
+          const actorName =
+            members.find((m) => norm(m.email) === norm(email))?.name || email || "Alguém";
+
           // Dragging a previously-reviewed card back out of Done (e.g. into
           // Em Revisão) reopens it — clear the reviewed flags and log it in
           // the comment thread, mirroring the request resolve/reopen pattern.
           let reopenComment = null;
           if (card.reviewed && "columnId" in body && body.columnId !== "done" && body.columnId !== card.columnId) {
-            const email = await verifySession(env.SESSION_SECRET, getCookie(request, "tk_session"));
-            const members = await kvGet(kv, "kanban:members", []);
-            const actorName =
-              members.find((m) => String(m.email).toLowerCase() === String(email).toLowerCase())?.name ||
-              email ||
-              "Alguém";
             body.reviewed = false;
             body.reviewedAt = null;
             body.reviewedBy = null;
@@ -504,6 +588,21 @@ export async function onRequest(context) {
             };
           }
 
+          // Newly-added assignees get a realtime + bell notification (removed
+          // ones and unchanged ones don't).
+          const oldNames = card.assignees?.length ? card.assignees : card.assignee ? [card.assignee] : [];
+          const newNames = body.assignees ?? oldNames;
+          const addedNames = newNames.filter((n) => !oldNames.includes(n));
+          const addedEmails = [
+            ...new Set(
+              addedNames
+                .map((n) => members.find((m) => norm(m.name) === norm(n))?.email)
+                .filter(Boolean)
+                .map((e) => e.toLowerCase())
+                .filter((e) => e !== norm(email))
+            ),
+          ];
+
           // never let a card edit overwrite the comment thread
           const updated = cards.map((c) => {
             if (c.id !== id) return c;
@@ -512,6 +611,21 @@ export async function onRequest(context) {
             return merged;
           });
           await kvSet(kv, "kanban:cards", updated);
+
+          if (addedEmails.length && env.BOARD_ROOM) {
+            context.waitUntil(
+              env.BOARD_ROOM
+                .getByName("main")
+                .broadcast({
+                  type: "card:assigned",
+                  recipients: addedEmails,
+                  cardId: id,
+                  cardTitle: updated.find((c) => c.id === id).title,
+                  byName: actorName,
+                })
+                .catch(() => {})
+            );
+          }
           return json({ card: updated.find((c) => c.id === id) });
         }
         if (method === "DELETE") {
@@ -606,7 +720,34 @@ export async function onRequest(context) {
       }
       notifications.sort((a, b) => new Date(b.last.createdAt) - new Date(a.last.createdAt));
       const total = notifications.reduce((n, x) => n + x.count, 0);
-      return json({ notifications, total });
+
+      const nudges = await kvGet(kv, "kanban:nudges", []);
+      const nudgeCutoff = Date.now() - REVIEW_TTL_MS;
+      const pendingNudges = nudges
+        .filter((n) => n.to === email && !n.seenAt && new Date(n.createdAt).getTime() > nudgeCutoff)
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+      return json({ notifications, total: total + pendingNudges.length, nudges: pendingNudges });
+    }
+
+    // ── NUDGES (per-comment "hey, look at this" ping, ack on open) ────────
+    if (resource === "nudges" && id === "ack" && method === "POST") {
+      const email = await verifySession(env.SESSION_SECRET, getCookie(request, "tk_session"));
+      if (!email) return json({ error: "unauthorized" }, 401);
+      const body = await request.json().catch(() => ({}));
+      const ids = Array.isArray(body.ids) ? new Set(body.ids) : null;
+      const nudges = await kvGet(kv, "kanban:nudges", []);
+      let changed = false;
+      for (const n of nudges) {
+        if (n.to !== email) continue;
+        if (ids && !ids.has(n.id)) continue;
+        if (!n.seenAt) {
+          n.seenAt = new Date().toISOString();
+          changed = true;
+        }
+      }
+      if (changed) await kvSet(kv, "kanban:nudges", nudges);
+      return json({ ok: true });
     }
 
     // ── REVIEWS (meeting-notes validation popup, per-user) ────────────────

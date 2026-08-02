@@ -85,6 +85,16 @@ body {
   box-shadow: 0 2px 12px rgba(46, 74, 67, 0.2);
 }
 
+/* MSN-nudge-style jolt when someone pings you */
+@keyframes tk-shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-6px); }
+  40%, 80% { transform: translateX(6px); }
+}
+.animate-tk-shake {
+  animation: tk-shake 0.5s ease-in-out;
+}
+
 /* Mono eyebrow / technical label */
 .label-tech {
   font-family: var(--font-mono);

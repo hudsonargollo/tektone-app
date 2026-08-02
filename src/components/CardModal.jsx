@@ -19,6 +19,9 @@ import {
   Send,
   CheckCircle2,
   Undo2,
+  Sparkles,
+  Vibrate,
+  Eye,
 } from "lucide-react";
 import { COLUMNS, PRIORITY, LABEL_COLORS } from "@/lib/constants";
 import { Avatar, Spinner, useIsMobile } from "@/components/ui";
@@ -702,7 +705,107 @@ function renderWithMentions(text, firstNames) {
     );
 }
 
-function Comments({ cardId, comments, members = [], currentUser, isAdmin, avatarByName, onUpdate }) {
+// Small popover to pick who to nudge — candidates are the card's assignees
+// plus the comment's author, excluding yourself. Server re-validates the
+// target against this same set, so this is UX convenience, not the ACL.
+function NudgeButton({ candidates, onNudge }) {
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState(null); // "ok" | "error" | null
+  const [errorMsg, setErrorMsg] = useState("");
+
+  if (!candidates.length) return null;
+
+  const pick = async (m) => {
+    setOpen(false);
+    setBusy(true);
+    try {
+      await onNudge(m.email);
+      setStatus("ok");
+      setTimeout(() => setStatus(null), 1500);
+    } catch (e) {
+      setErrorMsg(e.body?.error || "Falha ao chamar.");
+      setStatus("error");
+      setTimeout(() => setStatus(null), 3000);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="relative shrink-0">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        disabled={busy}
+        title="Chamar a atenção de alguém"
+        className={`rounded p-0.5 transition-all ${
+          status === "ok"
+            ? "text-success"
+            : status === "error"
+              ? "text-danger"
+              : "text-stone-300 opacity-0 hover:text-action group-hover/c:opacity-100"
+        }`}
+      >
+        <Vibrate size={12} />
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
+          <ul className="absolute right-0 top-full z-40 mt-1 w-44 overflow-hidden rounded-lg border border-ink/10 bg-paper p-1 shadow-xl">
+            {candidates.map((m) => (
+              <li key={m.email}>
+                <button
+                  type="button"
+                  onClick={() => pick(m)}
+                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs text-stone-700 transition-colors hover:bg-ink/[0.05]"
+                >
+                  <Avatar name={m.name} size="sm" />
+                  <span className="truncate">{m.name}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+      {status === "error" && (
+        <p className="absolute right-0 top-full z-40 mt-1 w-40 rounded-md bg-danger/10 px-2 py-1 font-mono text-[10px] text-danger">
+          {errorMsg}
+        </p>
+      )}
+    </div>
+  );
+}
+
+// Eye + overlapping avatar stack on your own comments, showing who's seen
+// them — WhatsApp-tick equivalent. Nothing renders until someone has.
+function ReadReceipt({ seenBy, members, avatarByName }) {
+  const list = seenBy || [];
+  if (!list.length) return null;
+  const norm = (s) => String(s || "").trim().toLowerCase();
+  const named = list.map((s) => ({
+    ...s,
+    name: members.find((m) => norm(m.email) === norm(s.email))?.name || s.email,
+  }));
+  const shown = named.slice(0, 3);
+  const extra = named.length - shown.length;
+  return (
+    <span
+      className="flex shrink-0 items-center gap-1"
+      title={named.map((s) => s.name).join(", ")}
+    >
+      <Eye size={11} className="text-stone-400" />
+      <span className="flex -space-x-1.5">
+        {shown.map((s) => (
+          <Avatar key={s.email} name={s.name} src={avatarByName?.[norm(s.name)]} size="sm" />
+        ))}
+      </span>
+      {extra > 0 && <span className="font-mono text-[9px] text-stone-400">+{extra}</span>}
+    </span>
+  );
+}
+
+function Comments({ cardId, comments, members = [], assignees = [], currentUser, isAdmin, avatarByName, onUpdate }) {
   const [text, setText] = useState("");
   const [kind, setKind] = useState("comment");
   const [busy, setBusy] = useState(false);
@@ -765,6 +868,18 @@ function Comments({ cardId, comments, members = [], currentUser, isAdmin, avatar
             const isReopened = c.kind === "reviewed" && c.reopened;
             const done = Boolean(c.resolvedAt);
             const mine = currentUser?.email && c.author === currentUser.email;
+            const norm = (s) => String(s || "").trim().toLowerCase();
+            const nudgeCandidates = (() => {
+              const byEmail = new Map();
+              for (const n of assignees) {
+                const m = members.find((mm) => norm(mm.name) === norm(n));
+                if (m?.email) byEmail.set(norm(m.email), m);
+              }
+              const authorMember = members.find((mm) => norm(mm.email) === norm(c.author));
+              if (authorMember?.email) byEmail.set(norm(authorMember.email), authorMember);
+              if (currentUser?.email) byEmail.delete(norm(currentUser.email));
+              return [...byEmail.values()];
+            })();
             return (
               <div
                 key={c.id}
@@ -808,6 +923,8 @@ function Comments({ cardId, comments, members = [], currentUser, isAdmin, avatar
                   <span className="ml-auto font-mono text-[10px] text-stone-400">
                     {relTime(c.createdAt)}
                   </span>
+                  {mine && <ReadReceipt seenBy={c.seenBy} members={members} avatarByName={avatarByName} />}
+                  <NudgeButton candidates={nudgeCandidates} onNudge={(to) => api.nudgeComment(cardId, c.id, to)} />
                   {(mine || isAdmin) && (
                     <button
                       onClick={() => remove(c.id)}
@@ -914,6 +1031,7 @@ export default function CardModal({
   onDelete,
   onClose,
   onCardUpdated,
+  onLaunchWizard,
 }) {
   const [d, setD] = useState({ ...card });
   const set = (k, v) => setD((p) => ({ ...p, [k]: v }));
@@ -938,6 +1056,32 @@ export default function CardModal({
   const applyCommentUpdate = (serverCard) => {
     setD((p) => ({ ...p, comments: serverCard.comments || [] }));
     onCardUpdated?.(serverCard);
+  };
+
+  // Links used to only live in local state until the modal's global "Salvar"
+  // was clicked — every other way of closing (X, backdrop, Esc, Cancelar,
+  // swipe-down) silently discarded them. Autosave on every add/edit/remove
+  // instead, same as Comments, so a link is persisted the moment it's added.
+  const saveLinks = async (next) => {
+    setD((p) => ({ ...p, links: next }));
+    try {
+      const { card: serverCard } = await api.updateCard(card.id, { links: next });
+      onCardUpdated?.(serverCard);
+    } catch {
+      /* keep the optimistic local state; the global Salvar will retry the write */
+    }
+  };
+
+  // Checklist previously only lived in local state until "Salvar" — same bug
+  // Links had, fixed the same way: autosave on every add/toggle/edit/remove.
+  const saveChecklist = async (next) => {
+    setD((p) => ({ ...p, checklist: next }));
+    try {
+      const { card: serverCard } = await api.updateCard(card.id, { checklist: next });
+      onCardUpdated?.(serverCard);
+    } catch {
+      /* keep the optimistic local state; the global Salvar will retry the write */
+    }
   };
 
   const [reviewing, setReviewing] = useState(false);
@@ -1074,7 +1218,17 @@ export default function CardModal({
           <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
             {/* Left — content */}
             <div className="space-y-4">
-              <Field label="Descrição">
+              <div>
+                <div className="mb-1.5 flex items-center justify-between">
+                  <label className={labelCls}>Descrição</label>
+                  <button
+                    type="button"
+                    onClick={() => onLaunchWizard?.(d)}
+                    className="inline-flex items-center gap-1 font-mono text-[11px] font-semibold text-action transition-colors hover:underline"
+                  >
+                    <Sparkles size={11} /> Preencher com assistente
+                  </button>
+                </div>
                 <textarea
                   rows={4}
                   value={d.description ?? ""}
@@ -1082,8 +1236,8 @@ export default function CardModal({
                   placeholder="Detalhes da tarefa…"
                   className={`${inputCls} resize-none`}
                 />
-              </Field>
-              <Checklist items={d.checklist} onChange={(v) => set("checklist", v)} />
+              </div>
+              <Checklist items={d.checklist} onChange={saveChecklist} />
             </div>
 
             {/* Right — metadata */}
@@ -1134,7 +1288,7 @@ export default function CardModal({
                   ))}
                 </div>
               </Field>
-              <Links items={d.links} onChange={(v) => set("links", v)} />
+              <Links items={d.links} onChange={saveLinks} />
             </div>
           </div>
 
@@ -1143,6 +1297,7 @@ export default function CardModal({
               cardId={card.id}
               comments={d.comments}
               members={members}
+              assignees={assignees}
               currentUser={currentUser}
               isAdmin={isAdmin}
               avatarByName={avatarByName}

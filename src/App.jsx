@@ -10,6 +10,8 @@ import Sidebar from "@/components/Sidebar";
 import TopBar from "@/components/TopBar";
 import Board from "@/components/Board";
 import CardModal from "@/components/CardModal";
+import TaskWizard from "@/components/TaskWizard";
+import NudgeToast from "@/components/NudgeToast";
 import Login from "@/components/Login";
 import AdminPanel from "@/components/AdminPanel";
 import ProfilePage from "@/components/ProfilePage";
@@ -29,6 +31,7 @@ export default function App() {
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [wizard, setWizard] = useState(null); // null | {mode:"create"} | {mode:"backfill", card}
   const [query, setQuery] = useState("");
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [requestsOnly, setRequestsOnly] = useState(false);
@@ -44,6 +47,8 @@ export default function App() {
   const [reviews, setReviews] = useState([]);
   const [reviewActiveId, setReviewActiveId] = useState(null); // current carousel slide (meeting id)
   const [notifSignal, setNotifSignal] = useState(0);
+  const [shake, setShake] = useState(false);
+  const [nudgeToasts, setNudgeToasts] = useState([]);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const searchRef = useRef(null);
@@ -132,16 +137,33 @@ export default function App() {
   // The bell owns its own polling/state; we just nudge it after relevant events.
   const bumpNotifs = () => setNotifSignal((s) => s + 1);
 
-  // Realtime board events (currently just "card:reviewed", for confetti).
+  const dismissNudgeToast = (id) => setNudgeToasts((t) => t.filter((x) => x.id !== id));
+
+  // Realtime board events — broadcast-all, filtered client-side by recipient.
   const onRealtimeEvent = useCallback(
     (evt) => {
+      const me = String(userEmail || "").toLowerCase();
       if (evt.type === "card:reviewed") {
         fireDuotoneConfetti();
         refreshCards();
         bumpNotifs();
+      } else if (evt.type === "comment:mention" && evt.recipients?.map((e) => e.toLowerCase()).includes(me)) {
+        bumpNotifs();
+      } else if (evt.type === "card:assigned" && evt.recipients?.map((e) => e.toLowerCase()).includes(me)) {
+        refreshCards();
+        bumpNotifs();
+      } else if (evt.type === "nudge" && String(evt.to || "").toLowerCase() === me) {
+        bumpNotifs();
+        setShake(true);
+        setTimeout(() => setShake(false), 600);
+        setNudgeToasts((t) => [
+          ...t,
+          { id: evt.id, fromName: evt.fromName, cardTitle: evt.cardTitle, cardId: evt.cardId },
+        ]);
+        setTimeout(() => dismissNudgeToast(evt.id), 6000);
       }
     },
-    [refreshCards]
+    [refreshCards, userEmail]
   );
   useRealtime(authed, onRealtimeEvent);
 
@@ -178,14 +200,14 @@ export default function App() {
       if (e.key === "/") {
         e.preventDefault();
         searchRef.current?.focus();
-      } else if (e.key.toLowerCase() === "n" && !editing) {
+      } else if (e.key.toLowerCase() === "n" && !editing && !wizard) {
         e.preventDefault();
-        newTask();
+        setWizard({ mode: "create" });
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [editing, activeId, clients]);
+  }, [editing, wizard]);
 
   // ── Derived ─────────────────────────────────────────────────────────────────
   // Map an assignee (stored as a member name) → avatar. Joins the user
@@ -276,29 +298,15 @@ export default function App() {
     [activeId, clients]
   );
 
-  async function newTask() {
-    const body = {
-      columnId: "todo",
-      title: "Nova tarefa",
-      description: "",
-      priority: "medium",
-      clientId: activeId ?? clients[0]?.id ?? "",
-      assignee: "",
-      assignees: [],
-      dueDate: "",
-      labelColor: null,
-    };
-    setSaving(true);
-    try {
-      const { card } = await api.createCard(body);
-      setCards((p) => [...p, card]);
-      setEditing(card);
-    } catch (e) {
-      setError(e.message);
-    } finally {
-      setSaving(false);
-    }
-  }
+  const seedDefaults = {
+    columnId: "todo",
+    priority: "medium",
+    clientId: activeId ?? clients[0]?.id ?? "",
+    assignee: "",
+    assignees: [],
+    dueDate: "",
+    labelColor: null,
+  };
 
   async function saveCard(updated) {
     setCards((p) => p.map((c) => (c.id === updated.id ? updated : c)));
@@ -401,8 +409,9 @@ export default function App() {
   };
 
   return (
-    <div className="flex h-[100dvh] flex-col bg-clay">
+    <div className={`flex h-[100dvh] flex-col bg-clay ${shake ? "animate-tk-shake" : ""}`}>
       <div className="grain-overlay" aria-hidden />
+      <NudgeToast toasts={nudgeToasts} onOpen={openCardById} onDismiss={dismissNudgeToast} />
 
       {/* Brand bar */}
       <header className="relative z-20 flex h-14 shrink-0 items-center justify-between border-b border-ink/10 bg-clay/80 px-4 backdrop-blur-xl lg:px-5">
@@ -546,7 +555,7 @@ export default function App() {
                 setRequestsOnly={setRequestsOnly}
                 requestCount={openRequestsScoped}
                 saving={saving}
-                onNew={newTask}
+                onNew={() => setWizard({ mode: "create" })}
                 searchRef={searchRef}
               />
               <Board
@@ -758,6 +767,33 @@ export default function App() {
             onClose={() => setEditing(null)}
             onCardUpdated={(serverCard) => {
               setCards((p) => p.map((c) => (c.id === serverCard.id ? serverCard : c)));
+              bumpNotifs();
+            }}
+            onLaunchWizard={(liveCardState) => {
+              setEditing(null);
+              setWizard({ mode: "backfill", card: liveCardState });
+            }}
+          />
+        )}
+        {wizard && (
+          <TaskWizard
+            mode={wizard.mode}
+            card={wizard.card}
+            seedDefaults={seedDefaults}
+            onClose={() => {
+              const backTo = wizard.mode === "backfill" ? wizard.card : null;
+              setWizard(null);
+              if (backTo) setEditing(backTo);
+            }}
+            onCreated={(card) => {
+              setCards((p) => [...p, card]);
+              setWizard(null);
+              setEditing(card);
+            }}
+            onUpdated={(card) => {
+              setCards((p) => p.map((c) => (c.id === card.id ? card : c)));
+              setWizard(null);
+              setEditing(card);
               bumpNotifs();
             }}
           />

@@ -59,6 +59,9 @@ export const api = {
   analyzeMeeting: (body) => req("/analyze/meeting", { method: "POST", body }),
   commitAnalysis: (body) => req("/analyze/commit", { method: "POST", body }),
 
+  // task creation wizard — stateless AI interview (frontend resends full turn history)
+  interviewTurn: (body) => req("/analyze/task-interview", { method: "POST", body }),
+
   // admin: on-demand meeting fetch from Drive (via Apps Script Web App)
   listMeetings: () => req("/meetings/list"),
   meetingText: (id) => req(`/meetings/text?id=${encodeURIComponent(id)}`),
@@ -67,6 +70,11 @@ export const api = {
   // comment notifications (per-user unread)
   getNotifications: () => req("/kanban/notifications"),
   markCardSeen: (cardId) => req(`/kanban/cards/${cardId}/seen`, { method: "POST" }),
+
+  // nudges — ping a specific person about a comment
+  nudgeComment: (cardId, commentId, to) =>
+    req(`/kanban/cards/${cardId}/comments/${commentId}/nudge`, { method: "POST", body: { to } }),
+  ackNudges: (ids) => req("/kanban/nudges/ack", { method: "POST", body: { ids } }),
 
   // meeting-notes review (validation popup)
   listReviews: () => req("/kanban/reviews"),

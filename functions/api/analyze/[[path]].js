@@ -128,7 +128,9 @@ ${transcript.slice(0, 120000)}
 }
 
 // Anthropic Messages API with forced tool use → guaranteed structured JSON.
-async function callClaude(env, prompt) {
+// Shared by meeting analysis (single-turn) and the task-interview wizard
+// (multi-turn, reconstructed fresh on every stateless request).
+async function callClaudeTool(env, { system, messages, tool, maxTokens = 8000 }) {
   const model = env.ANTHROPIC_MODEL || "claude-opus-4-8";
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -139,16 +141,11 @@ async function callClaude(env, prompt) {
     },
     body: JSON.stringify({
       model,
-      max_tokens: 8000,
-      tools: [
-        {
-          name: "emit_analysis",
-          description: "Devolve a análise estruturada da reunião.",
-          input_schema: ANALYSIS_SCHEMA,
-        },
-      ],
-      tool_choice: { type: "tool", name: "emit_analysis" },
-      messages: [{ role: "user", content: prompt }],
+      max_tokens: maxTokens,
+      ...(system ? { system } : {}),
+      tools: [tool],
+      tool_choice: { type: "tool", name: tool.name },
+      messages,
     }),
   });
   if (!res.ok) {
@@ -164,7 +161,15 @@ async function callClaude(env, prompt) {
 // Run the model and normalise action items against known members.
 async function analyze(env, transcript, title, clients, members) {
   if (!env.ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY não configurado.");
-  const analysis = await callClaude(env, buildPrompt(transcript, title, clients, members));
+  const analysis = await callClaudeTool(env, {
+    messages: [{ role: "user", content: buildPrompt(transcript, title, clients, members) }],
+    tool: {
+      name: "emit_analysis",
+      description: "Devolve a análise estruturada da reunião.",
+      input_schema: ANALYSIS_SCHEMA,
+    },
+    maxTokens: 8000,
+  });
   analysis.actionItems = (analysis.actionItems || [])
     .map((it) => {
       const assignees = [];
@@ -182,6 +187,107 @@ async function analyze(env, transcript, title, clients, members) {
     })
     .filter((it) => it.title);
   return analysis;
+}
+
+// ── Task creation wizard — multi-turn AI interview ──────────────────────────
+const INTERVIEW_SECTIONS = ["challenge", "method", "quest", "victory", "checklist", "other"];
+const MAX_INTERVIEW_TURNS = 10; // ⇒ ≤ 21 messages (1 kickoff + 2×10)
+const MAX_FIELD_CHARS = 4000;
+
+const INTERVIEW_TOOL = {
+  name: "interview_turn",
+  description:
+    "Emite a próxima pergunta da entrevista (done=false) ou o resultado final da tarefa " +
+    "depois de reunir informação suficiente (done=true).",
+  input_schema: {
+    type: "object",
+    properties: {
+      done: {
+        type: "boolean",
+        description: "true quando já há informação suficiente para produzir a descrição final e o checklist.",
+      },
+      question: {
+        type: "string",
+        description: "A próxima pergunta a fazer, em português, uma de cada vez. Obrigatório quando done=false.",
+      },
+      section: {
+        type: "string",
+        enum: INTERVIEW_SECTIONS,
+        description: "A qual seção esta pergunta se refere principalmente.",
+      },
+      description: {
+        type: "string",
+        description:
+          "Texto final em quatro seções (O DESAFIO, O MÉTODO, A JORNADA, A VITÓRIA), sem markdown. Obrigatório quando done=true.",
+      },
+      checklist: {
+        type: "array",
+        items: { type: "string" },
+        description: "Itens de checklist acionáveis extraídos da conversa. Obrigatório quando done=true.",
+      },
+    },
+    required: ["done"],
+  },
+};
+
+const INTERVIEW_SYSTEM_PROMPT = `Você conduz uma entrevista curta e focada, em português do Brasil, para ajudar um profissional da TEKTONE a documentar uma tarefa concluída ou em andamento. Seu objetivo final é produzir:
+
+1. Uma descrição em texto simples (sem markdown, sem #, sem **, sem listas com "-") dividida em quatro seções, cada uma introduzida por um cabeçalho em maiúsculas:
+   - O DESAFIO: qual bug ou nova funcionalidade está sendo resolvido/construído.
+   - O MÉTODO: a abordagem, ferramentas ou processo usados — pode ser copywriting, edição de vídeo, software, uma campanha de marketing, o que for; é obrigatório nomear um método concreto.
+   - A JORNADA: detalhes, novas ideias, descobertas, obstáculos técnicos encontrados pelo caminho.
+   - A VITÓRIA: como o resultado nasceu e como ele fortalece o negócio.
+2. Uma lista de itens de checklist acionáveis, curtos e no imperativo, extraídos da conversa.
+
+Regras da entrevista:
+- Faça UMA pergunta por vez, sempre em português. Nunca faça duas perguntas na mesma mensagem.
+- Adapte a próxima pergunta com base na resposta anterior — não use um roteiro fixo.
+- Cubra as quatro seções ao longo da conversa, mais itens de checklist concretos.
+- Use entre 4 e 8 perguntas no total. Se já houver informação suficiente para as quatro seções e para um checklist útil, finalize antes disso.
+- Se a resposta do usuário for vaga, faça uma pergunta de acompanhamento mais específica antes de avançar de seção.
+
+Quando tiver informação suficiente — ou ao receber o marcador [FINALIZAR_AGORA] em uma resposta — pare de perguntar e responda com done=true, preenchendo description (as quatro seções concatenadas, com cabeçalho em maiúsculas e uma linha em branco entre seções) e checklist (itens específicos; se a conversa não sugerir itens claros, gere itens razoáveis a partir do que foi dito, não deixe vazio). Ao receber [FINALIZAR_AGORA], preencha lacunas restantes com suposições razoáveis, sem mencionar isso ao usuário.
+
+Sempre responda usando a ferramenta interview_turn — nunca em texto livre.`;
+
+// No server-side session for this stateless endpoint — the frontend resends
+// the full running conversation every turn, and we synthesize our own
+// tool_use/tool_result ids fresh each time. Anthropic only requires the
+// resent array to be internally consistent, not that ids match a prior real
+// response, so this is safe.
+function buildInterviewMessages(seedTitle, turns, finalize) {
+  const messages = [
+    {
+      role: "user",
+      content: `Título da tarefa: ${String(seedTitle || "(sem título)").slice(0, 300)}\n\nVamos começar a entrevista.`,
+    },
+  ];
+  turns.forEach((t, i) => {
+    const section = INTERVIEW_SECTIONS.includes(t.section) ? t.section : "other";
+    messages.push({
+      role: "assistant",
+      content: [
+        {
+          type: "tool_use",
+          id: `turn_${i}`,
+          name: "interview_turn",
+          input: { done: false, question: t.question, section },
+        },
+      ],
+    });
+    let answer = t.answer;
+    if (finalize && i === turns.length - 1) {
+      answer +=
+        "\n\n[FINALIZAR_AGORA] O usuário pediu para finalizar agora. Pare de perguntar — " +
+        "responda imediatamente com done=true, usando o que já foi coletado e completando " +
+        "lacunas com suposições razoáveis.";
+    }
+    messages.push({
+      role: "user",
+      content: [{ type: "tool_result", tool_use_id: `turn_${i}`, content: answer }],
+    });
+  });
+  return messages;
 }
 
 function summaryDescription(summary, decisions, risks) {
@@ -383,6 +489,45 @@ export async function onRequest(context) {
         projectCreated: r.projectCreated,
         created: r.created,
       });
+    }
+
+    // ── interactive: task-creation wizard interview (session) ──────────────
+    if (action === "task-interview") {
+      if (!(await sessionAuth())) return json({ error: "unauthorized" }, 401);
+      if (!env.ANTHROPIC_API_KEY) return json({ error: "ANTHROPIC_API_KEY não configurado." }, 500);
+
+      const seedTitle = String(body.seedTitle || "").slice(0, 300);
+      const turnsIn = Array.isArray(body.turns) ? body.turns : [];
+      if (turnsIn.length > MAX_INTERVIEW_TURNS) {
+        return json({ error: "Conversa muito longa. Clique em 'Finalizar agora'." }, 400);
+      }
+      const turns = turnsIn.map((t) => ({
+        question: String(t?.question || "").slice(0, MAX_FIELD_CHARS),
+        section: String(t?.section || "other"),
+        answer: String(t?.answer || "").slice(0, MAX_FIELD_CHARS),
+      }));
+      const finalize = Boolean(body.finalize);
+
+      const result = await callClaudeTool(env, {
+        system: INTERVIEW_SYSTEM_PROMPT,
+        messages: buildInterviewMessages(seedTitle, turns, finalize),
+        tool: INTERVIEW_TOOL,
+        maxTokens: 4000,
+      });
+
+      if (result.done) {
+        const description = String(result.description || "").trim();
+        const checklist = Array.isArray(result.checklist)
+          ? result.checklist.map((s) => String(s || "").trim()).filter(Boolean)
+          : [];
+        if (!description) return json({ error: "IA não retornou uma descrição válida." }, 502);
+        return json({ done: true, description, checklist });
+      }
+
+      const question = String(result.question || "").trim();
+      if (!question) return json({ error: "IA não retornou uma pergunta válida." }, 502);
+      const section = INTERVIEW_SECTIONS.includes(result.section) ? result.section : "other";
+      return json({ done: false, question, section });
     }
 
     return json({ error: "Not found" }, 404);
