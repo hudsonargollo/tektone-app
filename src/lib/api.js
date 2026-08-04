@@ -81,6 +81,10 @@ export const api = {
   reorderCards: (columnId, orderedIds) =>
     req("/kanban/cards/reorder", { method: "POST", body: { columnId, orderedIds } }),
 
+  // web push subscription registry
+  subscribePush: (subscription) => req("/push/subscribe", { method: "POST", body: subscription }),
+  unsubscribePush: (body) => req("/push/unsubscribe", { method: "POST", body }),
+
   // meeting-notes review (validation popup)
   listReviews: () => req("/kanban/reviews"),
   ackReviews: (ids) => req("/kanban/reviews/ack", { method: "POST", body: { ids } }),

@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { X, Camera, Trash2, Check, Mail, Bell } from "lucide-react";
 import { api } from "@/lib/api";
 import { Avatar, Spinner, Toggle } from "@/components/ui";
+import PushPermissionPrompt from "@/components/PushPermissionPrompt";
 
 const labelCls =
   "mb-1.5 block font-mono text-[11px] font-medium uppercase tracking-[0.16em] text-stone-500";
@@ -237,6 +238,8 @@ export default function ProfilePage({ onClose, onSaved }) {
                 label="Notificações por e-mail"
               />
             </div>
+
+            <PushPermissionPrompt />
           </div>
         )}
 

@@ -1,6 +1,11 @@
 name = "tektone-app"
 pages_build_output_dir = "dist"
 compatibility_date = "2024-11-01"
+# Required by @block65/webcrypto-web-push (Phase B web push): it has a
+# `node:crypto` fallback import for non-Workers runtimes that's never
+# actually reached here (globalThis.crypto is always present in Workers),
+# but the bundler still needs this flag to resolve it without warning/erroring.
+compatibility_flags = ["nodejs_compat"]
 
 # KV binding for the kanban API (Pages Functions read env.KANBAN).
 # id is filled in after `wrangler kv namespace create KANBAN`.

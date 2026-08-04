@@ -8,6 +8,8 @@
  *   kanban:members   → [{ id, name, email, role }]
  *   kanban:notifLog  → [{ id, type, to, fromName, fromEmail, cardId, cardTitle, clientId, commentId, text, createdAt, readAt }]
  *                      persistent per-recipient notification history (mentions, requests, assignments, nudges, reviews, reopens) — never deleted, only readAt-stamped
+ *   push:web         → { [email]: [{ endpoint, expirationTime, keys }, ...] }  (written by functions/api/push/[[path]].js)
+ *   push:expo        → { [email]: [expoPushToken, ...] }                       (written by functions/api/push/[[path]].js)
  *
  * Routes (relative to /api/kanban):
  *   GET|POST          /clients          PUT|DELETE /clients/:id
@@ -26,6 +28,7 @@
 
 import { getSessionEmail } from "../../_lib/session.js";
 import { isAdmin } from "../../_lib/allowlist.js";
+import { buildPushPayload } from "@block65/webcrypto-web-push";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -79,6 +82,68 @@ async function pushNotifs(kv, entries) {
   }
   const trimmed = log.length > NOTIF_LOG_CAP ? log.slice(log.length - NOTIF_LOG_CAP) : log;
   await kvSet(kv, "kanban:notifLog", trimmed);
+}
+
+// Web Push send — best-effort, never throws. Prunes subscriptions the push
+// service reports as gone (404/410); leaves them on any other error (a
+// network hiccup shouldn't nuke a still-valid subscription).
+async function sendWebPush(env, kv, email, { title, body, cardId }) {
+  if (!env.VAPID_PRIVATE_KEY || !env.VAPID_PUBLIC_KEY || !env.VAPID_SUBJECT) return;
+  const all = await kvGet(kv, "push:web", {});
+  const subs = all[email];
+  if (!subs?.length) return;
+
+  const vapid = {
+    subject: env.VAPID_SUBJECT,
+    publicKey: env.VAPID_PUBLIC_KEY,
+    privateKey: env.VAPID_PRIVATE_KEY,
+  };
+  const message = {
+    data: JSON.stringify({ title, body, cardId }),
+    options: { ttl: 900, urgency: "high" },
+  };
+
+  let changed = false;
+  const kept = [];
+  for (const sub of subs) {
+    try {
+      const payload = await buildPushPayload(message, sub, vapid);
+      const res = await fetch(sub.endpoint, payload);
+      if (res.status === 404 || res.status === 410) {
+        changed = true;
+        continue;
+      }
+    } catch {
+      /* transient — keep the subscription */
+    }
+    kept.push(sub);
+  }
+  if (changed) {
+    all[email] = kept;
+    await kvSet(kv, "push:web", all);
+  }
+}
+
+// Expo push send (mobile) — a single relay call handles both Android/FCM and
+// iOS/APNs; best-effort, never throws.
+async function sendExpoPush(env, kv, email, { title, body, cardId }) {
+  const all = await kvGet(kv, "push:expo", {});
+  const tokens = all[email];
+  if (!tokens?.length) return;
+  await fetch("https://exp.host/--/api/v2/push/send", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify(tokens.map((to) => ({ to, title, body, sound: "default", data: { cardId } }))),
+  }).catch(() => {});
+}
+
+// Fires both push channels for a batch of recipients, in parallel, wrapped
+// so a push failure never affects the request it's attached to.
+function dispatchPush(context, env, kv, recipients, payload) {
+  for (const to of recipients) {
+    context.waitUntil(sendWebPush(env, kv, to, payload).catch(() => {}));
+    context.waitUntil(sendExpoPush(env, kv, to, payload).catch(() => {}));
+  }
 }
 
 const reEscape = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -245,6 +310,11 @@ async function notifyReview(context, env, kv, card, mentioned, members, authUser
         text: "revisou e concluiu esta tarefa",
       }))
     );
+    dispatchPush(context, env, kv, mentioned, {
+      title: `${reviewerName} concluiu — ${card.title}`,
+      body: "revisou e concluiu esta tarefa",
+      cardId: card.id,
+    });
     const recipients = filterOptedIn(mentioned, authUsers);
     if (recipients.length) {
       const authorHasAvatar = Boolean(
@@ -439,6 +509,11 @@ export async function onRequest(context) {
                 text: text.slice(0, 100),
               }))
             );
+            dispatchPush(context, env, kv, comment.mentions, {
+              title: `${authorName} ${comment.kind === "request" ? "fez uma solicitação" : "mencionou você"} — ${card.title}`,
+              body: text.slice(0, 140),
+              cardId: card.id,
+            });
           }
           if (comment.mentions.length && env.BOARD_ROOM) {
             context.waitUntil(
@@ -510,6 +585,11 @@ export async function onRequest(context) {
           const trimmedLog =
             notifLog.length > NOTIF_LOG_CAP ? notifLog.slice(notifLog.length - NOTIF_LOG_CAP) : notifLog;
           await kvSet(kv, "kanban:notifLog", trimmedLog);
+          dispatchPush(context, env, kv, [to], {
+            title: `${authorName} chamou você — ${card.title}`,
+            body: nudge.text,
+            cardId: id,
+          });
 
           if (env.BOARD_ROOM) {
             context.waitUntil(
@@ -724,6 +804,11 @@ export async function onRequest(context) {
                 clientId: updatedCard.clientId,
               }))
             );
+            dispatchPush(context, env, kv, addedEmails, {
+              title: `${actorName} atribuiu você — ${updatedCard.title}`,
+              body: "Você foi adicionado como responsável.",
+              cardId: id,
+            });
           }
           if (reopenedEmails.length) {
             await pushNotifs(
@@ -739,6 +824,11 @@ export async function onRequest(context) {
                 text: "reabriu esta tarefa",
               }))
             );
+            dispatchPush(context, env, kv, reopenedEmails, {
+              title: `${actorName} reabriu — ${updatedCard.title}`,
+              body: "A tarefa voltou a ficar em aberto.",
+              cardId: id,
+            });
           }
 
           if (addedEmails.length && env.BOARD_ROOM) {
