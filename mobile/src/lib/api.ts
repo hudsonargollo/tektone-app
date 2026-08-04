@@ -104,6 +104,9 @@ export const api = {
   reorderCards: (columnId: string, orderedIds: string[]) =>
     req("/kanban/cards/reorder", { method: "POST", body: { columnId, orderedIds } }),
 
+  // Expo push token registration
+  registerExpoPush: (token: string) => req("/push/register-expo", { method: "POST", body: { token } }),
+
   // meeting-notes review (validation popup)
   listReviews: () => req("/kanban/reviews"),
   ackReviews: (ids: string[]) => req("/kanban/reviews/ack", { method: "POST", body: { ids } }),

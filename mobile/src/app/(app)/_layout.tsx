@@ -5,6 +5,7 @@ import { LayoutGrid, Bell, User, ShieldCheck } from "lucide-react-native";
 import { useAuth } from "@/lib/auth";
 import { colors, fonts } from "@/lib/theme";
 import { RealtimeProvider, useRealtimeContext } from "@/lib/realtime";
+import { registerForPushAsync } from "@/lib/push";
 import NudgeToastHost from "@/components/NudgeToast";
 
 // Reproduces web's CSS `tk-shake` keyframe (translateX ∓6px, ~0.5s) using
@@ -73,6 +74,14 @@ function AppTabs({ isAdmin }: { isAdmin: boolean }) {
 
 export default function AppLayout() {
   const { user, loading } = useAuth();
+
+  // Registration needs a session (the token goes straight to the backend),
+  // so this can't run any earlier than here. No-ops silently on simulators,
+  // without `eas init`/a projectId, or if permission is denied.
+  useEffect(() => {
+    if (user) registerForPushAsync();
+  }, [user]);
+
   if (loading) return null;
   if (!user) return <Redirect href="/(auth)" />;
 
