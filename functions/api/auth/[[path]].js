@@ -11,8 +11,7 @@ import {
   hashPassword,
   verifyPassword,
   signSession,
-  verifySession,
-  getCookie,
+  getSessionEmail,
   sessionCookie,
 } from "../../_lib/session.js";
 import { ALLOWED_EMAILS, isAllowed, isAdmin } from "../../_lib/allowlist.js";
@@ -76,7 +75,7 @@ async function handle(context) {
 
   // ── me ──────────────────────────────────────────────────────────────────
   if (action === "me" && method === "GET") {
-    const email = await verifySession(secret, getCookie(request, "tk_session"));
+    const email = await getSessionEmail(request, env);
     const authed = Boolean(email) && isAllowed(email);
     let name = null;
     let avatar = null;
@@ -97,7 +96,7 @@ async function handle(context) {
 
   // ── directory (teammates: name + email + avatar) ─────────────────────────
   if (action === "directory" && method === "GET") {
-    const email = await verifySession(secret, getCookie(request, "tk_session"));
+    const email = await getSessionEmail(request, env);
     if (!email || !isAllowed(email)) return json({ error: "unauthorized" }, 401);
     const users = await getUsers(kv);
     return json({
@@ -111,7 +110,7 @@ async function handle(context) {
 
   // ── profile (current user) ────────────────────────────────────────────────
   if (action === "profile") {
-    const email = await verifySession(secret, getCookie(request, "tk_session"));
+    const email = await getSessionEmail(request, env);
     if (!email || !isAllowed(email)) return json({ error: "unauthorized" }, 401);
     const users = await getUsers(kv);
     const idx = users.findIndex((u) => u.email === email);
@@ -172,7 +171,9 @@ async function handle(context) {
     });
     await saveUsers(kv, users);
     const token = await signSession(secret, email);
-    return json({ ok: true, email }, 201, { "Set-Cookie": sessionCookie(token) });
+    // token is redundant for the web client (it already has the Set-Cookie),
+    // included so a native client can store it and send it as a bearer header.
+    return json({ ok: true, email, token }, 201, { "Set-Cookie": sessionCookie(token) });
   }
 
   // ── login ─────────────────────────────────────────────────────────────────
@@ -187,14 +188,14 @@ async function handle(context) {
       : (await hashPassword(body.password || "", "00"), false);
     if (!ok) return json({ error: "Credenciais inválidas." }, 401);
     const token = await signSession(secret, email);
-    return json({ ok: true, email, name: user.name }, 200, {
+    return json({ ok: true, email, name: user.name, token }, 200, {
       "Set-Cookie": sessionCookie(token),
     });
   }
 
   // ── admin (Hudson) ────────────────────────────────────────────────────────
   if (action === "admin") {
-    const sessionEmail = await verifySession(secret, getCookie(request, "tk_session"));
+    const sessionEmail = await getSessionEmail(request, env);
     if (!sessionEmail || !isAdmin(sessionEmail)) return json({ error: "Acesso negado." }, 403);
     const sub = seg[1];
 

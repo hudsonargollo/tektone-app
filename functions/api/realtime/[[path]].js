@@ -6,7 +6,7 @@
  * listens for broadcast events (e.g. { type: "card:reviewed", ... }) pushed
  * by functions/api/kanban/[[path]].js after a review action.
  */
-import { verifySession, getCookie } from "../../_lib/session.js";
+import { getSessionEmail } from "../../_lib/session.js";
 import { isAllowed } from "../../_lib/allowlist.js";
 
 export async function onRequest(context) {
@@ -15,7 +15,7 @@ export async function onRequest(context) {
 
   if (seg[0] !== "connect") return new Response("Not found", { status: 404 });
 
-  const email = await verifySession(env.SESSION_SECRET, getCookie(request, "tk_session"));
+  const email = await getSessionEmail(request, env);
   if (!email || !isAllowed(email)) return new Response("Unauthorized", { status: 401 });
 
   if (request.headers.get("Upgrade") !== "websocket") {

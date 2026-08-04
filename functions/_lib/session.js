@@ -106,3 +106,14 @@ export function getCookie(request, name) {
 export function sessionCookie(token, maxAge = 60 * 60 * 24 * 30) {
   return `tk_session=${token}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${maxAge}`;
 }
+
+// Same signed token, two delivery paths: the web client sends it as the
+// tk_session cookie; a native client (no reliable HttpOnly/Secure cookie jar)
+// sends it as `Authorization: Bearer <token>` instead. Drop-in replacement
+// for every `verifySession(secret, getCookie(request, "tk_session"))` call.
+export async function getSessionEmail(request, env) {
+  const auth = request.headers.get("Authorization") || "";
+  const bearer = auth.match(/^Bearer\s+(.+)$/i)?.[1];
+  const token = bearer || getCookie(request, "tk_session");
+  return verifySession(env.SESSION_SECRET, token);
+}

@@ -16,7 +16,7 @@
  *       → analyzes + saves + records a review batch, deduped. Headless.
  */
 
-import { verifySession, getCookie } from "../../_lib/session.js";
+import { getSessionEmail } from "../../_lib/session.js";
 import { isAllowed } from "../../_lib/allowlist.js";
 
 const json = (data, status = 200) =>
@@ -403,7 +403,7 @@ export async function onRequest(context) {
   }
 
   const sessionAuth = async () => {
-    const email = await verifySession(env.SESSION_SECRET, getCookie(request, "tk_session"));
+    const email = await getSessionEmail(request, env);
     return Boolean(email) && isAllowed(email);
   };
 
