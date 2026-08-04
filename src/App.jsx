@@ -152,6 +152,9 @@ export default function App() {
       } else if (evt.type === "card:assigned" && evt.recipients?.map((e) => e.toLowerCase()).includes(me)) {
         refreshCards();
         bumpNotifs();
+      } else if (evt.type === "card:reopened" && evt.recipients?.map((e) => e.toLowerCase()).includes(me)) {
+        refreshCards();
+        bumpNotifs();
       } else if (evt.type === "nudge" && String(evt.to || "").toLowerCase() === me) {
         bumpNotifs();
         setShake(true);
@@ -334,11 +337,31 @@ export default function App() {
   async function moveCard(id, columnId) {
     const card = cards.find((c) => c.id === id);
     if (!card) return;
-    const updated = { ...card, columnId };
+    // A plain column-level drop (not onto a specific card) always appends
+    // to the end of the target column's manual order.
+    const maxOrder = Math.max(
+      -1,
+      ...cards.filter((c) => c.columnId === columnId && c.id !== id).map((c) => c.order ?? 0)
+    );
+    const updated = { ...card, columnId, order: maxOrder + 1 };
     setCards((p) => p.map((c) => (c.id === id ? updated : c)));
     try {
       const { comments, ...rest } = updated;
       await api.updateCard(id, rest);
+    } catch {
+      /* keep optimistic state; KV will reconcile on next load */
+    }
+  }
+
+  // Manual within-column reorder (and, combined with moveCard, a
+  // drag-onto-a-specific-card cross-column move too).
+  async function reorderCards(columnId, orderedIds) {
+    const orderIndex = new Map(orderedIds.map((cardId, i) => [cardId, i]));
+    setCards((p) =>
+      p.map((c) => (c.columnId === columnId && orderIndex.has(c.id) ? { ...c, order: orderIndex.get(c.id) } : c))
+    );
+    try {
+      await api.reorderCards(columnId, orderedIds);
     } catch {
       /* keep optimistic state; KV will reconcile on next load */
     }
@@ -567,6 +590,7 @@ export default function App() {
                 onDelete={deleteCard}
                 onQuickAdd={quickAdd}
                 onMove={moveCard}
+                onReorder={reorderCards}
                 onReview={reviewCard}
                 onReviewBulk={reviewCardsBulk}
               />
@@ -780,6 +804,9 @@ export default function App() {
             mode={wizard.mode}
             card={wizard.card}
             seedDefaults={seedDefaults}
+            members={members}
+            clients={clients}
+            avatarByName={avatarByName}
             onClose={() => {
               const backTo = wizard.mode === "backfill" ? wizard.card : null;
               setWizard(null);

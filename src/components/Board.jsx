@@ -21,6 +21,17 @@ import { Avatar, PriorityBadge } from "@/components/ui";
 
 const COLLAPSE_KEY = "tk_collapsed_cols";
 
+// Explicit manual order first (drag-to-reorder), falling back to creation
+// order for any card that predates the `order` field — no migration needed.
+function sortByOrder(list) {
+  return [...list].sort((a, b) => {
+    const oa = a.order ?? 0;
+    const ob = b.order ?? 0;
+    if (oa !== ob) return oa - ob;
+    return new Date(a.createdAt || 0) - new Date(b.createdAt || 0);
+  });
+}
+
 // ── Card ────────────────────────────────────────────────────────────────────
 function Card({
   card,
@@ -30,6 +41,7 @@ function Card({
   onDelete,
   onDragStart,
   onDragEnd,
+  onDropOnCard,
   dragging,
   onReview,
   selectable,
@@ -64,6 +76,17 @@ function Card({
         onDragStart(card.id);
       }}
       onDragEnd={onDragEnd}
+      onDragOver={(e) => {
+        if (!selectable) e.preventDefault();
+      }}
+      onDrop={(e) => {
+        if (selectable || !onDropOnCard) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const rect = e.currentTarget.getBoundingClientRect();
+        const before = e.clientY < rect.top + rect.height / 2;
+        onDropOnCard(card.id, before);
+      }}
       onClick={() => (selectable ? onToggleSelect(card.id) : onEdit(card))}
       className={`group relative cursor-pointer overflow-hidden rounded-xl surface-2 pl-4 pr-3.5 py-3.5 shadow-sm transition-shadow duration-200 hover:shadow-[0_8px_24px_rgba(20,22,24,0.10)] ${
         selected ? "ring-2 ring-action" : ""
@@ -332,6 +355,7 @@ function Column({
   isOver,
   setOver,
   onDrop,
+  onReorderDrop,
   onQuickAdd,
   onCollapse,
   onReview,
@@ -423,6 +447,7 @@ function Column({
               client={clients.find((c) => c.id === card.clientId)}
               avatarByName={avatarByName}
               dragging={draggingId === card.id}
+              onDropOnCard={(cardId, before) => onReorderDrop?.(col.id, cardId, before)}
               onReview={onReview}
               selectable={selectMode}
               selected={selected.has(card.id)}
@@ -467,7 +492,7 @@ function MobileBoard({ cards, clients, avatarByName, flat, onEdit, onDelete, onQ
   const noop = () => {};
 
   const col = COLUMNS[index];
-  const colCards = cards.filter((c) => c.columnId === col.id);
+  const colCards = sortByOrder(cards.filter((c) => c.columnId === col.id));
 
   // Flat mode (e.g. Solicitações): every matching card across all columns, one list.
   if (flat) {
@@ -610,6 +635,7 @@ export default function Board({
   onDelete,
   onQuickAdd,
   onMove,
+  onReorder,
   onReview,
   onReviewBulk,
 }) {
@@ -647,6 +673,37 @@ export default function Board({
     setDraggingId(null);
   }
 
+  // Dropped directly on another card — a precise reorder (and, if the
+  // columns differ, a column change too), instead of just "append to end".
+  function handleReorderDrop(targetColId, targetCardId, before) {
+    if (!draggingId || draggingId === targetCardId) {
+      setDraggingId(null);
+      return;
+    }
+    const draggedCard = cards.find((c) => c.id === draggingId);
+    if (!draggedCard) {
+      setDraggingId(null);
+      return;
+    }
+    const siblings = sortByOrder(
+      cards.filter((c) => c.columnId === targetColId && c.id !== draggingId)
+    );
+    const targetIndex = siblings.findIndex((c) => c.id === targetCardId);
+    if (targetIndex === -1) {
+      setDraggingId(null);
+      return;
+    }
+    const insertAt = before ? targetIndex : targetIndex + 1;
+    const orderedIds = [
+      ...siblings.slice(0, insertAt).map((c) => c.id),
+      draggingId,
+      ...siblings.slice(insertAt).map((c) => c.id),
+    ];
+    if (draggedCard.columnId !== targetColId) onMove(draggingId, targetColId);
+    onReorder(targetColId, orderedIds);
+    setDraggingId(null);
+  }
+
   return (
     <>
       {/* Desktop — multi-column with collapse rails */}
@@ -655,7 +712,7 @@ export default function Board({
         style={{ minHeight: 0 }}
       >
         {COLUMNS.map((col) => {
-          const colCards = cards.filter((c) => c.columnId === col.id);
+          const colCards = sortByOrder(cards.filter((c) => c.columnId === col.id));
           return collapsed.has(col.id) ? (
             <CollapsedColumn
               key={col.id}
@@ -676,6 +733,7 @@ export default function Board({
               isOver={overCol === col.id}
               setOver={setOverCol}
               onDrop={handleDrop}
+              onReorderDrop={handleReorderDrop}
               onQuickAdd={onQuickAdd}
               onCollapse={() => toggleCollapse(col.id)}
               onEdit={onEdit}

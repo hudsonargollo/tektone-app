@@ -3,23 +3,28 @@
  * Ported from the growth worker. Bound to the KANBAN KV namespace.
  *
  * KV keys:
- *   kanban:clients  → [{ id, name, color }]
- *   kanban:cards    → [{ id, columnId, title, description, priority, clientId, assignee, dueDate, labelColor, createdAt, reviewed, reviewedAt, reviewedBy }]
- *   kanban:members  → [{ id, name, email, role }]
+ *   kanban:clients   → [{ id, name, color }]
+ *   kanban:cards     → [{ id, columnId, title, description, priority, clientId, assignee, dueDate, order, labelColor, createdAt, reviewed, reviewedAt, reviewedBy }]
+ *   kanban:members   → [{ id, name, email, role }]
+ *   kanban:notifLog  → [{ id, type, to, fromName, fromEmail, cardId, cardTitle, clientId, commentId, text, createdAt, readAt }]
+ *                      persistent per-recipient notification history (mentions, requests, assignments, nudges, reviews, reopens) — never deleted, only readAt-stamped
  *
  * Routes (relative to /api/kanban):
  *   GET|POST          /clients          PUT|DELETE /clients/:id
  *   GET|POST          /cards            PUT|DELETE /cards/:id
  *   POST              /cards/:id/review           — mark reviewed, move to Done, notify + broadcast
  *   POST              /cards/review-bulk          — same, for a batch of ids
+ *   POST              /cards/reorder              — { columnId, orderedIds } re-numbers `order` within a column
  *   GET|POST          /members          PUT|DELETE /members/:id
+ *   GET                /notifications              — { items, unreadCount } from kanban:notifLog, for the current user
+ *   POST               /notifications/ack           — { ids } or { all: true }, marks readAt
  *
  * A "reviewed" event is recorded as a system comment (kind: "reviewed") on the
- * card so it flows through the existing unread-comments notification bell and
- * email pipeline without a parallel notification system.
+ * card so it stays visible in the card's own thread; it also writes a
+ * kanban:notifLog entry (type "reviewed") for the bell/log.
  */
 
-import { verifySession, getCookie } from "../../_lib/session.js";
+import { getSessionEmail } from "../../_lib/session.js";
 import { isAdmin } from "../../_lib/allowlist.js";
 
 const CORS = {
@@ -52,6 +57,29 @@ async function kvGet(kv, key, fallback = []) {
 }
 
 const kvSet = (kv, key, value) => kv.put(key, JSON.stringify(value));
+
+const NOTIF_LOG_CAP = 500;
+
+// Persistent, per-recipient notification log — replaces the old "recompute
+// from unread comments" bell and the separate kanban:nudges store. Entries
+// are never deleted, only marked readAt on ack, so the log doubles as a
+// scrollable history. One entry per (event, recipient).
+async function pushNotifs(kv, entries) {
+  if (!entries.length) return;
+  const log = await kvGet(kv, "kanban:notifLog", []);
+  for (const e of entries) {
+    log.push({
+      id: uid(),
+      commentId: null,
+      clientId: null,
+      createdAt: new Date().toISOString(),
+      readAt: null,
+      ...e,
+    });
+  }
+  const trimmed = log.length > NOTIF_LOG_CAP ? log.slice(log.length - NOTIF_LOG_CAP) : log;
+  await kvSet(kv, "kanban:notifLog", trimmed);
+}
 
 const reEscape = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -204,6 +232,19 @@ async function notifyReview(context, env, kv, card, mentioned, members, authUser
   const cardUrl = `https://tasks.tektone.com.br/?card=${card.id}`;
 
   if (mentioned.length) {
+    await pushNotifs(
+      kv,
+      mentioned.map((to) => ({
+        type: "reviewed",
+        to,
+        fromName: reviewerName,
+        fromEmail: reviewerEmail,
+        cardId: card.id,
+        cardTitle: card.title,
+        clientId: card.clientId,
+        text: "revisou e concluiu esta tarefa",
+      }))
+    );
     const recipients = filterOptedIn(mentioned, authUsers);
     if (recipients.length) {
       const authorHasAvatar = Boolean(
@@ -312,7 +353,7 @@ export async function onRequest(context) {
       // /cards/:id/comments[/:commentId[/resolve]] — managed independently so
       // card edits never clobber the thread.
       if (id && seg[2] === "comments") {
-        const email = await verifySession(env.SESSION_SECRET, getCookie(request, "tk_session"));
+        const email = await getSessionEmail(request, env);
         if (!email) return json({ error: "unauthorized" }, 401);
         const commentId = seg[3];
         const cards = await kvGet(kv, "kanban:cards", []);
@@ -383,6 +424,22 @@ export async function onRequest(context) {
               );
             }
           }
+          if (comment.mentions.length) {
+            await pushNotifs(
+              kv,
+              comment.mentions.map((to) => ({
+                type: comment.kind === "request" ? "request" : "mention",
+                to,
+                fromName: authorName,
+                fromEmail: email,
+                cardId: card.id,
+                cardTitle: card.title,
+                clientId: card.clientId,
+                commentId: comment.id,
+                text: text.slice(0, 100),
+              }))
+            );
+          }
           if (comment.mentions.length && env.BOARD_ROOM) {
             context.waitUntil(
               env.BOARD_ROOM
@@ -424,27 +481,35 @@ export async function onRequest(context) {
           if (!validTargets.has(to))
             return json({ error: "Só é possível chamar quem participa deste card." }, 403);
 
-          const nudges = await kvGet(kv, "kanban:nudges", []);
+          const notifLog = await kvGet(kv, "kanban:notifLog", []);
           const cooldownMs = 45_000;
-          const recent = nudges.find(
-            (n) => n.from === email && n.to === to && Date.now() - new Date(n.createdAt).getTime() < cooldownMs
+          const recent = notifLog.find(
+            (n) =>
+              n.type === "nudge" &&
+              n.fromEmail === email &&
+              n.to === to &&
+              Date.now() - new Date(n.createdAt).getTime() < cooldownMs
           );
           if (recent) return json({ error: "Aguarde um instante antes de chamar novamente." }, 429);
 
           const nudge = {
             id: uid(),
-            from: email,
-            fromName: authorName,
+            type: "nudge",
             to,
+            fromName: authorName,
+            fromEmail: email,
             cardId: id,
             cardTitle: card.title,
+            clientId: card.clientId,
             commentId,
             text: String(c.text || "").slice(0, 100),
             createdAt: new Date().toISOString(),
-            seenAt: null,
+            readAt: null,
           };
-          nudges.push(nudge);
-          await kvSet(kv, "kanban:nudges", nudges);
+          notifLog.push(nudge);
+          const trimmedLog =
+            notifLog.length > NOTIF_LOG_CAP ? notifLog.slice(notifLog.length - NOTIF_LOG_CAP) : notifLog;
+          await kvSet(kv, "kanban:notifLog", trimmedLog);
 
           if (env.BOARD_ROOM) {
             context.waitUntil(
@@ -479,7 +544,7 @@ export async function onRequest(context) {
 
       // /cards/:id/review — mark reviewed, move to Done, notify + broadcast
       if (id && seg[2] === "review" && method === "POST") {
-        const email = await verifySession(env.SESSION_SECRET, getCookie(request, "tk_session"));
+        const email = await getSessionEmail(request, env);
         if (!email) return json({ error: "unauthorized" }, 401);
         const cards = await kvGet(kv, "kanban:cards", []);
         const card = cards.find((c) => c.id === id);
@@ -496,7 +561,7 @@ export async function onRequest(context) {
 
       // /cards/:id/seen — mark this card's comments as read by the current user
       if (id && seg[2] === "seen" && method === "POST") {
-        const email = await verifySession(env.SESSION_SECRET, getCookie(request, "tk_session"));
+        const email = await getSessionEmail(request, env);
         if (!email) return json({ error: "unauthorized" }, 401);
         const reads = await kvGet(kv, "kanban:reads", {});
         reads[email] = reads[email] || {};
@@ -526,13 +591,32 @@ export async function onRequest(context) {
         if (method === "POST") {
           const body = await request.json();
           const cards = await kvGet(kv, "kanban:cards", []);
-          const card = { id: uid(), createdAt: new Date().toISOString(), ...body };
+          let order = body.order;
+          if (order === undefined) {
+            const inColumn = cards.filter((c) => c.columnId === body.columnId);
+            order = inColumn.length ? Math.max(...inColumn.map((c) => c.order ?? 0)) + 1 : 0;
+          }
+          const card = { id: uid(), createdAt: new Date().toISOString(), ...body, order };
           cards.push(card);
           await kvSet(kv, "kanban:cards", cards);
           return json({ card }, 201);
         }
+      } else if (id === "reorder" && method === "POST") {
+        const email = await getSessionEmail(request, env);
+        if (!email) return json({ error: "unauthorized" }, 401);
+        const body = await request.json().catch(() => ({}));
+        const columnId = body.columnId;
+        const orderedIds = Array.isArray(body.orderedIds) ? body.orderedIds : [];
+        if (!columnId || !orderedIds.length) return json({ error: "columnId e orderedIds são obrigatórios." }, 400);
+        const cards = await kvGet(kv, "kanban:cards", []);
+        const indexById = new Map(orderedIds.map((cardId, i) => [cardId, i]));
+        for (const c of cards) {
+          if (c.columnId === columnId && indexById.has(c.id)) c.order = indexById.get(c.id);
+        }
+        await kvSet(kv, "kanban:cards", cards);
+        return json({ ok: true });
       } else if (id === "review-bulk" && method === "POST") {
-        const email = await verifySession(env.SESSION_SECRET, getCookie(request, "tk_session"));
+        const email = await getSessionEmail(request, env);
         if (!email) return json({ error: "unauthorized" }, 401);
         const body = await request.json().catch(() => ({}));
         const ids = new Set(Array.isArray(body.ids) ? body.ids : []);
@@ -560,7 +644,7 @@ export async function onRequest(context) {
           const card = cards.find((c) => c.id === id);
           if (!card) return json({ error: "Card not found" }, 404);
 
-          const email = await verifySession(env.SESSION_SECRET, getCookie(request, "tk_session"));
+          const email = await getSessionEmail(request, env);
           const members = await kvGet(kv, "kanban:members", []);
           const norm = (s) => String(s || "").trim().toLowerCase();
           const actorName =
@@ -603,6 +687,20 @@ export async function onRequest(context) {
             ),
           ];
 
+          // Reopening notifies the card's current assignees (excluding whoever
+          // just reopened it) — same audience `markReviewed` mentions on completion.
+          const reopenedEmails = reopenComment
+            ? [
+                ...new Set(
+                  oldNames
+                    .map((n) => members.find((m) => norm(m.name) === norm(n))?.email)
+                    .filter(Boolean)
+                    .map((e) => e.toLowerCase())
+                    .filter((e) => e !== norm(email))
+                ),
+              ]
+            : [];
+
           // never let a card edit overwrite the comment thread
           const updated = cards.map((c) => {
             if (c.id !== id) return c;
@@ -611,6 +709,37 @@ export async function onRequest(context) {
             return merged;
           });
           await kvSet(kv, "kanban:cards", updated);
+          const updatedCard = updated.find((c) => c.id === id);
+
+          if (addedEmails.length) {
+            await pushNotifs(
+              kv,
+              addedEmails.map((to) => ({
+                type: "assigned",
+                to,
+                fromName: actorName,
+                fromEmail: email,
+                cardId: id,
+                cardTitle: updatedCard.title,
+                clientId: updatedCard.clientId,
+              }))
+            );
+          }
+          if (reopenedEmails.length) {
+            await pushNotifs(
+              kv,
+              reopenedEmails.map((to) => ({
+                type: "reopened",
+                to,
+                fromName: actorName,
+                fromEmail: email,
+                cardId: id,
+                cardTitle: updatedCard.title,
+                clientId: updatedCard.clientId,
+                text: "reabriu esta tarefa",
+              }))
+            );
+          }
 
           if (addedEmails.length && env.BOARD_ROOM) {
             context.waitUntil(
@@ -620,13 +749,27 @@ export async function onRequest(context) {
                   type: "card:assigned",
                   recipients: addedEmails,
                   cardId: id,
-                  cardTitle: updated.find((c) => c.id === id).title,
+                  cardTitle: updatedCard.title,
                   byName: actorName,
                 })
                 .catch(() => {})
             );
           }
-          return json({ card: updated.find((c) => c.id === id) });
+          if (reopenedEmails.length && env.BOARD_ROOM) {
+            context.waitUntil(
+              env.BOARD_ROOM
+                .getByName("main")
+                .broadcast({
+                  type: "card:reopened",
+                  recipients: reopenedEmails,
+                  cardId: id,
+                  cardTitle: updatedCard.title,
+                  byName: actorName,
+                })
+                .catch(() => {})
+            );
+          }
+          return json({ card: updatedCard });
         }
         if (method === "DELETE") {
           await kvSet(kv, "kanban:cards", cards.filter((c) => c.id !== id));
@@ -669,90 +812,42 @@ export async function onRequest(context) {
       }
     }
 
-    // ── NOTIFICATIONS (unread comments per user) ──────────────────────────
+    // ── NOTIFICATIONS (persistent per-recipient log) ───────────────────────
     if (resource === "notifications" && method === "GET") {
-      const email = await verifySession(env.SESSION_SECRET, getCookie(request, "tk_session"));
+      const email = await getSessionEmail(request, env);
       if (!email) return json({ error: "unauthorized" }, 401);
-      const cards = await kvGet(kv, "kanban:cards", []);
-      const reads = await kvGet(kv, "kanban:reads", {});
-      const members = await kvGet(kv, "kanban:members", []);
-      const ur = reads[email] || {};
-      const norm = (s) => String(s || "").trim().toLowerCase();
-      const myName = norm(
-        members.find((m) => norm(m.email) === norm(email))?.name || ""
-      );
-
-      const notifications = [];
-      for (const card of cards) {
-        const comments = card.comments || [];
-        if (!comments.length) continue;
-        const since = ur[card.id];
-        const unread = comments.filter(
-          (c) => c.author !== email && (!since || c.createdAt > since)
-        );
-        if (!unread.length) continue;
-        const last = unread[unread.length - 1];
-        const assignees = card.assignees?.length
-          ? card.assignees
-          : card.assignee
-            ? [card.assignee]
-            : [];
-        const mine = Boolean(myName) && assignees.map(norm).includes(myName);
-        const mentioned = unread.some((c) =>
-          (c.mentions || []).includes(norm(email))
-        );
-        notifications.push({
-          cardId: card.id,
-          cardTitle: card.title,
-          clientId: card.clientId,
-          count: unread.length,
-          hasRequest: unread.some((c) => c.kind === "request"),
-          mine,
-          mentioned,
-          last: {
-            authorName: last.authorName,
-            kind: last.kind,
-            reopened: Boolean(last.reopened),
-            text: String(last.text || "").slice(0, 100),
-            createdAt: last.createdAt,
-          },
-        });
-      }
-      notifications.sort((a, b) => new Date(b.last.createdAt) - new Date(a.last.createdAt));
-      const total = notifications.reduce((n, x) => n + x.count, 0);
-
-      const nudges = await kvGet(kv, "kanban:nudges", []);
-      const nudgeCutoff = Date.now() - REVIEW_TTL_MS;
-      const pendingNudges = nudges
-        .filter((n) => n.to === email && !n.seenAt && new Date(n.createdAt).getTime() > nudgeCutoff)
+      const log = await kvGet(kv, "kanban:notifLog", []);
+      const items = log
+        .filter((n) => n.to === email)
         .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-
-      return json({ notifications, total: total + pendingNudges.length, nudges: pendingNudges });
+      const unreadCount = items.filter((n) => !n.readAt).length;
+      return json({ items, unreadCount });
     }
 
-    // ── NUDGES (per-comment "hey, look at this" ping, ack on open) ────────
-    if (resource === "nudges" && id === "ack" && method === "POST") {
-      const email = await verifySession(env.SESSION_SECRET, getCookie(request, "tk_session"));
+    if (resource === "notifications" && id === "ack" && method === "POST") {
+      const email = await getSessionEmail(request, env);
       if (!email) return json({ error: "unauthorized" }, 401);
       const body = await request.json().catch(() => ({}));
       const ids = Array.isArray(body.ids) ? new Set(body.ids) : null;
-      const nudges = await kvGet(kv, "kanban:nudges", []);
+      const all = Boolean(body.all);
+      const log = await kvGet(kv, "kanban:notifLog", []);
       let changed = false;
-      for (const n of nudges) {
+      const now = new Date().toISOString();
+      for (const n of log) {
         if (n.to !== email) continue;
-        if (ids && !ids.has(n.id)) continue;
-        if (!n.seenAt) {
-          n.seenAt = new Date().toISOString();
+        if (!all && (!ids || !ids.has(n.id))) continue;
+        if (!n.readAt) {
+          n.readAt = now;
           changed = true;
         }
       }
-      if (changed) await kvSet(kv, "kanban:nudges", nudges);
+      if (changed) await kvSet(kv, "kanban:notifLog", log);
       return json({ ok: true });
     }
 
     // ── REVIEWS (meeting-notes validation popup, per-user) ────────────────
     if (resource === "reviews") {
-      const email = await verifySession(env.SESSION_SECRET, getCookie(request, "tk_session"));
+      const email = await getSessionEmail(request, env);
       if (!email) return json({ error: "unauthorized" }, 401);
       const reviews = await kvGet(kv, "ingest:reviews", []);
 

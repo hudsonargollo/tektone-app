@@ -43,7 +43,7 @@ function Field({ label, children }) {
 }
 
 // ── Custom dropdown (popover) ─────────────────────────────────────────────────
-function Select({ value, onChange, options, placeholder = "— Nenhum —" }) {
+export function Select({ value, onChange, options, placeholder = "— Nenhum —" }) {
   const [open, setOpen] = useState(false);
   const current = options.find((o) => o.value === value);
 
@@ -124,7 +124,7 @@ function Select({ value, onChange, options, placeholder = "— Nenhum —" }) {
 }
 
 // ── Segmented control ─────────────────────────────────────────────────────────
-function Segmented({ value, onChange, options }) {
+export function Segmented({ value, onChange, options }) {
   return (
     <div className="flex gap-1.5">
       {options.map((o) => {
@@ -168,7 +168,7 @@ const parseISO = (s) => {
   return new Date(y, m - 1, d);
 };
 
-function DatePicker({ value, onChange }) {
+export function DatePicker({ value, onChange }) {
   const [open, setOpen] = useState(false);
   const [coords, setCoords] = useState(null);
   const btnRef = useRef(null);
@@ -600,7 +600,7 @@ function Links({ items, onChange }) {
 }
 
 // ── Multiple assignees ────────────────────────────────────────────────────────
-function MultiAssignee({ members, value, onChange, avatarByName }) {
+export function MultiAssignee({ members, value, onChange, avatarByName }) {
   const [open, setOpen] = useState(false);
   const selected = value ?? [];
   const toggle = (name) =>

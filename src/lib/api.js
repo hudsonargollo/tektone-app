@@ -67,14 +67,19 @@ export const api = {
   meetingText: (id) => req(`/meetings/text?id=${encodeURIComponent(id)}`),
   processMeetings: (ids) => req("/meetings/process", { method: "POST", body: { ids } }),
 
-  // comment notifications (per-user unread)
+  // persistent per-user notification log (mentions, requests, assignments, nudges, reviews, reopens)
   getNotifications: () => req("/kanban/notifications"),
+  ackNotifications: (ids) => req("/kanban/notifications/ack", { method: "POST", body: { ids } }),
+  ackAllNotifications: () => req("/kanban/notifications/ack", { method: "POST", body: { all: true } }),
   markCardSeen: (cardId) => req(`/kanban/cards/${cardId}/seen`, { method: "POST" }),
 
-  // nudges — ping a specific person about a comment
+  // nudges — ping a specific person about a comment (send only; read state now lives in notifications)
   nudgeComment: (cardId, commentId, to) =>
     req(`/kanban/cards/${cardId}/comments/${commentId}/nudge`, { method: "POST", body: { to } }),
-  ackNudges: (ids) => req("/kanban/nudges/ack", { method: "POST", body: { ids } }),
+
+  // manual card reordering within a column
+  reorderCards: (columnId, orderedIds) =>
+    req("/kanban/cards/reorder", { method: "POST", body: { columnId, orderedIds } }),
 
   // meeting-notes review (validation popup)
   listReviews: () => req("/kanban/reviews"),

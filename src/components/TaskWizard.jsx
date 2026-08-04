@@ -14,6 +14,8 @@ import {
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { Spinner, useIsMobile } from "@/components/ui";
+import { Select, Segmented, MultiAssignee, DatePicker } from "@/components/CardModal";
+import { PRIORITY } from "@/lib/constants";
 
 const labelCls =
   "mb-1.5 block font-mono text-[11px] font-medium uppercase tracking-[0.16em] text-stone-500";
@@ -34,6 +36,42 @@ function Field({ label, children }) {
   );
 }
 
+// One question, one field, one screen — the manual path's four steps, in the
+// exact order/wording of functions/api/analyze/[[path]].js's
+// INTERVIEW_SYSTEM_PROMPT sections, so the manual and AI-guided paths always
+// describe the same four things the same way.
+const MANUAL_STEPS = [
+  {
+    key: "manual-challenge",
+    field: "challenge",
+    headline: "Qual é o desafio?",
+    hint: "Qual bug ou nova funcionalidade está sendo resolvido/construído.",
+    placeholder: "Descreva o desafio…",
+  },
+  {
+    key: "manual-method",
+    field: "method",
+    headline: "Qual é o método?",
+    hint: "A abordagem, ferramentas ou processo usados — copywriting, edição de vídeo, software, campanha de marketing…",
+    placeholder: "Descreva o método…",
+  },
+  {
+    key: "manual-quest",
+    field: "quest",
+    headline: "Como foi a jornada?",
+    hint: "Detalhes, novas ideias, descobertas, obstáculos técnicos pelo caminho.",
+    placeholder: "Descreva a jornada…",
+  },
+  {
+    key: "manual-victory",
+    field: "victory",
+    headline: "Qual é a vitória?",
+    hint: "Como o resultado nasceu e como fortalece o negócio.",
+    placeholder: "Descreva a vitória…",
+    withChecklist: true,
+  },
+];
+
 function composeDescription({ challenge, method, quest, victory }) {
   const parts = [];
   if (challenge.trim()) parts.push(`O DESAFIO\n${challenge.trim()}`);
@@ -41,6 +79,58 @@ function composeDescription({ challenge, method, quest, victory }) {
   if (quest.trim()) parts.push(`A JORNADA\n${quest.trim()}`);
   if (victory.trim()) parts.push(`A VITÓRIA\n${victory.trim()}`);
   return parts.join("\n\n");
+}
+
+// Passo X de N — sits under the header on multi-screen chains (manual-fill).
+function WizardProgress({ index, total }) {
+  return (
+    <div className="mb-4 flex items-center gap-2">
+      <div className="flex flex-1 gap-1">
+        {Array.from({ length: total }, (_, i) => (
+          <div
+            key={i}
+            className={`h-1 flex-1 rounded-full transition-colors ${
+              i <= index ? "bg-action" : "bg-ink/10"
+            }`}
+          />
+        ))}
+      </div>
+      <span className="shrink-0 font-mono text-[10px] text-stone-400">
+        Passo {index + 1} de {total}
+      </span>
+    </div>
+  );
+}
+
+// Small recap of what was picked on the "details" step — visible on every
+// screen after it, so the user never has to backtrack just to check.
+function SummaryChips({ clientId, clients, assignees, priority, dueDate }) {
+  const client = clients.find((c) => c.id === clientId);
+  const p = PRIORITY[priority];
+  const chips = [];
+  if (client) chips.push({ key: "client", label: client.name, dot: client.color });
+  if (assignees.length)
+    chips.push({ key: "assignees", label: assignees.length === 1 ? assignees[0].split(" ")[0] : `${assignees.length} pessoas` });
+  if (p) chips.push({ key: "priority", label: p.label, dot: p.color });
+  if (dueDate)
+    chips.push({
+      key: "due",
+      label: new Date(`${dueDate}T00:00:00`).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" }),
+    });
+  if (!chips.length) return null;
+  return (
+    <div className="mb-4 flex flex-wrap gap-1.5">
+      {chips.map((c) => (
+        <span
+          key={c.key}
+          className="inline-flex items-center gap-1.5 rounded-full border border-ink/10 bg-ink/[0.03] px-2.5 py-1 font-mono text-[10px] text-stone-600"
+        >
+          {c.dot && <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: c.dot }} />}
+          {c.label}
+        </span>
+      ))}
+    </div>
+  );
 }
 
 // Mirrors CardModal's Checklist add/edit/toggle/remove interaction — kept as
@@ -129,14 +219,24 @@ function ChatBubble({ from, children }) {
 
 const HEADER_TITLES = {
   title: "Nova tarefa",
+  details: "Projeto, prazo e responsáveis",
   choice: "Como você quer preencher?",
-  manual: "Preencher manualmente",
+  "manual-challenge": "Preencher manualmente",
+  "manual-method": "Preencher manualmente",
+  "manual-quest": "Preencher manualmente",
+  "manual-victory": "Preencher manualmente",
   "ai-chat": "Entrevista guiada por IA",
   review: "Revisar e criar",
 };
 
+const slideVariants = {
+  enter: { opacity: 0, x: 24 },
+  center: { opacity: 1, x: 0 },
+  exit: { opacity: 0, x: -24 },
+};
+
 // mode: "create" (from "Nova tarefa") | "backfill" (from CardModal, `card` present)
-export default function TaskWizard({ mode, card, seedDefaults, onClose, onCreated, onUpdated }) {
+export default function TaskWizard({ mode, card, seedDefaults, members, clients, avatarByName, onClose, onCreated, onUpdated }) {
   const isBackfill = mode === "backfill";
   const isMobile = useIsMobile();
   const [step, setStep] = useState(isBackfill ? "choice" : "title");
@@ -145,6 +245,16 @@ export default function TaskWizard({ mode, card, seedDefaults, onClose, onCreate
   const [sections, setSections] = useState({ challenge: "", method: "", quest: "", victory: "" });
   const [checklist, setChecklist] = useState([]);
   const [description, setDescription] = useState("");
+
+  // Details step state — project/assignees/priority/deadline. Seeded from the
+  // backfilled card's current values, or from seedDefaults on create.
+  const source = isBackfill ? card : seedDefaults;
+  const [clientId, setClientId] = useState(source?.clientId ?? "");
+  const [assignees, setAssignees] = useState(
+    source?.assignees?.length ? source.assignees : source?.assignee ? [source.assignee] : []
+  );
+  const [priority, setPriority] = useState(source?.priority ?? "medium");
+  const [dueDate, setDueDate] = useState(source?.dueDate ?? "");
 
   const [turns, setTurns] = useState([]); // [{question, section, answer}]
   const [currentQuestion, setCurrentQuestion] = useState(null); // {text, section}
@@ -159,6 +269,10 @@ export default function TaskWizard({ mode, card, seedDefaults, onClose, onCreate
   useEffect(() => {
     if (step === "ai-chat") bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [step, turns, currentQuestion, chatBusy]);
+
+  const manualIndex = MANUAL_STEPS.findIndex((s) => s.key === step);
+  const isManualStep = manualIndex !== -1;
+  const showSummary = step !== "title" && step !== "details" && step !== "choice";
 
   function applyFinal(res) {
     setDescription(res.description);
@@ -214,12 +328,13 @@ export default function TaskWizard({ mode, card, seedDefaults, onClose, onCreate
   async function handleFinalSubmit() {
     setBusy(true);
     setError("");
+    const details = { clientId, assignees, assignee: assignees[0] ?? "", priority, dueDate };
     try {
       if (isBackfill) {
-        const { card: saved } = await api.updateCard(card.id, { description, checklist });
+        const { card: saved } = await api.updateCard(card.id, { description, checklist, ...details });
         onUpdated(saved);
       } else {
-        const body = { ...seedDefaults, title: title.trim() || "Nova tarefa", description, checklist };
+        const body = { ...seedDefaults, ...details, title: title.trim() || "Nova tarefa", description, checklist };
         const { card: saved } = await api.createCard(body);
         onCreated(saved);
       }
@@ -231,9 +346,11 @@ export default function TaskWizard({ mode, card, seedDefaults, onClose, onCreate
   }
 
   function goBack() {
-    if (step === "choice") setStep("title");
-    else if (step === "manual") setStep("choice");
-    else if (step === "ai-chat") {
+    if (step === "details") setStep("title");
+    else if (step === "choice") setStep("details");
+    else if (isManualStep) {
+      setStep(manualIndex === 0 ? "choice" : MANUAL_STEPS[manualIndex - 1].key);
+    } else if (step === "ai-chat") {
       setTurns([]);
       setCurrentQuestion(null);
       setUserReply("");
@@ -241,7 +358,11 @@ export default function TaskWizard({ mode, card, seedDefaults, onClose, onCreate
       setStep("choice");
     }
   }
-  const canGoBack = (step === "choice" && !isBackfill) || step === "manual" || step === "ai-chat";
+  const canGoBack =
+    (step === "details" && !isBackfill) ||
+    (step === "choice" && !isBackfill) ||
+    isManualStep ||
+    step === "ai-chat";
 
   return (
     <div className="fixed inset-0 z-50 flex justify-center lg:items-center lg:p-4">
@@ -290,31 +411,76 @@ export default function TaskWizard({ mode, card, seedDefaults, onClose, onCreate
         </div>
 
         {/* Body */}
-        <div className="flex-1 space-y-4 overflow-y-auto px-4 py-5 sm:px-6">
-          {error && <p className="font-mono text-[11px] text-danger">{error}</p>}
+        <div className="flex-1 overflow-y-auto px-4 py-5 sm:px-6">
+          {error && <p className="mb-4 font-mono text-[11px] text-danger">{error}</p>}
+          {isManualStep && <WizardProgress index={manualIndex} total={MANUAL_STEPS.length} />}
+          {showSummary && (
+            <SummaryChips clientId={clientId} clients={clients} assignees={assignees} priority={priority} dueDate={dueDate} />
+          )}
 
           <AnimatePresence mode="wait">
             {step === "title" && (
               <motion.div
                 key="title"
-                initial={{ opacity: 0, x: 16 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -16 }}
+                variants={slideVariants}
+                initial="enter"
+                animate="center"
+                exit="exit"
                 transition={{ duration: 0.22 }}
               >
-                <Field label="Título da tarefa">
-                  <input
-                    autoFocus
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && title.trim()) {
-                        e.preventDefault();
-                        setStep("choice");
-                      }
-                    }}
-                    placeholder="Título da tarefa…"
-                    className={inputCls}
+                <h3 className="mb-1 text-lg font-bold text-ink">Qual é a tarefa?</h3>
+                <p className="mb-4 font-mono text-[11px] text-stone-500">Um título curto — os detalhes vêm a seguir.</p>
+                <input
+                  autoFocus
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && title.trim()) {
+                      e.preventDefault();
+                      setStep("details");
+                    }
+                  }}
+                  placeholder="Título da tarefa…"
+                  className={inputCls}
+                />
+              </motion.div>
+            )}
+
+            {step === "details" && (
+              <motion.div
+                key="details"
+                variants={slideVariants}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                transition={{ duration: 0.22 }}
+                className="space-y-4"
+              >
+                <h3 className="mb-1 text-lg font-bold text-ink">Quem, onde e até quando?</h3>
+                <p className="mb-1 font-mono text-[11px] text-stone-500">
+                  Opcional agora, mas ajuda o time a encontrar essa tarefa depois.
+                </p>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <Field label="Projeto">
+                    <Select
+                      value={clientId}
+                      onChange={setClientId}
+                      options={[{ value: "", label: "— Nenhum —" }, ...clients.map((c) => ({ value: c.id, label: c.name, dot: c.color }))]}
+                      placeholder="Projeto"
+                    />
+                  </Field>
+                  <Field label="Prazo">
+                    <DatePicker value={dueDate} onChange={setDueDate} />
+                  </Field>
+                </div>
+                <Field label="Responsáveis">
+                  <MultiAssignee members={members} value={assignees} onChange={setAssignees} avatarByName={avatarByName} />
+                </Field>
+                <Field label="Prioridade">
+                  <Segmented
+                    value={priority}
+                    onChange={setPriority}
+                    options={Object.entries(PRIORITY).map(([k, v]) => ({ value: k, label: v.label, color: v.color }))}
                   />
                 </Field>
               </motion.div>
@@ -323,15 +489,16 @@ export default function TaskWizard({ mode, card, seedDefaults, onClose, onCreate
             {step === "choice" && (
               <motion.div
                 key="choice"
-                initial={{ opacity: 0, x: 16 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -16 }}
+                variants={slideVariants}
+                initial="enter"
+                animate="center"
+                exit="exit"
                 transition={{ duration: 0.22 }}
                 className="flex flex-col gap-3 sm:flex-row"
               >
                 <button
                   type="button"
-                  onClick={() => setStep("manual")}
+                  onClick={() => setStep(MANUAL_STEPS[0].key)}
                   className="flex flex-1 flex-col items-center justify-center gap-1 rounded-xl border border-ink/15 px-4 py-5 text-center transition-colors hover:border-action/40 hover:bg-ink/[0.02]"
                 >
                   <Pencil size={18} className="text-stone-500" />
@@ -348,61 +515,41 @@ export default function TaskWizard({ mode, card, seedDefaults, onClose, onCreate
               </motion.div>
             )}
 
-            {step === "manual" && (
+            {isManualStep && (
               <motion.div
-                key="manual"
-                initial={{ opacity: 0, x: 16 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -16 }}
+                key={step}
+                variants={slideVariants}
+                initial="enter"
+                animate="center"
+                exit="exit"
                 transition={{ duration: 0.22 }}
                 className="space-y-4"
               >
-                <Field label="O desafio">
-                  <textarea
-                    rows={2}
-                    value={sections.challenge}
-                    onChange={(e) => setSections((s) => ({ ...s, challenge: e.target.value }))}
-                    placeholder="Qual bug ou nova funcionalidade está sendo resolvido/construído?"
-                    className={`${inputCls} resize-none`}
-                  />
-                </Field>
-                <Field label="O método">
-                  <textarea
-                    rows={2}
-                    value={sections.method}
-                    onChange={(e) => setSections((s) => ({ ...s, method: e.target.value }))}
-                    placeholder="Qual abordagem, ferramentas ou processo — copywriting, edição de vídeo, software, campanha de marketing…"
-                    className={`${inputCls} resize-none`}
-                  />
-                </Field>
-                <Field label="A jornada">
-                  <textarea
-                    rows={2}
-                    value={sections.quest}
-                    onChange={(e) => setSections((s) => ({ ...s, quest: e.target.value }))}
-                    placeholder="Detalhes, novas ideias, descobertas, obstáculos técnicos pelo caminho."
-                    className={`${inputCls} resize-none`}
-                  />
-                </Field>
-                <Field label="A vitória">
-                  <textarea
-                    rows={2}
-                    value={sections.victory}
-                    onChange={(e) => setSections((s) => ({ ...s, victory: e.target.value }))}
-                    placeholder="Como isso nasceu e como fortalece o negócio."
-                    className={`${inputCls} resize-none`}
-                  />
-                </Field>
-                <ChecklistEditor items={checklist} onChange={setChecklist} />
+                <h3 className="text-lg font-bold text-ink">{MANUAL_STEPS[manualIndex].headline}</h3>
+                <p className="-mt-2 font-mono text-[11px] text-stone-500">{MANUAL_STEPS[manualIndex].hint}</p>
+                <textarea
+                  autoFocus
+                  rows={6}
+                  value={sections[MANUAL_STEPS[manualIndex].field]}
+                  onChange={(e) =>
+                    setSections((s) => ({ ...s, [MANUAL_STEPS[manualIndex].field]: e.target.value }))
+                  }
+                  placeholder={MANUAL_STEPS[manualIndex].placeholder}
+                  className={`${inputCls} resize-none`}
+                />
+                {MANUAL_STEPS[manualIndex].withChecklist && (
+                  <ChecklistEditor items={checklist} onChange={setChecklist} />
+                )}
               </motion.div>
             )}
 
             {step === "ai-chat" && (
               <motion.div
                 key="ai-chat"
-                initial={{ opacity: 0, x: 16 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -16 }}
+                variants={slideVariants}
+                initial="enter"
+                animate="center"
+                exit="exit"
                 transition={{ duration: 0.22 }}
               >
                 <div className="space-y-3">
@@ -462,9 +609,10 @@ export default function TaskWizard({ mode, card, seedDefaults, onClose, onCreate
             {step === "review" && (
               <motion.div
                 key="review"
-                initial={{ opacity: 0, x: 16 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -16 }}
+                variants={slideVariants}
+                initial="enter"
+                animate="center"
+                exit="exit"
                 transition={{ duration: 0.22 }}
                 className="space-y-4"
               >
@@ -497,23 +645,36 @@ export default function TaskWizard({ mode, card, seedDefaults, onClose, onCreate
             {step === "title" && (
               <button
                 type="button"
-                onClick={() => title.trim() && setStep("choice")}
+                onClick={() => title.trim() && setStep("details")}
                 disabled={!title.trim()}
                 className="inline-flex items-center gap-2 rounded-lg bg-action px-5 py-2 text-sm font-bold text-clay transition-all hover:brightness-110 ring-action disabled:opacity-40"
               >
                 Continuar
               </button>
             )}
-            {step === "manual" && (
+            {step === "details" && (
               <button
                 type="button"
-                onClick={() => {
-                  setDescription(composeDescription(sections));
-                  setStep("review");
-                }}
+                onClick={() => setStep("choice")}
                 className="inline-flex items-center gap-2 rounded-lg bg-action px-5 py-2 text-sm font-bold text-clay transition-all hover:brightness-110 ring-action"
               >
                 Continuar
+              </button>
+            )}
+            {isManualStep && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (manualIndex < MANUAL_STEPS.length - 1) {
+                    setStep(MANUAL_STEPS[manualIndex + 1].key);
+                  } else {
+                    setDescription(composeDescription(sections));
+                    setStep("review");
+                  }
+                }}
+                className="inline-flex items-center gap-2 rounded-lg bg-action px-5 py-2 text-sm font-bold text-clay transition-all hover:brightness-110 ring-action"
+              >
+                {manualIndex < MANUAL_STEPS.length - 1 ? "Continuar" : "Revisar"}
               </button>
             )}
             {step === "review" && (
