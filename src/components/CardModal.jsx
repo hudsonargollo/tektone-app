@@ -405,6 +405,25 @@ export function DescriptionCards({ value, onChange }) {
   const [active, setActive] = useState(0);
   const [dir, setDir] = useState(1);
   const lastPushed = useRef(value);
+  const taRef = useRef(null);
+
+  // Auto-grow the card to fit whatever text is in the active section —
+  // never clip it behind an internal scrollbar. AnimatePresence (mode="wait")
+  // swaps in the next section's textarea on its own internal timer, after
+  // the previous one's exit animation finishes — that swap doesn't re-render
+  // DescriptionCards itself, so a useLayoutEffect here never sees the new
+  // node. A callback ref fires exactly when each node mounts instead; typing
+  // resizes explicitly since content changes without a remount.
+  const resize = () => {
+    const el = taRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  };
+  const attachTextarea = (el) => {
+    taRef.current = el;
+    resize();
+  };
 
   useEffect(() => {
     if (value === lastPushed.current) return;
@@ -448,7 +467,7 @@ export function DescriptionCards({ value, onChange }) {
 
   return (
     <div>
-      <div className="flex h-[200px] flex-col overflow-hidden rounded-lg border border-ink/15 bg-ink/[0.03]">
+      <div className="flex flex-col overflow-hidden rounded-lg border border-ink/15 bg-ink/[0.03]">
         <div className="flex items-center justify-between border-b border-ink/10 px-3 py-2">
           <span
             className="inline-flex items-center gap-1.5 font-mono text-[11px] font-semibold uppercase tracking-[0.14em]"
@@ -479,22 +498,28 @@ export function DescriptionCards({ value, onChange }) {
           </div>
         </div>
 
-        <div className="relative flex-1 overflow-hidden">
-          <AnimatePresence initial={false} custom={dir} mode="popLayout">
-            <motion.textarea
-              key={current.key}
-              custom={dir}
-              initial={{ x: dir * 16, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              exit={{ x: dir * -16, opacity: 0 }}
-              transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
-              value={sections[current.key]}
-              onChange={(e) => editSection(current.key, e.target.value)}
-              placeholder="—"
-              className="absolute inset-0 resize-none bg-transparent px-3 py-2.5 text-sm leading-relaxed text-ink outline-none placeholder:text-stone-400"
-            />
-          </AnimatePresence>
-        </div>
+        {/* mode="wait" (not the previous popLayout crossfade) — an
+            auto-growing textarea can't also be absolutely stacked for an
+            overlapping crossfade, so section switches cut then fade in. */}
+        <AnimatePresence initial={false} custom={dir} mode="wait">
+          <motion.textarea
+            key={current.key}
+            ref={attachTextarea}
+            custom={dir}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.12 }}
+            value={sections[current.key]}
+            onChange={(e) => {
+              editSection(current.key, e.target.value);
+              resize();
+            }}
+            placeholder="—"
+            rows={1}
+            className="block min-h-[120px] w-full resize-none overflow-hidden bg-transparent px-3 py-2.5 text-sm leading-relaxed text-ink outline-none placeholder:text-stone-400"
+          />
+        </AnimatePresence>
       </div>
 
       <div className="mt-2 flex items-center justify-center gap-1.5">
@@ -594,6 +619,35 @@ function ItemAssignee({ members, avatarByName, value, onChange }) {
   );
 }
 
+// A single-line input that clips overflowing text — this lets a hover +
+// wheel/trackpad gesture scroll it horizontally to reveal the rest instead
+// of leaving it permanently cut off. Wheel listener is added natively
+// (non-passive) since React's synthetic onWheel can't preventDefault.
+function ChecklistItemInput({ value, onChange, done }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const onWheel = (e) => {
+      if (el.scrollWidth <= el.clientWidth) return;
+      el.scrollLeft += e.deltaY;
+      e.preventDefault();
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, []);
+  return (
+    <input
+      ref={ref}
+      value={value}
+      onChange={onChange}
+      className={`flex-1 bg-transparent text-sm outline-none ${
+        done ? "text-stone-400 line-through" : "text-ink"
+      }`}
+    />
+  );
+}
+
 export function Checklist({ items, onChange, members = [], avatarByName }) {
   const [text, setText] = useState("");
   const list = items ?? [];
@@ -646,12 +700,10 @@ export function Checklist({ items, onChange, members = [], avatarByName }) {
             >
               {i.done ? <CheckSquare size={16} /> : <Square size={16} />}
             </button>
-            <input
+            <ChecklistItemInput
               value={i.text}
               onChange={(e) => edit(i.id, e.target.value)}
-              className={`flex-1 bg-transparent text-sm outline-none ${
-                i.done ? "text-stone-400 line-through" : "text-ink"
-              }`}
+              done={i.done}
             />
             <ItemAssignee
               members={members}
