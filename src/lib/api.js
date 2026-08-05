@@ -94,4 +94,10 @@ export const api = {
   createMember: (body) => req("/kanban/members", { method: "POST", body }),
   updateMember: (id, body) => req(`/kanban/members/${id}`, { method: "PUT", body }),
   deleteMember: (id) => req(`/kanban/members/${id}`, { method: "DELETE" }),
+
+  // private per-user daily todo checklist (sidepanel, never shared)
+  listTodos: () => req("/kanban/todos"),
+  createTodo: (text) => req("/kanban/todos", { method: "POST", body: { text } }),
+  updateTodo: (id, body) => req(`/kanban/todos/${id}`, { method: "PUT", body }),
+  deleteTodo: (id) => req(`/kanban/todos/${id}`, { method: "DELETE" }),
 };

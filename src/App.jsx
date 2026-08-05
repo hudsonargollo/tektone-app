@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { AlertCircle, LogOut, ShieldCheck, Menu, X, Sparkles, Package, Download, LayoutGrid } from "lucide-react";
+import { AlertCircle, LogOut, ShieldCheck, Menu, X, Sparkles, Package, Download, LayoutGrid, ListChecks } from "lucide-react";
 import { api } from "@/lib/api";
 import { today } from "@/lib/constants";
 import { useRealtime } from "@/lib/useRealtime";
@@ -15,6 +15,7 @@ import NudgeToast from "@/components/NudgeToast";
 import Login from "@/components/Login";
 import AdminPanel from "@/components/AdminPanel";
 import ProfilePage from "@/components/ProfilePage";
+import PersonalTodoPanel from "@/components/PersonalTodoPanel";
 import ReviewPopup from "@/components/ReviewPopup";
 import MeetingIntelligence from "@/components/MeetingIntelligence";
 import MeetingFetch from "@/components/MeetingFetch";
@@ -44,6 +45,7 @@ export default function App() {
   const [showProfile, setShowProfile] = useState(false);
   const [showIntel, setShowIntel] = useState(false);
   const [showFetch, setShowFetch] = useState(false);
+  const [showTodos, setShowTodos] = useState(false);
   const [reviews, setReviews] = useState([]);
   const [reviewActiveId, setReviewActiveId] = useState(null); // current carousel slide (meeting id)
   const [notifSignal, setNotifSignal] = useState(0);
@@ -495,6 +497,13 @@ export default function App() {
           >
             <Sparkles size={12} /> reuniões
           </button>
+          <button
+            onClick={() => setShowTodos(true)}
+            className="flex items-center gap-1.5 rounded-lg border border-ink/15 px-2.5 py-1.5 font-mono text-[11px] tracking-wide text-stone-500 transition-colors hover:border-action/40 hover:text-action"
+            title="Minhas tarefas do dia (privado)"
+          >
+            <ListChecks size={12} /> minhas tarefas
+          </button>
           <a
             href="https://tektone.com.br"
             className="font-mono text-[11px] tracking-wide text-stone-500 transition-colors hover:text-action"
@@ -697,6 +706,15 @@ export default function App() {
                   </span>
                 </button>
               )}
+              <button
+                onClick={() => {
+                  setShowTodos(true);
+                  setMenuOpen(false);
+                }}
+                className="flex w-full items-center gap-3 border-b border-ink/10 px-5 py-3.5 text-left text-sm text-stone-700 transition-colors active:bg-ink/[0.04]"
+              >
+                <ListChecks size={16} className="text-action" /> Minhas tarefas (privado)
+              </button>
               {isAdmin && (
                 <button
                   onClick={() => {
@@ -828,6 +846,7 @@ export default function App() {
         {showAdmin && (
           <AdminPanel currentEmail={userEmail} onClose={() => setShowAdmin(false)} />
         )}
+        {showTodos && <PersonalTodoPanel onClose={() => setShowTodos(false)} />}
         {showFetch && (
           <MeetingFetch onClose={() => setShowFetch(false)} onDone={loadData} />
         )}

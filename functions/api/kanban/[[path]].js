@@ -10,6 +10,8 @@
  *                      persistent per-recipient notification history (mentions, requests, assignments, nudges, reviews, reopens) — never deleted, only readAt-stamped
  *   push:web         → { [email]: [{ endpoint, expirationTime, keys }, ...] }  (written by functions/api/push/[[path]].js)
  *   push:expo        → { [email]: [expoPushToken, ...] }                       (written by functions/api/push/[[path]].js)
+ *   kanban:todos:<email> → [{ id, text, done, createdAt }]  private personal daily
+ *                          checklist, one key per user — never visible to anyone else
  *
  * Routes (relative to /api/kanban):
  *   GET|POST          /clients          PUT|DELETE /clients/:id
@@ -20,6 +22,7 @@
  *   GET|POST          /members          PUT|DELETE /members/:id
  *   GET                /notifications              — { items, unreadCount } from kanban:notifLog, for the current user
  *   POST               /notifications/ack           — { ids } or { all: true }, marks readAt
+ *   GET|POST          /todos            PUT|DELETE /todos/:id  — private per-user daily checklist
  *
  * A "reviewed" event is recorded as a system comment (kind: "reviewed") on the
  * card so it stays visible in the card's own thread; it also writes a
@@ -897,6 +900,52 @@ export async function onRequest(context) {
         }
         if (method === "DELETE") {
           await kvSet(kv, "kanban:members", members.filter((m) => m.id !== id));
+          return json({ ok: true });
+        }
+      }
+    }
+
+    // ── PERSONAL TODOS (private per-user daily checklist) ──────────────────
+    // Own KV key per user (not a shared blob filtered client-side, unlike
+    // notifLog below) — this list is never read by anyone but its owner.
+    if (resource === "todos") {
+      const email = await getSessionEmail(request, env);
+      if (!email) return json({ error: "unauthorized" }, 401);
+      const key = `kanban:todos:${email}`;
+
+      if (!id) {
+        if (method === "GET") {
+          const items = await kvGet(kv, key, []);
+          return json({ items });
+        }
+        if (method === "POST") {
+          const body = await request.json();
+          const text = String(body.text || "").trim();
+          if (!text) return json({ error: "Texto obrigatório." }, 400);
+          const items = await kvGet(kv, key, []);
+          const item = { id: uid(), text, done: false, createdAt: new Date().toISOString() };
+          items.push(item);
+          await kvSet(kv, key, items);
+          return json({ item }, 201);
+        }
+      } else {
+        const items = await kvGet(kv, key, []);
+        if (method === "PUT") {
+          const body = await request.json();
+          const updated = items.map((t) =>
+            t.id === id
+              ? {
+                  ...t,
+                  ...(body.text !== undefined ? { text: String(body.text) } : {}),
+                  ...(body.done !== undefined ? { done: Boolean(body.done) } : {}),
+                }
+              : t
+          );
+          await kvSet(kv, key, updated);
+          return json({ item: updated.find((t) => t.id === id) });
+        }
+        if (method === "DELETE") {
+          await kvSet(kv, key, items.filter((t) => t.id !== id));
           return json({ ok: true });
         }
       }
