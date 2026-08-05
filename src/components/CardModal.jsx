@@ -26,6 +26,7 @@ import {
   Wrench,
   Route,
   Trophy,
+  UserPlus,
 } from "lucide-react";
 import { COLUMNS, PRIORITY, LABEL_COLORS } from "@/lib/constants";
 import { Avatar, Spinner, useIsMobile } from "@/components/ui";
@@ -514,7 +515,86 @@ export function DescriptionCards({ value, onChange }) {
 }
 
 // ── Checklist ─────────────────────────────────────────────────────────────────
-function Checklist({ items, onChange }) {
+// Compact single-member picker for one checklist item — an avatar button
+// that opens a small popover, distinct from the card-level MultiAssignee
+// (multi-select, full-width bar) since an item only ever has one owner.
+function ItemAssignee({ members, avatarByName, value, onChange }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="relative shrink-0">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        title={value || "Atribuir a alguém"}
+        className="flex items-center justify-center"
+      >
+        {value ? (
+          <Avatar name={value} src={avatarByName?.[value.trim().toLowerCase()]} />
+        ) : (
+          <span className="flex h-6 w-6 items-center justify-center rounded-full border border-dashed border-ink/20 text-stone-400 transition-colors hover:border-action/40 hover:text-action">
+            <UserPlus size={11} />
+          </span>
+        )}
+      </button>
+
+      <AnimatePresence>
+        {open && (
+          <>
+            <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+            <motion.ul
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.12 }}
+              className="absolute right-0 z-20 mt-1.5 max-h-56 w-48 overflow-y-auto rounded-lg border border-ink/10 bg-paper p-1 shadow-xl"
+            >
+              <li>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onChange("");
+                    setOpen(false);
+                  }}
+                  className={`flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm transition-colors hover:bg-ink/[0.05] ${
+                    !value ? "font-semibold text-ink" : "text-stone-500"
+                  }`}
+                >
+                  <span className="h-6 w-6 shrink-0 rounded-full border border-dashed border-ink/20" />
+                  <span className="flex-1">Ninguém</span>
+                  {!value && <Check size={14} className="text-action" />}
+                </button>
+              </li>
+              {members.map((m) => (
+                <li key={m.id}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onChange(m.name);
+                      setOpen(false);
+                    }}
+                    className={`flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm transition-colors hover:bg-ink/[0.05] ${
+                      value === m.name ? "font-semibold text-ink" : "text-stone-600"
+                    }`}
+                  >
+                    <Avatar name={m.name} src={avatarByName?.[m.name?.trim().toLowerCase()]} />
+                    <span className="flex-1 truncate">{m.name}</span>
+                    {value === m.name && <Check size={14} className="text-action" />}
+                  </button>
+                </li>
+              ))}
+              {members.length === 0 && (
+                <li className="px-2.5 py-2 text-xs text-stone-400">Nenhum membro</li>
+              )}
+            </motion.ul>
+          </>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+export function Checklist({ items, onChange, members = [], avatarByName }) {
   const [text, setText] = useState("");
   const list = items ?? [];
   const done = list.filter((i) => i.done).length;
@@ -523,13 +603,15 @@ function Checklist({ items, onChange }) {
   const add = () => {
     const t = text.trim();
     if (!t) return;
-    onChange([...list, { id: genId(), text: t, done: false }]);
+    onChange([...list, { id: genId(), text: t, done: false, assignee: "" }]);
     setText("");
   };
   const toggle = (id) =>
     onChange(list.map((i) => (i.id === id ? { ...i, done: !i.done } : i)));
   const edit = (id, t) =>
     onChange(list.map((i) => (i.id === id ? { ...i, text: t } : i)));
+  const assign = (id, name) =>
+    onChange(list.map((i) => (i.id === id ? { ...i, assignee: name } : i)));
   const remove = (id) => onChange(list.filter((i) => i.id !== id));
 
   return (
@@ -570,6 +652,12 @@ function Checklist({ items, onChange }) {
               className={`flex-1 bg-transparent text-sm outline-none ${
                 i.done ? "text-stone-400 line-through" : "text-ink"
               }`}
+            />
+            <ItemAssignee
+              members={members}
+              avatarByName={avatarByName}
+              value={i.assignee}
+              onChange={(name) => assign(i.id, name)}
             />
             <button
               type="button"
@@ -1400,7 +1488,12 @@ export default function CardModal({
                   onChange={(v) => set("description", v)}
                 />
               </div>
-              <Checklist items={d.checklist} onChange={saveChecklist} />
+              <Checklist
+                items={d.checklist}
+                onChange={saveChecklist}
+                members={members}
+                avatarByName={avatarByName}
+              />
             </div>
 
             {/* Right — metadata */}
