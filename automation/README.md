@@ -4,7 +4,8 @@ Turns Gemini meeting-notes Google Docs into kanban cards automatically.
 
 ```
 Apps Script (polls every 30 min, 5am–11pm — Google has no "on save" Drive trigger)
-  → finds new Gemini notes Docs ("Shared with me" or a folder)
+  → finds new Gemini notes Docs by title, across everything the account can
+    see — owned or shared — or a specific folder
   → POSTs the transcript to https://tasks.tektone.com.br/api/analyze/auto
         ↓
 Cloudflare Pages Function (functions/api/analyze/[[path]].js) — Claude
@@ -37,9 +38,11 @@ With the Apps Script approach there is **no Google Cloud project, no API key, no
 service account, no API enablement, no billing**. You only need:
 
 - **The right Google account.** The script must run as someone who can *see* the
-  notes. At TEKTONE the Gemini notes are created by the meeting organizer (Pedro)
-  and land in your **"Shared with me"** — so run the script under your own account
-  and use the default "Shared with me" search mode below.
+  notes. It searches every Doc that account can see by title — both notes a
+  teammate shares with it and notes it owns because it hosted the call itself
+  (Gemini saves those straight to the host's own Drive, which never shows up
+  in that account's own "Shared with me"). Run it under whichever account is
+  most likely to be a participant in TEKTONE meetings.
 - **An Apps Script project** (free, lives in that Google account).
 - **One-time authorization.** The first run prompts for three auto-detected scopes
   — Drive (read), External requests (`UrlFetchApp`), and Triggers. You'll also see a
@@ -108,11 +111,12 @@ pick which to import. Already-imported docs are flagged and skipped (no duplicat
    - `ENDPOINT` — already set to `https://tasks.tektone.com.br/api/ingest/meeting-notes`.
    - `INGEST_TOKEN` — the **same** value from step 1.
    - **Where it looks for the Docs:**
-     - *Default (TEKTONE):* leave `FOLDER_ID` empty. The script searches your
-       **"Shared with me"** for Docs whose title contains `NAME_CONTAINS` (default
-       `"Anotações"`). Use this because the Gemini notes are shared with you by Pedro
-       rather than living in a folder you own. Narrow `NAME_CONTAINS` (e.g.
-       `"Daily time Tektone"`) if you only want specific meetings.
+     - *Default (TEKTONE):* leave `FOLDER_ID` empty. The script searches every Doc
+       the account can see — owned or shared — whose title contains
+       `NAME_CONTAINS` (default `"Anotações"`), so it catches meetings this account
+       hosted itself as well as ones a teammate shared with it. Narrow
+       `NAME_CONTAINS` (e.g. `"Daily time Tektone"`) if you only want specific
+       meetings.
      - *Alternative:* set `FOLDER_ID` to a folder you own to scan just that folder
        (ID = last segment of the folder URL `…/folders/<FOLDER_ID>`).
 4. **Set the time zone** under **Project Settings (⚙) → Time zone → "(GMT-03:00)

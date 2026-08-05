@@ -10,9 +10,14 @@
  *        INGEST_TOKEN — the same secret you set in Cloudflare
  *                       (Pages → tektone-app → Settings → Variables and secrets).
  *   3. Choose how it finds the Docs (see CONFIG):
- *        • Default: scans "Shared with me" for Docs whose title contains
- *          NAME_CONTAINS — use this when Gemini notes are shared with you by
- *          a teammate (e.g. Pedro), which is the TEKTONE setup.
+ *        • Default: searches ALL Docs visible to this account — owned by it
+ *          *and* shared with it — whose title contains NAME_CONTAINS. Covers
+ *          both directions: notes a teammate (e.g. Pedro) shares with you,
+ *          and notes Gemini saves straight to your own Drive because you
+ *          hosted the call yourself (those never show up in "Shared with
+ *          me" from your own perspective — a real bug this fixed: meetings
+ *          Hudson hosted stopped being picked up once he started hosting
+ *          more calls than Pedro).
  *        • Or set FOLDER_ID to scan one specific folder you own.
  *   4. Run `installTrigger` once and authorize Drive access when prompted
  *      (approve the "Google hasn't verified this app" screen — it's your own script).
@@ -30,11 +35,12 @@ const CONFIG = {
   INGEST_TOKEN: "PASTE_THE_SAME_TOKEN_HERE",
 
   // How to locate the notes Docs:
-  //   FOLDER_ID empty  → search "Shared with me" by title (TEKTONE default).
+  //   FOLDER_ID empty  → search every Doc this account can see (owned or
+  //                       shared) by title (TEKTONE default).
   //   FOLDER_ID set     → scan that specific Drive folder you own instead.
   FOLDER_ID: "",
-  // Title filter for the "Shared with me" search. "Anotações" matches every
-  // Gemini notes Doc; narrow it (e.g. "Daily time Tektone") if you want only
+  // Title filter for the default search. "Anotações" matches every Gemini
+  // notes Doc; narrow it (e.g. "Daily time Tektone") if you want only
   // certain meetings. Ignored when FOLDER_ID is set.
   NAME_CONTAINS: "Anotações",
 
@@ -86,13 +92,18 @@ function installDailyTrigger() {
   Logger.log("Trigger installed: syncMeetingNotes daily around " + CONFIG.RUN_HOUR + ":00.");
 }
 
-// Returns a FileIterator over candidate notes Docs (folder or shared-with-me).
+// Returns a FileIterator over candidate notes Docs (folder, or every Doc this
+// account can see by title — NOT restricted to "shared with me": Gemini saves
+// notes straight to the host's own Drive, so a Doc for a meeting *you* hosted
+// is owned by you, never "shared with me" from your own point of view. Only
+// searching sharedWithMe silently missed every meeting the script's own
+// account hosted — this covers both directions.
 function findNotesDocs() {
   if (CONFIG.FOLDER_ID) {
     return DriveApp.getFolderById(CONFIG.FOLDER_ID).getFilesByType(MimeType.GOOGLE_DOCS);
   }
   const name = String(CONFIG.NAME_CONTAINS || "").replace(/'/g, "\\'");
-  let query = "sharedWithMe = true and mimeType = 'application/vnd.google-apps.document'";
+  let query = "mimeType = 'application/vnd.google-apps.document' and trashed = false";
   if (name) query += " and title contains '" + name + "'";
   return DriveApp.searchFiles(query);
 }
