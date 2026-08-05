@@ -22,6 +22,10 @@ import {
   Sparkles,
   Vibrate,
   Eye,
+  Target,
+  Wrench,
+  Route,
+  Trophy,
 } from "lucide-react";
 import { COLUMNS, PRIORITY, LABEL_COLORS } from "@/lib/constants";
 import { Avatar, Spinner, useIsMobile } from "@/components/ui";
@@ -346,6 +350,168 @@ const genId = () =>
   (globalThis.crypto?.randomUUID?.() ?? `${Date.now()}${Math.random()}`)
     .replace(/-/g, "")
     .slice(0, 8);
+
+// ── Description — sliding story cards ──────────────────────────────────────────
+// The AI assistant ("Preencher com assistente") always writes plain text in
+// four fixed sections (see functions/api/analyze). When a description matches
+// that shape we split it into a swipeable card per section instead of one
+// cramped scrolling textarea; anything else falls back to a free-text box.
+const STORY_SECTIONS = [
+  { key: "desafio", header: "O DESAFIO", title: "O Desafio", icon: Target, color: "#B8862F" },
+  { key: "metodo", header: "O MÉTODO", title: "O Método", icon: Wrench, color: "#2E4A43" },
+  { key: "jornada", header: "A JORNADA", title: "A Jornada", icon: Route, color: "#A9976F" },
+  { key: "vitoria", header: "A VITÓRIA", title: "A Vitória", icon: Trophy, color: "#3E6B4E" },
+];
+
+const stripAccents = (s) =>
+  s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toUpperCase();
+
+const STORY_HEADER_LOOKUP = STORY_SECTIONS.reduce((acc, s) => {
+  acc[stripAccents(s.header)] = s.key;
+  return acc;
+}, {});
+
+function parseStorySections(text) {
+  if (!text) return null;
+  const found = {};
+  let current = null;
+  let hits = 0;
+  for (const line of text.split("\n")) {
+    const key = STORY_HEADER_LOOKUP[stripAccents(line)];
+    if (key) {
+      current = key;
+      found[key] = [];
+      hits += 1;
+      continue;
+    }
+    if (current) found[current].push(line);
+  }
+  if (hits < 2) return null;
+  const sections = {};
+  for (const { key } of STORY_SECTIONS) {
+    sections[key] = (found[key] ?? []).join("\n").trim();
+  }
+  return sections;
+}
+
+const stringifyStorySections = (sections) =>
+  STORY_SECTIONS.map(({ header, key }) => `${header}\n${(sections[key] ?? "").trim()}`)
+    .join("\n\n")
+    .trim();
+
+export function DescriptionCards({ value, onChange }) {
+  const [sections, setSections] = useState(() => parseStorySections(value));
+  const [active, setActive] = useState(0);
+  const [dir, setDir] = useState(1);
+  const lastPushed = useRef(value);
+
+  useEffect(() => {
+    if (value === lastPushed.current) return;
+    lastPushed.current = value;
+    setSections(parseStorySections(value));
+    setActive(0);
+  }, [value]);
+
+  if (!sections) {
+    return (
+      <textarea
+        rows={4}
+        value={value ?? ""}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="Detalhes da tarefa…"
+        className={`${inputCls} resize-none`}
+      />
+    );
+  }
+
+  const editSection = (key, text) => {
+    const next = { ...sections, [key]: text };
+    setSections(next);
+    const stringified = stringifyStorySections(next);
+    lastPushed.current = stringified;
+    onChange(stringified);
+  };
+
+  // Single source of truth: `active` drives what's shown. No scroll-position
+  // tracking — a scroll-snap track fighting a click-driven scrollTo produced
+  // a real desync bug (header/dots landing on one section while the visible
+  // textarea was another) during testing.
+  const goTo = (i) => {
+    const clamped = Math.max(0, Math.min(STORY_SECTIONS.length - 1, i));
+    if (clamped === active) return;
+    setDir(clamped > active ? 1 : -1);
+    setActive(clamped);
+  };
+
+  const current = STORY_SECTIONS[active];
+
+  return (
+    <div>
+      <div className="flex h-[200px] flex-col overflow-hidden rounded-lg border border-ink/15 bg-ink/[0.03]">
+        <div className="flex items-center justify-between border-b border-ink/10 px-3 py-2">
+          <span
+            className="inline-flex items-center gap-1.5 font-mono text-[11px] font-semibold uppercase tracking-[0.14em]"
+            style={{ color: current.color }}
+          >
+            <current.icon size={12} /> {current.title}
+          </span>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => goTo(active - 1)}
+              disabled={active === 0}
+              className="rounded p-0.5 text-stone-400 transition-colors hover:text-ink disabled:opacity-25 disabled:hover:text-stone-400"
+            >
+              <ChevronLeft size={14} />
+            </button>
+            <span className="font-mono text-[10px] text-stone-400 tnum">
+              {active + 1}/{STORY_SECTIONS.length}
+            </span>
+            <button
+              type="button"
+              onClick={() => goTo(active + 1)}
+              disabled={active === STORY_SECTIONS.length - 1}
+              className="rounded p-0.5 text-stone-400 transition-colors hover:text-ink disabled:opacity-25 disabled:hover:text-stone-400"
+            >
+              <ChevronRight size={14} />
+            </button>
+          </div>
+        </div>
+
+        <div className="relative flex-1 overflow-hidden">
+          <AnimatePresence initial={false} custom={dir} mode="popLayout">
+            <motion.textarea
+              key={current.key}
+              custom={dir}
+              initial={{ x: dir * 16, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: dir * -16, opacity: 0 }}
+              transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
+              value={sections[current.key]}
+              onChange={(e) => editSection(current.key, e.target.value)}
+              placeholder="—"
+              className="absolute inset-0 resize-none bg-transparent px-3 py-2.5 text-sm leading-relaxed text-ink outline-none placeholder:text-stone-400"
+            />
+          </AnimatePresence>
+        </div>
+      </div>
+
+      <div className="mt-2 flex items-center justify-center gap-1.5">
+        {STORY_SECTIONS.map(({ key, title }, i) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => goTo(i)}
+            aria-label={title}
+            className={`h-1.5 rounded-full transition-all ${
+              i === active ? "w-5 bg-action" : "w-1.5 bg-ink/15 hover:bg-ink/25"
+            }`}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
 
 // ── Checklist ─────────────────────────────────────────────────────────────────
 function Checklist({ items, onChange }) {
@@ -1229,12 +1395,9 @@ export default function CardModal({
                     <Sparkles size={11} /> Preencher com assistente
                   </button>
                 </div>
-                <textarea
-                  rows={4}
+                <DescriptionCards
                   value={d.description ?? ""}
-                  onChange={(e) => set("description", e.target.value)}
-                  placeholder="Detalhes da tarefa…"
-                  className={`${inputCls} resize-none`}
+                  onChange={(v) => set("description", v)}
                 />
               </div>
               <Checklist items={d.checklist} onChange={saveChecklist} />
