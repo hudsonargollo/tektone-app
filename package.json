@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:portal": "vite build --config vite.portal.config.js && mv dist-portal/portal.html dist-portal/index.html",
+    "build:crm": "vite build --config vite.crm.config.js && mv dist-crm/crm.html dist-crm/index.html",
     "preview": "vite preview",
     "deploy": "npm run build && wrangler pages deploy dist --project-name=tektone-app --commit-dirty=true"
   },
@@ -13,6 +15,7 @@
     "@block65/webcrypto-web-push": "^1.0.2",
     "canvas-confetti": "^1.9.3",
     "framer-motion": "^12.40.0",
+    "hono": "^4.13.1",
     "lucide-react": "^0.511.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
