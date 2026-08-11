@@ -22,7 +22,15 @@ export default function Navbar() {
         className="absolute inset-0 backdrop-blur-xl"
         style={{ opacity: bgOpacity, background: "rgba(46,74,67,0.92)" }}
       />
-      <motion.div aria-hidden className="absolute inset-0 grain-dark" style={{ opacity: bgOpacity }} />
+      {/* grain-dark uses mix-blend-mode: screen, which lightens whatever's
+          under it — on the brand's Mineral Green (#2E4A43) that washed it
+          out toward a gray sage instead of the true deep green. overlay
+          preserves the base color's identity while still adding texture. */}
+      <motion.div
+        aria-hidden
+        className="absolute inset-0 grain-dark"
+        style={{ opacity: bgOpacity, mixBlendMode: "overlay" }}
+      />
       {/* Thin gold ribbon line instead of the old flat ivory/10 border —
           same brand-gold (Ochre/sand) language as the login hero, just
           restrained to a hairline since this bar is always on screen. */}
