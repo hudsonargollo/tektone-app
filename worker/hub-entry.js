@@ -9,6 +9,7 @@
 // handler doesn't know about. Strip it here, before delegating, so nothing
 // inside functions/ has to change.
 import pagesHandler from "../dist/_worker.js/index.js";
+import { generateWeeklyDrafts } from "./lib/blogService.js";
 
 const PREFIXES = ["/hub", "/task"];
 
@@ -18,5 +19,13 @@ export default {
     const prefix = PREFIXES.find((p) => url.pathname === p || url.pathname.startsWith(`${p}/`));
     if (prefix) url.pathname = url.pathname.slice(prefix.length) || "/";
     return pagesHandler.fetch(new Request(url, request), env, ctx);
+  },
+
+  // Weekly autonomous blog draft generation (see wrangler.worker.toml
+  // [triggers]) — drafts land as pending_review, never auto-published.
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(
+      generateWeeklyDrafts(env).catch((err) => console.error("[blog] scheduled generation failed", err.message))
+    );
   },
 };

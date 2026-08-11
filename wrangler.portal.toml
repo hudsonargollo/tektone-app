@@ -16,6 +16,9 @@ compatibility_flags = ["nodejs_compat"]
 account_id = "193882a3226d5fb9c3611ea50c95992e"
 
 routes = [
+  # See wrangler.worker.toml's comment — "/portal/*" alone doesn't match a
+  # bare "/portal" with no trailing slash.
+  { pattern = "tektone.com.br/portal", zone_name = "tektone.com.br" },
   { pattern = "tektone.com.br/portal/*", zone_name = "tektone.com.br" },
 ]
 

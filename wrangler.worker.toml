@@ -17,7 +17,14 @@ compatibility_flags = ["nodejs_compat"]
 account_id = "193882a3226d5fb9c3611ea50c95992e"
 
 routes = [
+  # Both the wildcard AND the bare exact path are needed — "/hub/*" does NOT
+  # match a bare "/hub" with no trailing slash (confirmed live: 404'd
+  # straight through to the marketing site's own 404 page). hub-entry.js's
+  # fetch handler already tolerates the bare path correctly; it was only
+  # ever the route pattern that was missing it.
+  { pattern = "tektone.com.br/hub", zone_name = "tektone.com.br" },
   { pattern = "tektone.com.br/hub/*", zone_name = "tektone.com.br" },
+  { pattern = "tektone.com.br/task", zone_name = "tektone.com.br" },
   { pattern = "tektone.com.br/task/*", zone_name = "tektone.com.br" },
 ]
 
@@ -60,3 +67,24 @@ NOTIFY_FROM = "TEKTONE <notificacoes@send.tektone.com.br>"
 name = "BOARD_ROOM"
 class_name = "BoardRoom"
 script_name = "tektone-realtime"
+
+# /blog: cover-illustration storage (see functions/api/blog/[[path]].js and
+# worker/lib/blogService.js). Illustrations are generated fresh per article
+# via Workers AI below, not fetched from anywhere — R2 is just where the
+# resulting PNG bytes live once generated.
+[[r2_buckets]]
+binding = "BLOG_MEDIA"
+bucket_name = "tektone-blog-media"
+
+# /blog: cover-illustration generation (FLUX.1 [schnell]) — native Cloudflare
+# binding, no external API key/credits, no vendor dependency. Chosen after
+# Higgsfield (the tool used for the /login redesign) ran out of credits
+# mid-session; validated live before committing to this as the primary path.
+[ai]
+binding = "AI"
+
+# /blog: autonomous weekly draft generation (Hudson reviews/approves before
+# anything publishes — see functions/api/blog/[[path]].js's admin routes).
+# Monday 10am São Paulo (UTC-3) = 13:00 UTC.
+[triggers]
+crons = ["0 13 * * 1"]

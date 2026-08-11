@@ -16,6 +16,9 @@ compatibility_flags = ["nodejs_compat"]
 account_id = "193882a3226d5fb9c3611ea50c95992e"
 
 routes = [
+  # See wrangler.worker.toml's comment — "/crm/*" alone doesn't match a bare
+  # "/crm" with no trailing slash.
+  { pattern = "tektone.com.br/crm", zone_name = "tektone.com.br" },
   { pattern = "tektone.com.br/crm/*", zone_name = "tektone.com.br" },
 ]
 
