@@ -18,7 +18,11 @@ export function isPushSupported() {
 export async function registerServiceWorker() {
   if (!isPushSupported()) return null;
   try {
-    return await navigator.serviceWorker.register("/sw.js");
+    // Registering at "<BASE_URL>sw.js" (not "/sw.js") both resolves correctly
+    // under the /hub path mount and, as a side effect, scopes the SW to
+    // /hub/ by default (browsers scope to the script's own directory) —
+    // exactly right, since this SW should only control the hub app.
+    return await navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`);
   } catch {
     return null;
   }

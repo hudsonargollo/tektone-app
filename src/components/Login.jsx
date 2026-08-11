@@ -252,7 +252,10 @@ export default function Login({ onAuthed }) {
         </div>
 
         <p className="mt-5 text-center font-mono text-[11px] text-stone-300">
-          tasks.tektone.com.br
+          {/* This component is shared between the /hub and /portal builds
+              (different vite `base`) — derive the shown path instead of
+              hardcoding one deployment's domain. */}
+          tektone.com.br{import.meta.env.BASE_URL}
         </p>
       </motion.div>
     </div>

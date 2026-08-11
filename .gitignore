@@ -1,5 +1,7 @@
 node_modules
 dist
+dist-portal
+dist-crm
 .wrangler
 .DS_Store
 *.local

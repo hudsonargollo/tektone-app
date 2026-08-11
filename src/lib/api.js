@@ -1,7 +1,11 @@
 // REST client for the KV-backed kanban API + auth (Pages Functions, same origin).
+// import.meta.env.BASE_URL is "/hub/" in production (see vite.config.js) —
+// API calls must carry that prefix too since the Worker route only owns
+// /hub/* and /task/*, not the bare domain.
+const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 async function req(path, opts = {}) {
-  const res = await fetch(`/api${path}`, {
+  const res = await fetch(`${API_BASE}/api${path}`, {
     headers: { "Content-Type": "application/json" },
     credentials: "same-origin",
     ...opts,
@@ -32,6 +36,47 @@ export const api = {
   directory: () => req("/auth/directory"),
   adminUsers: () => req("/auth/admin/users"),
   adminReset: (email) => req("/auth/admin/reset", { method: "POST", body: { email } }),
+  adminSetFinanceAccess: (email, authorized) =>
+    req("/auth/admin/finance-access", { method: "POST", body: { email, authorized } }),
+
+  // internal financial tracking (STAFF/ADMIN only — see rbac.hasFinanceAccess)
+  getFinances: (projectId) => req(`/finances/${projectId}`),
+  updateFinances: (projectId, body) => req(`/finances/${projectId}`, { method: "PUT", body }),
+  listCostCategories: () => req("/finances/categories"),
+  createCostCategory: (body) => req("/finances/categories", { method: "POST", body }),
+  listCosts: (projectId, all) => req(`/finances/${projectId}/costs${all ? "?status=all" : ""}`),
+  createCost: (projectId, body) => req(`/finances/${projectId}/costs`, { method: "POST", body }),
+  updateCost: (projectId, costId, body) => req(`/finances/${projectId}/costs/${costId}`, { method: "PUT", body }),
+  toggleCostArchive: (projectId, costId) => req(`/finances/${projectId}/costs/${costId}/archive`, { method: "POST" }),
+
+  // projects / commercial module (Phase 4 — contracts, invoices, membership)
+  listProjects: () => req("/projects"),
+  getProject: (id) => req(`/projects/${id}`),
+  listProjectUsers: (id) => req(`/projects/${id}/users`),
+  inviteProjectUser: (id, email, role) =>
+    req(`/projects/${id}/users`, { method: "POST", body: { email, role } }),
+  listContracts: (projectId) => req(`/projects/${projectId}/contracts`),
+  createContract: (projectId, body) => req(`/projects/${projectId}/contracts`, { method: "POST", body }),
+  signContract: (projectId, contractId) =>
+    req(`/projects/${projectId}/contracts/${contractId}/sign`, { method: "POST" }),
+  listInvoices: (projectId) => req(`/projects/${projectId}/invoices`),
+  createInvoice: (projectId, body) => req(`/projects/${projectId}/invoices`, { method: "POST", body }),
+
+  // add-on marketplace (Phase 5)
+  listAddonsCatalog: () => req("/addons"),
+  createAddon: (body) => req("/addons", { method: "POST", body }),
+  updateAddon: (id, body) => req(`/addons/${id}`, { method: "PUT", body }),
+  deleteAddon: (id) => req(`/addons/${id}`, { method: "DELETE" }),
+  listProjectAddons: (projectId) => req(`/projects/${projectId}/addons`),
+  addProjectAddon: (projectId, addonId) =>
+    req(`/projects/${projectId}/addons`, { method: "POST", body: { addonId } }),
+
+  // workflow templates (Phase 7, admin only)
+  listWorkflowTemplates: () => req("/workflow-templates"),
+  createWorkflowTemplate: (body) => req("/workflow-templates", { method: "POST", body }),
+  deleteWorkflowTemplate: (id) => req(`/workflow-templates/${id}`, { method: "DELETE" }),
+  applyWorkflowTemplate: (id, projectId) =>
+    req(`/workflow-templates/${id}/apply`, { method: "POST", body: { projectId } }),
 
   // clients / parceiros
   listClients: () => req("/kanban/clients"),
