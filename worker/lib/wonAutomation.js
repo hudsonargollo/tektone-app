@@ -1,0 +1,98 @@
+// Won-lead automation (plan Phase 6) — runs once, when a lead's status
+// transitions to 'won'. Three side effects, each logged to lead_events so
+// the audit trail shows exactly what happened (or didn't):
+//   1. Create the `projects` row + a CUSTOMER `project_users` invite — the
+//      hand-off from /crm into /hub (same D1, no cross-system sync needed).
+//   2. Apply the default onboarding `workflow_template` (see
+//      functions/api/workflow-templates/[[path]].js's `apply` action —
+//      duplicated here rather than imported since that file is gated by a
+//      Pages Functions `context` shape this Worker doesn't have) — bulk
+//      seeds the internal onboarding checklist into the new project's tasks.
+//   3. Commission generation already happens at sale-creation time (see
+//      worker/lib/crmDb.js's createCommissionForSale, called from
+//      worker/crm-entry.js's POST /leads/:id/sales) — not repeated here.
+const uid = () => crypto.randomUUID().replace(/-/g, "").slice(0, 12);
+
+// Which workflow_template counts as "the" onboarding checklist is an open
+// question (see plan's "Open questions" section) — resolved by convention
+// instead of a schema flag: an admin authors a template with this exact
+// name via the existing admin UI, and it's picked up automatically. No
+// matching template → the automation still runs (project + invite), just
+// logs that this step was skipped rather than failing the whole thing.
+const ONBOARDING_TEMPLATE_NAME = "Onboarding padrão";
+
+async function applyWorkflowTemplate(db, template, projectId) {
+  const tasks = JSON.parse(template.tasks_json || "[]");
+  if (!tasks.length) return 0;
+  const maxRow = await db
+    .prepare("SELECT COALESCE(MAX(order_index), -1) AS m FROM tasks WHERE project_id = ? AND column_id = ?")
+    .bind(projectId, tasks[0]?.columnId || "todo")
+    .first();
+  let orderIndex = Number(maxRow?.m ?? -1) + 1;
+  const stmts = tasks.map((t) => {
+    const dueDate = Number.isFinite(t.dueOffsetDays)
+      ? new Date(Date.now() + t.dueOffsetDays * 86400000).toISOString().slice(0, 10)
+      : null;
+    return db
+      .prepare(
+        `INSERT INTO tasks (id, project_id, column_id, title, description, priority, assignees, due_date, order_index, comments, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, '[]', ?, ?, '[]', datetime('now'))`
+      )
+      .bind(uid(), projectId, t.columnId || "todo", t.title || "Tarefa", t.description || null, t.priority || "medium", dueDate, orderIndex++);
+  });
+  await db.batch(stmts);
+  return tasks.length;
+}
+
+async function logEvent(db, leadId, type, payload, actorEmail) {
+  await db
+    .prepare(`INSERT INTO lead_events (id, lead_id, type, payload, actor_email) VALUES (?, ?, ?, ?, ?)`)
+    .bind(crypto.randomUUID(), leadId, type, payload ? JSON.stringify(payload) : null, actorEmail || null)
+    .run();
+}
+
+export async function runWonAutomation(db, lead, actorEmail) {
+  if (lead.converted_project_id) return { skipped: "already_converted" };
+
+  const projectId = uid();
+  const projectName = lead.company || lead.name || `Lead ${lead.id.slice(0, 8)}`;
+  await db
+    .prepare(`INSERT INTO projects (id, name, client_ref, status) VALUES (?, ?, ?, 'ACTIVE')`)
+    .bind(projectId, projectName, lead.id)
+    .run();
+  await logEvent(db, lead.id, "project_created", { projectId, name: projectName }, actorEmail);
+
+  if (lead.email) {
+    await db
+      .prepare(
+        `INSERT INTO project_users (project_id, user_email, role) VALUES (?, ?, 'CUSTOMER')
+         ON CONFLICT(project_id, user_email) DO UPDATE SET role = excluded.role`
+      )
+      .bind(projectId, lead.email.trim().toLowerCase())
+      .run();
+    await logEvent(db, lead.id, "customer_invited", { email: lead.email }, actorEmail);
+  } else {
+    await logEvent(db, lead.id, "customer_invite_skipped", { reason: "lead has no email" }, actorEmail);
+  }
+
+  const template = await db
+    .prepare("SELECT * FROM workflow_templates WHERE name = ? ORDER BY created_at DESC LIMIT 1")
+    .bind(ONBOARDING_TEMPLATE_NAME)
+    .first();
+  if (template) {
+    const created = await applyWorkflowTemplate(db, template, projectId);
+    await logEvent(db, lead.id, "onboarding_applied", { templateId: template.id, tasksCreated: created }, actorEmail);
+  } else {
+    await logEvent(
+      db,
+      lead.id,
+      "onboarding_skipped",
+      { reason: `no workflow_template named "${ONBOARDING_TEMPLATE_NAME}" exists yet` },
+      actorEmail
+    );
+  }
+
+  await db.prepare(`UPDATE leads SET converted_project_id = ? WHERE id = ?`).bind(projectId, lead.id).run();
+
+  return { projectId, onboardingApplied: Boolean(template) };
+}
