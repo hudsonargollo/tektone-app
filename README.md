@@ -1,12 +1,27 @@
-# TEKTONE — Operações
+# Tektone Hub
 
-Private team Kanban + meeting-intelligence app for **TEKTONE**. A Trello-style board
-where meeting notes turn into tasks automatically, with comments, material requests,
-@mention notifications (in-app + email), and a full mobile interface.
+Everything Tektone runs on the web, in one repo: the marketing site, staff ops
+(kanban + meeting intelligence + commercial admin), a customer-only portal, and a
+lead-pipeline CRM with an AI copilot — all unified under `tektone.com.br` with no
+subdomains.
 
-- **Live:** <https://tasks.tektone.com.br> (also `tektone-app.pages.dev`)
-- **Stack:** React 19 + Vite + Tailwind v4 + Framer Motion · Cloudflare Pages Functions + KV
-- **Access:** closed — only the 3 allowlisted `@tektone.com.br` emails can sign in.
+| Path | What | Live |
+|---|---|---|
+| `tektone.com.br` | Marketing site + shared login | ✅ |
+| `tektone.com.br/hub`, `/task` | Staff ops — this README's original app | ✅ |
+| `tektone.com.br/portal` | Customer-only panel | ✅ |
+| `tektone.com.br/crm` | Lead pipeline, sales, AI copilot | ✅ |
+
+**→ Read [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) first** — how the four surfaces share
+one Cloudflare zone and one database without subdomains, the shared-backend trick that keeps
+`/hub` and `/portal` running the same code, deploy commands for all four, and the secrets
+checklist. This README covers the original staff-ops app (`/hub`) specifically; the
+marketing site lives in [`marketing/`](marketing/) with its own README.
+
+- **Access (hub/portal/crm):** closed — accounts are created via signup/invite, gated by
+  `access_role` (ADMIN/STAFF/CUSTOMER) and `crm_role` (partner/closer/admin, nullable).
+- **Stack (this app):** React 19 + Vite + Tailwind v4 + Framer Motion · Cloudflare Workers
+  (see `docs/ARCHITECTURE.md` for why Workers, not Pages).
 
 ---
 
@@ -138,36 +153,25 @@ All under `/api`. `kanban/*` requires a valid session cookie (enforced by middle
 
 ---
 
-## Data model (KV: `KANBAN`)
+## Data model
 
-| Key | Shape |
-|---|---|
-| `kanban:clients` | `[{ id, name, color }]` |
-| `kanban:cards` | `[{ id, columnId, title, description, priority, clientId, assignee, assignees[], dueDate, labelColor, checklist[], links[], comments[], source, createdAt }]` |
-| `kanban:members` | `[{ id, name, email, role }]` |
-| `kanban:reads` | `{ [email]: { [cardId]: lastSeenISO } }` |
-| `ingest:docs` | processed-transcript hashes (dedup) |
-| `ingest:reviews` | per-batch validation-popup records |
-| `auth:users` | `[{ email, name, salt, hash, role, phone, location, bio, avatar, createdAt }]` |
+Board data (`kanban:cards`, `kanban:clients`) originally lived in the `KANBAN` KV
+namespace — it's now on D1 (`tasks`, `projects` tables) behind the `TASKS_BACKEND` flag in
+`wrangler.worker.toml` (currently `"d1"`; the KV code path in `functions/_lib/tasksStore.js`
+is kept as a documented one-line revert, not actively used). **The full current data model
+— every D1 table across hub/portal/crm — is in
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md#data-model-d1-hub-tektone).**
 
 ---
 
-## Environment / secrets (Cloudflare Pages → Settings → Variables and secrets)
+## Environment / secrets
 
-| Name | Required | Purpose |
-|---|---|---|
-| `KANBAN` | ✅ (binding) | KV namespace binding (in `wrangler.toml`) |
-| `SESSION_SECRET` | ✅ | HMAC key for session cookies |
-| `ANTHROPIC_API_KEY` | for AI | Claude API key (meeting analysis) |
-| `ANTHROPIC_MODEL` | optional | Override model (default `claude-opus-4-8`) |
-| `INGEST_TOKEN` | for automation | Bearer token for `/analyze/auto` + `/ingest/*` + the Web App |
-| `RESEND_API_KEY` | optional | Email on @mention (Resend); account: `spacemkt34@gmail.com` |
-| `NOTIFY_FROM` | optional | Email sender (default `TEKTONE <notificacoes@tektone.com.br>`) |
-| `MEETINGS_WEBAPP_URL` / `MEETINGS_WEBAPP_TOKEN` | for "buscar" | Apps Script Web App URL + shared secret |
+**See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md#secrets-checklist)** for the full
+per-Worker checklist (this app is one of three Workers now — `tektone-hub`, and secrets
+aren't shared automatically between Workers even though they share a D1). Quick reference:
 
-Set a secret:
 ```sh
-echo "VALUE" | npx wrangler pages secret put NAME --project-name tektone-app
+npx wrangler secret put NAME --config wrangler.worker.toml
 ```
 
 ---
@@ -176,29 +180,56 @@ echo "VALUE" | npx wrangler pages secret put NAME --project-name tektone-app
 
 ```sh
 npm install
-npm run dev      # Vite dev server (UI only; KV API needs a deploy or `wrangler pages dev`)
+npm run dev      # Vite dev server (UI only — API calls 404 until deployed or run under wrangler dev)
 npm run build    # production build → dist/
-npm run deploy   # build + wrangler pages deploy (project: tektone-app)
 ```
 
-> KV/Functions only run on a real deploy (or `npx wrangler pages dev dist`); the plain
-> Vite dev server serves the UI but the `/api/*` calls 404 until deployed.
+Deploying this app specifically (see `docs/ARCHITECTURE.md` for portal/crm/marketing):
+```sh
+npm run build
+npx wrangler pages functions build --outdir=./dist/_worker.js/
+npx wrangler deploy --config wrangler.worker.toml
+```
+
+`npm run deploy` (the old `wrangler pages deploy dist --project-name=tektone-app` script)
+still exists and still works — it's the original standalone Pages deployment
+(`tasks.tektone.com.br`), kept alive until that subdomain has a redirect to `/hub` (see
+`docs/ARCHITECTURE.md`'s outstanding items). **Don't run it after building for `/hub`** —
+the `dist/` it deploys would be built with `base: "/hub/"`, which breaks at domain root.
 
 ---
 
 ## Repo layout
+
+This repo now holds all of Tektone's web properties — see
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the full picture. This app (`/hub`)
+specifically:
 
 ```
 src/
   App.jsx                  orchestrator (state, layout, mobile nav)
   components/              Board, CardModal, Sidebar, TopBar, NotificationsBell,
                            MeetingIntelligence, MeetingFetch, ReviewPopup, ProfilePage,
-                           AdminPanel, Login, ui (Avatar, Spinner, useIsMobile…)
+                           AdminPanel, CustomerShell, Login, ui (Avatar, Spinner, useIsMobile…)
+  crm/                     CRM frontend (CrmApp, CrmDashboard, CrmLeads, CrmLeadDetail, CrmSales)
   lib/                     api.js (REST client), constants.js (columns, palette, helpers)
 functions/
   _middleware.js           session guard for /api/kanban/*
-  _lib/                    session.js (auth crypto), allowlist.js (emails/admins)
-  api/{auth,kanban,analyze,ingest,meetings,avatar}/[[path]].js
+  _lib/                    session.js (auth crypto), db.js, rbac.js, allowlist.js
+  api/{auth,kanban,analyze,ingest,meetings,avatar,projects,finances,addons,workflow-templates}/[[path]].js
+worker/
+  hub-entry.js              tektone-hub's entry — strips /hub or /task, delegates to functions/
+  portal-entry.js            tektone-portal's entry — strips /portal, delegates to functions/
+  crm-entry.js                tektone-crm's entry — new Hono routes + delegates auth/assets to functions/
+  lib/                        crmDb.js, crmRbac.js, crmKbService.js, wonAutomation.js,
+                               businessSpecialistService.js, retry.js
+migrations/                   D1 schema, numbered — see docs/ARCHITECTURE.md
+marketing/                    the Next.js marketing site + shared /login (own README)
+docs/ARCHITECTURE.md          full system writeup — read this first
+wrangler.toml                 legacy standalone Pages deploy (tasks.tektone.com.br)
+wrangler.worker.toml          tektone-hub
+wrangler.portal.toml          tektone-portal
+wrangler.crm.toml             tektone-crm
 automation/
   meeting-notes-sync.gs    Google Apps Script (Drive → app)
   appsscript.json          pinned timezone (America/Sao_Paulo)
