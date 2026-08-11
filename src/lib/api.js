@@ -145,4 +145,11 @@ export const api = {
   createTodo: (text) => req("/kanban/todos", { method: "POST", body: { text } }),
   updateTodo: (id, body) => req(`/kanban/todos/${id}`, { method: "PUT", body }),
   deleteTodo: (id) => req(`/kanban/todos/${id}`, { method: "DELETE" }),
+
+  // /blog admin (ADMIN only — see functions/api/blog/[[path]].js)
+  listBlogPosts: (status) => req(`/blog/admin/posts${status ? `?status=${status}` : ""}`),
+  updateBlogPost: (id, body) => req(`/blog/admin/posts/${id}`, { method: "PATCH", body }),
+  approveBlogPost: (id) => req(`/blog/admin/posts/${id}/approve`, { method: "POST" }),
+  rejectBlogPost: (id, reviewerNotes) => req(`/blog/admin/posts/${id}/reject`, { method: "POST", body: { reviewerNotes } }),
+  generateBlogDrafts: () => req("/blog/admin/generate", { method: "POST" }),
 };

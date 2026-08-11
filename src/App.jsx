@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { AlertCircle, LogOut, ShieldCheck, Menu, X, Sparkles, Package, Download, LayoutGrid, ListChecks, Wallet, Briefcase } from "lucide-react";
+import { AlertCircle, LogOut, ShieldCheck, Menu, X, Sparkles, Package, Download, LayoutGrid, ListChecks, Wallet, Briefcase, Newspaper } from "lucide-react";
 import { api } from "@/lib/api";
 import { today } from "@/lib/constants";
 import { useRealtime } from "@/lib/useRealtime";
@@ -14,6 +14,7 @@ import TaskWizard from "@/components/TaskWizard";
 import NudgeToast from "@/components/NudgeToast";
 import Login from "@/components/Login";
 import AdminPanel from "@/components/AdminPanel";
+import BlogPanel from "@/components/BlogPanel";
 import FinancePanel from "@/components/FinancePanel";
 import CommercialPanel from "@/components/CommercialPanel";
 import CustomerShell from "@/components/CustomerShell";
@@ -50,6 +51,7 @@ export default function App() {
   const [showAdmin, setShowAdmin] = useState(false);
   const [showFinance, setShowFinance] = useState(false);
   const [showCommercial, setShowCommercial] = useState(false);
+  const [showBlog, setShowBlog] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [showIntel, setShowIntel] = useState(false);
   const [showFetch, setShowFetch] = useState(false);
@@ -573,6 +575,15 @@ export default function App() {
           )}
           {isAdmin && (
             <button
+              onClick={() => setShowBlog(true)}
+              className="flex items-center gap-1.5 rounded-lg border border-ink/15 px-2.5 py-1.5 font-mono text-[11px] tracking-wide text-stone-500 transition-colors hover:border-action/40 hover:text-action"
+              title="Curadoria do blog"
+            >
+              <Newspaper size={12} /> blog
+            </button>
+          )}
+          {isAdmin && (
+            <button
               onClick={() => setShowAdmin(true)}
               className="flex items-center gap-1.5 rounded-lg border border-ink/15 px-2.5 py-1.5 font-mono text-[11px] tracking-wide text-stone-500 transition-colors hover:border-action/40 hover:text-action"
             >
@@ -809,6 +820,17 @@ export default function App() {
               {isAdmin && (
                 <button
                   onClick={() => {
+                    setShowBlog(true);
+                    setMenuOpen(false);
+                  }}
+                  className="flex w-full items-center gap-3 px-5 py-3.5 text-left text-sm text-stone-700 transition-colors active:bg-ink/[0.04]"
+                >
+                  <Newspaper size={16} className="text-action" /> Blog · curadoria
+                </button>
+              )}
+              {isAdmin && (
+                <button
+                  onClick={() => {
                     setShowAdmin(true);
                     setMenuOpen(false);
                   }}
@@ -926,6 +948,7 @@ export default function App() {
         {showAdmin && (
           <AdminPanel currentEmail={userEmail} clients={clients} onClose={() => setShowAdmin(false)} />
         )}
+        {showBlog && <BlogPanel onClose={() => setShowBlog(false)} />}
         {showFinance && (
           <FinancePanel clients={clients} isAdmin={isAdmin} onClose={() => setShowFinance(false)} />
         )}
