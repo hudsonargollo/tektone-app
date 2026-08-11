@@ -14,8 +14,11 @@
  *   STAFF / ADMIN -> /hub
  */
 import { useState } from "react";
+import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { Mail, Lock, ArrowRight, ArrowLeft, ShieldQuestion, UserPlus } from "lucide-react";
+import Logo from "@/components/Logo";
+import GoldenRibbons from "@/components/GoldenRibbons";
 
 const AUTH_BASE = "/hub/api/auth";
 const ADMIN_CONTACT = "hudson@tektone.com.br";
@@ -111,13 +114,42 @@ export default function LoginPage() {
       <div className="absolute inset-0 grain-light mask-fade" aria-hidden />
       <div className="absolute inset-0 bp-dots opacity-40" aria-hidden />
 
+      {/* The tekton — a master builder carving a Doric column — bleeding off
+          the right edge, sepia-toned and heavily faded so it reads as
+          texture/atmosphere behind the form, never competing with it. */}
+      <div
+        className="pointer-events-none absolute -right-[18%] top-1/2 h-[130%] w-[80%] -translate-y-1/2 opacity-[0.09] mix-blend-multiply sm:opacity-[0.12]"
+        aria-hidden
+      >
+        <Image
+          src="/tekton-illustration.png"
+          alt=""
+          fill
+          sizes="80vw"
+          className="object-contain object-right"
+          style={{ filter: "sepia(0.4) saturate(0.65)" }}
+          priority
+        />
+      </div>
+
+      <GoldenRibbons className="pointer-events-none absolute left-1/2 top-1/2 h-[140%] w-[140%] -translate-x-1/2 -translate-y-1/2 opacity-70" />
+
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: EASE }}
         className="relative z-10 w-full max-w-sm"
       >
-        <div className="mb-8 flex flex-col items-center text-center">
+        <div className="mb-9 flex flex-col items-center text-center">
+          <motion.div
+            initial={{ clipPath: "inset(0 0 100% 0)", opacity: 0 }}
+            animate={{ clipPath: "inset(0 0 0% 0)", opacity: 1 }}
+            transition={{ duration: 1.1, ease: EASE, delay: 0.15 }}
+            className="relative mb-3 h-16 w-14"
+          >
+            <Logo variant="ink" className="h-full w-full" />
+            <span className="logo-shimmer" aria-hidden />
+          </motion.div>
           <span className="text-lg font-semibold tracking-[0.32em] text-ink">TEKTONE</span>
           <p className="label-tech mt-1.5">acesso</p>
         </div>
