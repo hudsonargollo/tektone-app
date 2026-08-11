@@ -31,6 +31,7 @@
 
 import { getSessionEmail } from "../../_lib/session.js";
 import { isAdmin } from "../../_lib/allowlist.js";
+import { loadCards, saveCards } from "../../_lib/tasksStore.js";
 import { buildPushPayload } from "@block65/webcrypto-web-push";
 
 const CORS = {
@@ -414,8 +415,8 @@ export async function onRequest(context) {
         }
         if (method === "DELETE") {
           await kvSet(kv, "kanban:clients", clients.filter((c) => c.id !== id));
-          const cards = await kvGet(kv, "kanban:cards", []);
-          await kvSet(kv, "kanban:cards", cards.filter((c) => c.clientId !== id));
+          const cards = await loadCards(env);
+          await saveCards(env,cards.filter((c) => c.clientId !== id));
           return json({ ok: true });
         }
       }
@@ -429,14 +430,14 @@ export async function onRequest(context) {
         const email = await getSessionEmail(request, env);
         if (!email) return json({ error: "unauthorized" }, 401);
         const commentId = seg[3];
-        const cards = await kvGet(kv, "kanban:cards", []);
+        const cards = await loadCards(env);
         const card = cards.find((c) => c.id === id);
         if (!card) return json({ error: "Card not found" }, 404);
         card.comments = card.comments || [];
         const members = await kvGet(kv, "kanban:members", []);
         const authorName =
           members.find((m) => String(m.email).toLowerCase() === email.toLowerCase())?.name || email;
-        const save = () => kvSet(kv, "kanban:cards", cards);
+        const save = () => saveCards(env,cards);
 
         if (!commentId && method === "POST") {
           const body = await request.json().catch(() => ({}));
@@ -629,7 +630,7 @@ export async function onRequest(context) {
       if (id && seg[2] === "review" && method === "POST") {
         const email = await getSessionEmail(request, env);
         if (!email) return json({ error: "unauthorized" }, 401);
-        const cards = await kvGet(kv, "kanban:cards", []);
+        const cards = await loadCards(env);
         const card = cards.find((c) => c.id === id);
         if (!card) return json({ error: "Card not found" }, 404);
         const members = await kvGet(kv, "kanban:members", []);
@@ -637,7 +638,7 @@ export async function onRequest(context) {
         const reviewerName =
           members.find((m) => String(m.email).toLowerCase() === email.toLowerCase())?.name || email;
         const { mentioned } = markReviewed(card, members, email, reviewerName);
-        await kvSet(kv, "kanban:cards", cards);
+        await saveCards(env,cards);
         await notifyReview(context, env, kv, card, mentioned, members, authUsers, email, reviewerName);
         return json({ card });
       }
@@ -652,7 +653,7 @@ export async function onRequest(context) {
         await kvSet(kv, "kanban:reads", reads);
 
         // Read receipts: mark every comment I didn't author as seen by me.
-        const cards = await kvGet(kv, "kanban:cards", []);
+        const cards = await loadCards(env);
         const card = cards.find((c) => c.id === id);
         if (card) {
           let changed = false;
@@ -664,16 +665,16 @@ export async function onRequest(context) {
               changed = true;
             }
           }
-          if (changed) await kvSet(kv, "kanban:cards", cards);
+          if (changed) await saveCards(env,cards);
         }
         return json({ ok: true });
       }
 
       if (!id) {
-        if (method === "GET") return json({ cards: await kvGet(kv, "kanban:cards", []) });
+        if (method === "GET") return json({ cards: await loadCards(env) });
         if (method === "POST") {
           const body = await request.json();
-          const cards = await kvGet(kv, "kanban:cards", []);
+          const cards = await loadCards(env);
           let order = body.order;
           if (order === undefined) {
             const inColumn = cards.filter((c) => c.columnId === body.columnId);
@@ -681,7 +682,7 @@ export async function onRequest(context) {
           }
           const card = { id: uid(), createdAt: new Date().toISOString(), ...body, order };
           cards.push(card);
-          await kvSet(kv, "kanban:cards", cards);
+          await saveCards(env,cards);
           return json({ card }, 201);
         }
       } else if (id === "reorder" && method === "POST") {
@@ -691,12 +692,12 @@ export async function onRequest(context) {
         const columnId = body.columnId;
         const orderedIds = Array.isArray(body.orderedIds) ? body.orderedIds : [];
         if (!columnId || !orderedIds.length) return json({ error: "columnId e orderedIds são obrigatórios." }, 400);
-        const cards = await kvGet(kv, "kanban:cards", []);
+        const cards = await loadCards(env);
         const indexById = new Map(orderedIds.map((cardId, i) => [cardId, i]));
         for (const c of cards) {
           if (c.columnId === columnId && indexById.has(c.id)) c.order = indexById.get(c.id);
         }
-        await kvSet(kv, "kanban:cards", cards);
+        await saveCards(env,cards);
         return json({ ok: true });
       } else if (id === "review-bulk" && method === "POST") {
         const email = await getSessionEmail(request, env);
@@ -704,7 +705,7 @@ export async function onRequest(context) {
         const body = await request.json().catch(() => ({}));
         const ids = new Set(Array.isArray(body.ids) ? body.ids : []);
         if (!ids.size) return json({ error: "Nenhum card selecionado." }, 400);
-        const cards = await kvGet(kv, "kanban:cards", []);
+        const cards = await loadCards(env);
         const members = await kvGet(kv, "kanban:members", []);
         const authUsers = await kvGet(kv, "auth:users", []);
         const reviewerName =
@@ -715,13 +716,13 @@ export async function onRequest(context) {
           const { mentioned } = markReviewed(card, members, email, reviewerName);
           reviewed.push({ card, mentioned });
         }
-        await kvSet(kv, "kanban:cards", cards);
+        await saveCards(env,cards);
         for (const r of reviewed) {
           await notifyReview(context, env, kv, r.card, r.mentioned, members, authUsers, email, reviewerName);
         }
         return json({ cards: reviewed.map((r) => r.card) });
       } else {
-        const cards = await kvGet(kv, "kanban:cards", []);
+        const cards = await loadCards(env);
         if (method === "PUT") {
           const body = await request.json();
           const card = cards.find((c) => c.id === id);
@@ -791,7 +792,7 @@ export async function onRequest(context) {
             if (reopenComment) merged.comments = [...(c.comments || []), reopenComment];
             return merged;
           });
-          await kvSet(kv, "kanban:cards", updated);
+          await saveCards(env,updated);
           const updatedCard = updated.find((c) => c.id === id);
 
           if (addedEmails.length) {
@@ -865,7 +866,7 @@ export async function onRequest(context) {
           return json({ card: updatedCard });
         }
         if (method === "DELETE") {
-          await kvSet(kv, "kanban:cards", cards.filter((c) => c.id !== id));
+          await saveCards(env,cards.filter((c) => c.id !== id));
           return json({ ok: true });
         }
       }

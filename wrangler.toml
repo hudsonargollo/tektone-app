@@ -13,6 +13,28 @@ compatibility_flags = ["nodejs_compat"]
 binding = "KANBAN"
 id = "b06af75d5fe74e4c83863bf6a36030d0"
 
+# D1 — Hub Tektone relational data (users/projects/tasks/contracts/invoices/
+# addons/internal finances). KV above stays for what it's already good at
+# (push subscriptions, per-user todos, notification log) — this is additive,
+# not a replacement. See migrations/ for schema.
+[[d1_databases]]
+binding = "DB"
+database_name = "hub-tektone"
+database_id = "062719db-dc4e-46c0-a9d9-bdb4fef61a30"
+
+# Phase 2 cutover flag for the kanban cards store (see _lib/tasksStore.js).
+# "kv" = unchanged behavior (default, safe). Flip to "d1" only after the
+# one-time migration's data has been spot-checked against the KV source —
+# reverting is just flipping this back and redeploying.
+[vars]
+TASKS_BACKEND = "d1"
+# @mention emails (functions/api/kanban/[[path]].js) fell back to a hardcoded
+# sender at the bare tektone.com.br domain, which Resend doesn't have
+# verified — send.tektone.com.br is the actual verified sending domain, so
+# every notification email was silently failing. Set explicitly rather than
+# relying on the code's fallback.
+NOTIFY_FROM = "TEKTONE <notificacoes@send.tektone.com.br>"
+
 # Durable Object binding for realtime board broadcasts (confetti on card
 # review). The class itself lives in the separate `realtime-worker/` Worker —
 # Pages Functions can't define Durable Objects, only consume one. Deploy that

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { AlertCircle, LogOut, ShieldCheck, Menu, X, Sparkles, Package, Download, LayoutGrid, ListChecks } from "lucide-react";
+import { AlertCircle, LogOut, ShieldCheck, Menu, X, Sparkles, Package, Download, LayoutGrid, ListChecks, Wallet, Briefcase } from "lucide-react";
 import { api } from "@/lib/api";
 import { today } from "@/lib/constants";
 import { useRealtime } from "@/lib/useRealtime";
@@ -14,6 +14,9 @@ import TaskWizard from "@/components/TaskWizard";
 import NudgeToast from "@/components/NudgeToast";
 import Login from "@/components/Login";
 import AdminPanel from "@/components/AdminPanel";
+import FinancePanel from "@/components/FinancePanel";
+import CommercialPanel from "@/components/CommercialPanel";
+import CustomerShell from "@/components/CustomerShell";
 import ProfilePage from "@/components/ProfilePage";
 import PersonalTodoPanel from "@/components/PersonalTodoPanel";
 import ReviewPopup from "@/components/ReviewPopup";
@@ -41,7 +44,12 @@ export default function App() {
   const [userName, setUserName] = useState(null);
   const [userAvatar, setUserAvatar] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [financeAccess, setFinanceAccess] = useState(false);
+  const [accessRole, setAccessRole] = useState(null);
+  const [crmRole, setCrmRole] = useState(null);
   const [showAdmin, setShowAdmin] = useState(false);
+  const [showFinance, setShowFinance] = useState(false);
+  const [showCommercial, setShowCommercial] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [showIntel, setShowIntel] = useState(false);
   const [showFetch, setShowFetch] = useState(false);
@@ -60,10 +68,13 @@ export default function App() {
   const refreshMe = useCallback(() => {
     api
       .me()
-      .then(({ authed, email, admin, name, avatar }) => {
+      .then(({ authed, email, admin, accessRole, financeAccess, crmRole, name, avatar }) => {
         setAuthed(Boolean(authed));
         setUserEmail(email);
         setIsAdmin(Boolean(admin));
+        setAccessRole(accessRole);
+        setFinanceAccess(Boolean(financeAccess));
+        setCrmRole(crmRole);
         setUserName(name);
         setUserAvatar(avatar);
       })
@@ -97,8 +108,11 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (authed) loadData();
-  }, [authed, loadData]);
+    // accessRole starts null until /auth/me resolves — wait for it so this
+    // never fires for a CUSTOMER session (see the render branch below; the
+    // backend also blocks it, this just avoids the pointless network call).
+    if (authed && accessRole !== "CUSTOMER") loadData();
+  }, [authed, accessRole, loadData]);
 
   // Silent card refetch — used by the realtime channel below, which shouldn't
   // flip the full-board loading spinner on every broadcast.
@@ -423,6 +437,19 @@ export default function App() {
   }
   if (!authed) return <Login onAuthed={refreshMe} />;
 
+  // CUSTOMER accounts get a completely separate view — never the Kanban
+  // shell below, not even behind a hidden tab. See CustomerShell.jsx.
+  if (accessRole === "CUSTOMER") {
+    return (
+      <CustomerShell
+        userName={userName}
+        userEmail={userEmail}
+        userAvatar={userAvatar}
+        onLogout={logout}
+      />
+    );
+  }
+
   // ── Render ──────────────────────────────────────────────────────────────────
   const sidebarProps = {
     clients,
@@ -518,6 +545,31 @@ export default function App() {
             >
               <Download size={12} /> buscar
             </button>
+          )}
+          {financeAccess && (
+            <button
+              onClick={() => setShowFinance(true)}
+              className="flex items-center gap-1.5 rounded-lg border border-ink/15 px-2.5 py-1.5 font-mono text-[11px] tracking-wide text-stone-500 transition-colors hover:border-action/40 hover:text-action"
+              title="Financeiro interno"
+            >
+              <Wallet size={12} /> financeiro
+            </button>
+          )}
+          <button
+            onClick={() => setShowCommercial(true)}
+            className="flex items-center gap-1.5 rounded-lg border border-ink/15 px-2.5 py-1.5 font-mono text-[11px] tracking-wide text-stone-500 transition-colors hover:border-action/40 hover:text-action"
+            title="Contratos, faturas e clientes"
+          >
+            <Briefcase size={12} /> comercial
+          </button>
+          {crmRole && (
+            <a
+              href="/crm"
+              className="flex items-center gap-1.5 rounded-lg border border-ink/15 px-2.5 py-1.5 font-mono text-[11px] tracking-wide text-stone-500 transition-colors hover:border-action/40 hover:text-action"
+              title="Pipeline de leads e vendas"
+            >
+              <Sparkles size={12} /> crm
+            </a>
           )}
           {isAdmin && (
             <button
@@ -726,6 +778,34 @@ export default function App() {
                   <Download size={16} className="text-action" /> Buscar reuniões
                 </button>
               )}
+              {financeAccess && (
+                <button
+                  onClick={() => {
+                    setShowFinance(true);
+                    setMenuOpen(false);
+                  }}
+                  className="flex w-full items-center gap-3 px-5 py-3.5 text-left text-sm text-stone-700 transition-colors active:bg-ink/[0.04]"
+                >
+                  <Wallet size={16} className="text-action" /> Financeiro interno
+                </button>
+              )}
+              <button
+                onClick={() => {
+                  setShowCommercial(true);
+                  setMenuOpen(false);
+                }}
+                className="flex w-full items-center gap-3 px-5 py-3.5 text-left text-sm text-stone-700 transition-colors active:bg-ink/[0.04]"
+              >
+                <Briefcase size={16} className="text-action" /> Comercial
+              </button>
+              {crmRole && (
+                <a
+                  href="/crm"
+                  className="flex w-full items-center gap-3 border-t border-ink/10 px-5 py-3.5 text-left text-sm text-stone-700 transition-colors active:bg-ink/[0.04]"
+                >
+                  <Sparkles size={16} className="text-action" /> CRM
+                </a>
+              )}
               {isAdmin && (
                 <button
                   onClick={() => {
@@ -844,7 +924,13 @@ export default function App() {
           />
         )}
         {showAdmin && (
-          <AdminPanel currentEmail={userEmail} onClose={() => setShowAdmin(false)} />
+          <AdminPanel currentEmail={userEmail} clients={clients} onClose={() => setShowAdmin(false)} />
+        )}
+        {showFinance && (
+          <FinancePanel clients={clients} isAdmin={isAdmin} onClose={() => setShowFinance(false)} />
+        )}
+        {showCommercial && (
+          <CommercialPanel clients={clients} isAdmin={isAdmin} onClose={() => setShowCommercial(false)} />
         )}
         {showTodos && <PersonalTodoPanel onClose={() => setShowTodos(false)} />}
         {showFetch && (
