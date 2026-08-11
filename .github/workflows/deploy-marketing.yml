@@ -1,0 +1,52 @@
+name: Deploy marketing site to Cloudflare Pages
+
+# Only the tektone.com.br marketing site (marketing/) auto-deploys via CI —
+# tektone-hub/tektone-portal/tektone-crm are deployed manually via wrangler
+# (see docs/ARCHITECTURE.md), same as before this repo merge. Path filter
+# keeps unrelated commits (hub/portal/crm changes) from re-triggering this.
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "marketing/**"
+      - ".github/workflows/deploy-marketing.yml"
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    name: Deploy to Cloudflare Pages
+    defaults:
+      run:
+        working-directory: marketing
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: marketing/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build for Cloudflare Pages
+        run: npm run pages:build
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: marketing
+          command: pages deploy .vercel/output/static --project-name=tektone --branch=main
+
+      - name: Deployment Summary
+        run: |
+          echo "✅ Deployment completed successfully!"
+          echo "🌐 Site URL: https://tektone.com.br"

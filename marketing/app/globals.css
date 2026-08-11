@@ -1,0 +1,191 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Sistema Mineral, exposed as CSS vars for hand-built @base-ui/react
+     primitives (accordion, progress, form controls) — Tailwind v3 project,
+     so these are consumed directly as hex, not through shadcn's v4 @theme
+     pipeline. */
+  --ring: #2e4a43; /* Green — focus ring on light surfaces */
+  --ring-ink: #a1aeaa; /* green-mist — focus ring on dark ink surfaces */
+  --radius: 0.625rem;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+@layer base {
+  /* Tabular figures for all metrics rendered in mono */
+  .font-mono {
+    font-feature-settings: "tnum" 1, "ss01" 1;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  .text-pretty {
+    text-wrap: pretty;
+  }
+
+  /* Light-surface elevation (paper layered on ivory) */
+  .surface-paper {
+    background-color: theme("colors.paper");
+    border: 1px solid rgba(20, 22, 24, 0.08);
+  }
+  .surface-paper-raised {
+    background-color: theme("colors.paper");
+    border: 1px solid rgba(20, 22, 24, 0.1);
+    box-shadow: 0 1px 2px rgba(20, 22, 24, 0.04), 0 8px 24px rgba(20, 22, 24, 0.06);
+  }
+
+  /* Dark elevation ladder — hero / Hub Tektone only, never the page body */
+  .surface-ink-1 {
+    background-color: theme("colors.ink.900");
+    border: 1px solid rgba(239, 232, 220, 0.06);
+  }
+  .surface-ink-2 {
+    background-color: theme("colors.ink.800");
+    border: 1px solid rgba(239, 232, 220, 0.08);
+  }
+  .surface-ink-3 {
+    background-color: theme("colors.ink.700");
+    border: 1px solid rgba(239, 232, 220, 0.1);
+  }
+
+  /* Glass panel for floating UI on ink surfaces */
+  .glass-ink {
+    background: rgba(26, 28, 30, 0.6);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(239, 232, 220, 0.08);
+  }
+
+  /* Contained, non-neon glow — brand rule: no halo effects on the logo,
+     used sparingly on primary CTAs only */
+  .glow-action {
+    box-shadow: 0 0 0 1px rgba(46, 74, 67, 0.25), 0 8px 24px rgba(46, 74, 67, 0.18);
+  }
+  .glow-action-ink {
+    box-shadow: 0 0 0 1px rgba(161, 174, 170, 0.3), 0 8px 28px rgba(161, 174, 170, 0.12);
+  }
+
+  /* Eyebrow / technical label */
+  .label-tech {
+    font-family: var(--font-jetbrains-mono), monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: theme("colors.green.DEFAULT");
+  }
+  .label-tech-ink {
+    font-family: var(--font-jetbrains-mono), monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: theme("colors.sand.DEFAULT");
+  }
+
+  /* Editorial line — manifesto/quote treatment, never body copy */
+  .text-editorial {
+    font-family: var(--font-eb-garamond), Georgia, serif;
+    font-style: italic;
+  }
+}
+
+/* Blueprint structural grids, re-tinted to Mineral ----------------------- */
+
+/* Fine line mesh — ink on ivory */
+.bp-lines {
+  background-image: linear-gradient(
+      to right,
+      rgba(20, 22, 24, 0.05) 1px,
+      transparent 1px
+    ),
+    linear-gradient(to bottom, rgba(20, 22, 24, 0.05) 1px, transparent 1px);
+  background-size: 64px 64px;
+}
+
+/* Fine line mesh — ivory on ink, for the dark cinematic sections */
+.bp-lines-ink {
+  background-image: linear-gradient(
+      to right,
+      rgba(239, 232, 220, 0.05) 1px,
+      transparent 1px
+    ),
+    linear-gradient(to bottom, rgba(239, 232, 220, 0.05) 1px, transparent 1px);
+  background-size: 64px 64px;
+}
+
+/* Mathematical dot matrix — sand accent */
+.bp-dots {
+  background-image: radial-gradient(
+    circle,
+    rgba(199, 183, 156, 0.35) 1px,
+    transparent 1px
+  );
+  background-size: 30px 30px;
+}
+
+/* Grain — stone/parchment texture, layered over color fields and photos.
+   Fractal-noise SVG tile, tinted per surface so it reads as texture rather
+   than digital static. */
+.grain-light {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity: 0.5;
+  mix-blend-mode: multiply;
+}
+.grain-dark {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity: 0.16;
+  mix-blend-mode: screen;
+}
+/* Denser, coarser variant for photo frames — closer to a stone/paper fiber
+   texture than fine digital noise */
+.grain-heavy {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.55' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity: 0.4;
+  mix-blend-mode: multiply;
+}
+
+/* Radial fade mask helper for backgrounds */
+.mask-fade {
+  -webkit-mask-image: radial-gradient(
+    ellipse 80% 60% at 50% 40%,
+    black 30%,
+    transparent 75%
+  );
+  mask-image: radial-gradient(
+    ellipse 80% 60% at 50% 40%,
+    black 30%,
+    transparent 75%
+  );
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #efe8dc;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(20, 22, 24, 0.18);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(46, 74, 67, 0.4);
+}
+
+::selection {
+  background: rgba(46, 74, 67, 0.2);
+  color: #141618;
+}
