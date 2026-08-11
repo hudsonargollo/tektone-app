@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "pages:build": "npx @cloudflare/next-on-pages",
-    "pages:deploy": "npm run pages:build && wrangler pages deploy",
+    "pages:deploy": "npm run pages:build && CLOUDFLARE_ACCOUNT_ID=193882a3226d5fb9c3611ea50c95992e wrangler pages deploy",
     "pages:watch": "npx @cloudflare/next-on-pages --watch",
     "pages:dev": "wrangler pages dev .vercel/output/static --compatibility-flag=nodejs_compat"
   },

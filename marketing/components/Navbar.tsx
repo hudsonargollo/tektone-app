@@ -22,10 +22,18 @@ export default function Navbar() {
         className="absolute inset-0 backdrop-blur-xl"
         style={{ opacity: bgOpacity, background: "rgba(46,74,67,0.92)" }}
       />
+      <motion.div aria-hidden className="absolute inset-0 grain-dark" style={{ opacity: bgOpacity }} />
+      {/* Thin gold ribbon line instead of the old flat ivory/10 border —
+          same brand-gold (Ochre/sand) language as the login hero, just
+          restrained to a hairline since this bar is always on screen. */}
       <motion.div
         aria-hidden
-        className="absolute bottom-0 inset-x-0 h-px bg-ivory/10"
-        style={{ opacity: borderOpacity }}
+        className="absolute bottom-0 inset-x-0 h-px"
+        style={{
+          opacity: borderOpacity,
+          background:
+            "linear-gradient(90deg, transparent 0%, rgba(199,183,156,0.5) 20%, rgba(184,134,47,0.85) 50%, rgba(199,183,156,0.5) 80%, transparent 100%)",
+        }}
       />
 
       <nav className="relative mx-auto max-w-6xl px-6 h-20 flex items-center justify-between">
@@ -35,10 +43,13 @@ export default function Navbar() {
           className="flex items-center gap-3 shrink-0 group"
           aria-label="TEKTONE — início"
         >
-          <Logo
-            variant="ivory"
-            className="h-10 w-auto transition-transform duration-300 group-hover:scale-105"
-          />
+          <span className="relative inline-flex overflow-hidden rounded-sm">
+            <Logo
+              variant="ivory"
+              className="h-10 w-auto transition-transform duration-300 group-hover:scale-105"
+            />
+            <span className="logo-shimmer" aria-hidden />
+          </span>
           <span className="font-mono text-base font-bold tracking-[0.3em] text-ivory">
             TEKTONE
           </span>
