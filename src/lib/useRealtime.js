@@ -16,7 +16,12 @@ export function useRealtime(enabled, onEvent) {
 
     function connect() {
       const proto = location.protocol === "https:" ? "wss:" : "ws:";
-      ws = new WebSocket(`${proto}//${location.host}/api/realtime/connect`);
+      // Same path-mount fix as src/lib/api.js — this app is served at
+      // /hub (or /portal, /crm), not domain root, so the WebSocket URL
+      // needs the same BASE_URL prefix or it 404s straight through to
+      // whatever else owns the bare domain.
+      const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+      ws = new WebSocket(`${proto}//${location.host}${base}/api/realtime/connect`);
       ws.onopen = () => {
         attempt = 0;
       };

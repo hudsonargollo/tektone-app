@@ -190,7 +190,7 @@ export default function BlogPanel({ onClose }) {
                         </div>
                         {p.cover_illustration && (
                           <img
-                            src={`/api/blog/media/${p.cover_illustration}`}
+                            src={`${import.meta.env.BASE_URL.replace(/\/$/, "")}/api/blog/media/${p.cover_illustration}`}
                             alt=""
                             className="h-14 w-14 shrink-0 rounded-lg object-cover"
                           />
