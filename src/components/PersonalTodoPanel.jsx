@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { X, Plus, Square, CheckSquare, Lock } from "lucide-react";
+import { X, Plus, Square, CheckSquare, Lock, ChevronLeft, ChevronRight, Repeat } from "lucide-react";
 import { api } from "@/lib/api";
 import { Spinner } from "@/components/ui";
 
@@ -11,13 +11,23 @@ const WEEKDAYS = [
   "domingo", "segunda-feira", "terça-feira", "quarta-feira",
   "quinta-feira", "sexta-feira", "sábado",
 ];
-const todayLabel = () => {
-  const d = new Date();
+const RECURRENCE_LABEL = { daily: "todo dia", weekdays: "dias úteis", weekly: "toda semana" };
+
+const isoOf = (d) => d.toISOString().slice(0, 10);
+const todayISO = () => isoOf(new Date());
+const addDays = (iso, n) => {
+  const d = new Date(`${iso}T00:00:00`);
+  d.setDate(d.getDate() + n);
+  return isoOf(d);
+};
+const dayLabel = (iso) => {
+  const d = new Date(`${iso}T00:00:00`);
   return `${WEEKDAYS[d.getDay()]}, ${d.getDate()} de ${MONTHS[d.getMonth()]}`;
 };
 
 function Row({ item, onToggle, onEdit, onRemove }) {
   const [text, setText] = useState(item.text);
+  const [confirming, setConfirming] = useState(false);
   useEffect(() => setText(item.text), [item.text]);
 
   return (
@@ -54,41 +64,74 @@ function Row({ item, onToggle, onEdit, onRemove }) {
           e.target.style.height = `${e.target.scrollHeight}px`;
         }}
       />
-      <button
-        type="button"
-        onClick={onRemove}
-        className="mt-0.5 shrink-0 rounded p-0.5 text-stone-300 opacity-0 transition-all hover:text-danger group-hover/item:opacity-100"
-        title="Remover"
-      >
-        <X size={13} />
-      </button>
+      {item.recurrence && (
+        <span
+          title={`Repete: ${RECURRENCE_LABEL[item.recurrence] || item.recurrence}`}
+          className="mt-0.5 shrink-0 text-stone-400"
+        >
+          <Repeat size={12} />
+        </span>
+      )}
+      {confirming ? (
+        <div className="mt-0.5 flex shrink-0 items-center gap-1 font-mono text-[10px]">
+          <button type="button" onClick={() => onRemove(false)} className="rounded px-1.5 py-0.5 text-stone-500 hover:bg-ink/[0.06] hover:text-ink">
+            só hoje
+          </button>
+          <button type="button" onClick={() => onRemove(true)} className="rounded px-1.5 py-0.5 text-danger hover:bg-danger/10">
+            série toda
+          </button>
+          <button type="button" onClick={() => setConfirming(false)} className="rounded px-1 py-0.5 text-stone-400 hover:text-ink">
+            <X size={12} />
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => (item.recurrence ? setConfirming(true) : onRemove(false))}
+          className="mt-0.5 shrink-0 rounded p-0.5 text-stone-300 opacity-0 transition-all hover:text-danger group-hover/item:opacity-100"
+          title="Remover"
+        >
+          <X size={13} />
+        </button>
+      )}
     </div>
   );
 }
 
 export default function PersonalTodoPanel() {
+  const [viewDate, setViewDate] = useState(todayISO());
   const [items, setItems] = useState(null); // null = loading
   const [text, setText] = useState("");
+  const [recurrence, setRecurrence] = useState("");
   const [error, setError] = useState("");
   const inputRef = useRef(null);
 
-  useEffect(() => {
+  function load(date) {
+    setItems(null);
     api
-      .listTodos()
+      .listTodos(date)
       .then(({ items }) => setItems(items))
       .catch(() => setError("Não foi possível carregar suas tarefas."));
+  }
+
+  useEffect(() => {
+    load(viewDate);
     inputRef.current?.focus();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewDate]);
 
   const done = (items ?? []).filter((i) => i.done).length;
   const pct = items?.length ? Math.round((done / items.length) * 100) : 0;
+  const isToday = viewDate === todayISO();
 
   async function add() {
     const t = text.trim();
     if (!t) return;
     setText("");
+    const usedRecurrence = recurrence;
+    setRecurrence("");
     try {
-      const { item } = await api.createTodo(t);
+      const { item } = await api.createTodo(t, viewDate, usedRecurrence || undefined);
       setItems((p) => [...(p ?? []), item]);
     } catch {
       setError("Não foi possível salvar. Tente de novo.");
@@ -109,17 +152,49 @@ export default function PersonalTodoPanel() {
     api.updateTodo(item.id, { text: nextText }).catch(() => {});
   }
 
-  async function remove(item) {
+  async function remove(item, series) {
     setItems((p) => p.filter((i) => i.id !== item.id));
-    api.deleteTodo(item.id).catch(() => {});
+    api.deleteTodo(item.id, series).catch(() => {});
   }
 
   return (
     <div className="flex h-full w-full flex-col">
       <div className="border-b border-ink/10 px-5 py-4">
         <h2 className="text-lg font-bold text-ink">Minhas tarefas</h2>
-        <p className="mt-0.5 flex items-center gap-1.5 font-mono text-[11px] tracking-wide text-stone-500">
-          <Lock size={10} /> {todayLabel()} · só você vê isto
+        <div className="mt-1.5 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setViewDate((d) => addDays(d, -1))}
+              className="rounded p-1 text-stone-400 hover:bg-ink/[0.06] hover:text-ink"
+              title="Dia anterior"
+            >
+              <ChevronLeft size={14} />
+            </button>
+            <span className="font-mono text-[11px] tracking-wide text-stone-500">
+              {dayLabel(viewDate)}
+            </span>
+            <button
+              type="button"
+              onClick={() => setViewDate((d) => addDays(d, 1))}
+              className="rounded p-1 text-stone-400 hover:bg-ink/[0.06] hover:text-ink"
+              title="Próximo dia"
+            >
+              <ChevronRight size={14} />
+            </button>
+          </div>
+          {!isToday && (
+            <button
+              type="button"
+              onClick={() => setViewDate(todayISO())}
+              className="rounded-md bg-ink/[0.06] px-2 py-0.5 font-mono text-[10px] font-semibold text-ink transition-colors hover:bg-ink/[0.1]"
+            >
+              hoje
+            </button>
+          )}
+        </div>
+        <p className="mt-1 flex items-center gap-1.5 font-mono text-[10px] tracking-wide text-stone-400">
+          <Lock size={9} /> só você vê isto
         </p>
       </div>
 
@@ -136,9 +211,20 @@ export default function PersonalTodoPanel() {
                   add();
                 }
               }}
-              placeholder="Adicionar tarefa do dia…"
-              className="flex-1 bg-transparent text-sm text-ink outline-none placeholder:text-stone-400"
+              placeholder={isToday ? "Adicionar tarefa do dia…" : `Adicionar tarefa para ${dayLabel(viewDate).split(",")[0]}…`}
+              className="min-w-0 flex-1 bg-transparent text-sm text-ink outline-none placeholder:text-stone-400"
             />
+            <select
+              value={recurrence}
+              onChange={(e) => setRecurrence(e.target.value)}
+              title="Repetir"
+              className="shrink-0 rounded-md border border-ink/10 bg-transparent px-1.5 py-1 font-mono text-[10px] text-stone-500 outline-none"
+            >
+              <option value="">não repete</option>
+              <option value="daily">todo dia</option>
+              <option value="weekdays">dias úteis</option>
+              <option value="weekly">toda semana</option>
+            </select>
           </div>
           {items?.length > 0 && (
             <div className="mt-3 flex items-center gap-2">
@@ -164,7 +250,7 @@ export default function PersonalTodoPanel() {
             <p className="py-6 text-sm text-danger">{error}</p>
           ) : items.length === 0 ? (
             <p className="py-6 text-center text-sm text-stone-400">
-              Nada por aqui ainda. Adicione o que precisa fazer hoje.
+              {isToday ? "Nada por aqui ainda. Adicione o que precisa fazer hoje." : "Nada agendado para este dia."}
             </p>
           ) : (
             <div className="divide-y divide-ink/[0.06]">
@@ -174,7 +260,7 @@ export default function PersonalTodoPanel() {
                   item={item}
                   onToggle={() => toggle(item)}
                   onEdit={(t) => edit(item, t)}
-                  onRemove={() => remove(item)}
+                  onRemove={(series) => remove(item, series)}
                 />
               ))}
             </div>

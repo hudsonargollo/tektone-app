@@ -10,8 +10,17 @@
  *                      persistent per-recipient notification history (mentions, requests, assignments, nudges, reviews, reopens) — never deleted, only readAt-stamped
  *   push:web         → { [email]: [{ endpoint, expirationTime, keys }, ...] }  (written by functions/api/push/[[path]].js)
  *   push:expo        → { [email]: [expoPushToken, ...] }                       (written by functions/api/push/[[path]].js)
- *   kanban:todos:<email> → [{ id, text, done, createdAt }]  private personal daily
- *                          checklist, one key per user — never visible to anyone else
+ *   kanban:todos:<email> → { templates, items }  private personal daily checklist,
+ *                          one key per user — never visible to anyone else. Bundled by
+ *                          day: `items` are concrete per-date rows
+ *                          [{ id, text, date, done, createdAt, templateId }], `templates`
+ *                          are recurring-task rules
+ *                          [{ id, text, recurrence, weeklyDay, startDate, createdAt }].
+ *                          A GET for a given date lazily materializes (and persists) any
+ *                          due-but-missing recurring instances for that date before
+ *                          returning — see materializeTodos() below. Older accounts had
+ *                          this key as a flat array; migrateTodoStore() upgrades that
+ *                          shape in place on first read.
  *
  * Routes (relative to /api/kanban):
  *   GET|POST          /clients          PUT|DELETE /clients/:id
@@ -22,7 +31,10 @@
  *   GET|POST          /members          PUT|DELETE /members/:id
  *   GET                /notifications              — { items, unreadCount } from kanban:notifLog, for the current user
  *   POST               /notifications/ack           — { ids } or { all: true }, marks readAt
- *   GET|POST          /todos            PUT|DELETE /todos/:id  — private per-user daily checklist
+ *   GET   /todos?date=YYYY-MM-DD          — one day's items (defaults to today), recurring instances auto-materialized
+ *   POST  /todos                          — { text, date, recurrence?, weeklyDay? } create a one-off or recurring task
+ *   PUT   /todos/:id                      — { text?, done? } edit a single day's instance
+ *   DELETE /todos/:id[?series=1]          — remove one instance, or (series=1) stop the whole recurring series from today on
  *
  * A "reviewed" event is recorded as a system comment (kind: "reviewed") on the
  * card so it stays visible in the card's own thread; it also writes a
@@ -65,6 +77,62 @@ async function kvGet(kv, key, fallback = []) {
 }
 
 const kvSet = (kv, key, value) => kv.put(key, JSON.stringify(value));
+
+const todayISO = () => new Date().toISOString().slice(0, 10);
+
+// Upgrades the pre-recurrence flat-array todo shape (`[{id,text,done,createdAt}]`)
+// to `{ templates: [], items: [] }` in place, bucketing each old item under the
+// date it was created on (falling back to today for anything with no createdAt).
+// Returns the (possibly-upgraded) store; callers persist it only if `migrated`.
+function migrateTodoStore(raw) {
+  if (Array.isArray(raw)) {
+    return {
+      migrated: true,
+      store: {
+        templates: [],
+        items: raw.map((t) => ({
+          ...t,
+          date: (t.createdAt || "").slice(0, 10) || todayISO(),
+          templateId: null,
+        })),
+      },
+    };
+  }
+  return { migrated: false, store: raw && typeof raw === "object" ? raw : { templates: [], items: [] } };
+}
+
+// Does a recurring template fire on this date? "weekly" fires on
+// template.weeklyDay (0=Sun..6=Sat, captured from the date it was created on).
+function templateOccursOn(template, dateISO) {
+  if (dateISO < template.startDate) return false;
+  const dow = new Date(`${dateISO}T00:00:00`).getDay();
+  if (template.recurrence === "daily") return true;
+  if (template.recurrence === "weekdays") return dow >= 1 && dow <= 5;
+  if (template.recurrence === "weekly") return dow === template.weeklyDay;
+  return false;
+}
+
+// Ensures every template due on `dateISO` has a materialized item for that
+// date — called on every GET for a date so recurring tasks "just appear" on
+// future days the first time anyone looks at them, without pre-generating
+// rows for days no one will ever visit.
+function materializeTodos(store, dateISO) {
+  let changed = false;
+  for (const t of store.templates) {
+    if (!templateOccursOn(t, dateISO)) continue;
+    if (store.items.some((i) => i.templateId === t.id && i.date === dateISO)) continue;
+    store.items.push({
+      id: uid(),
+      text: t.text,
+      date: dateISO,
+      done: false,
+      createdAt: new Date().toISOString(),
+      templateId: t.id,
+    });
+    changed = true;
+  }
+  return changed;
+}
 
 const NOTIF_LOG_CAP = 500;
 
@@ -964,47 +1032,83 @@ export async function onRequest(context) {
       }
     }
 
-    // ── PERSONAL TODOS (private per-user daily checklist) ──────────────────
+    // ── PERSONAL TODOS (private per-user daily checklist, bundled by day) ──
     // Own KV key per user (not a shared blob filtered client-side, unlike
     // notifLog below) — this list is never read by anyone but its owner.
     if (resource === "todos") {
       const email = await getSessionEmail(request, env);
       if (!email) return json({ error: "unauthorized" }, 401);
       const key = `kanban:todos:${email}`;
+      const raw = await kvGet(kv, key, { templates: [], items: [] });
+      const { migrated, store } = migrateTodoStore(raw);
+
+      const attachRecurrence = (item) => ({
+        ...item,
+        recurrence: store.templates.find((t) => t.id === item.templateId)?.recurrence ?? null,
+      });
 
       if (!id) {
         if (method === "GET") {
-          const items = await kvGet(kv, key, []);
-          return json({ items });
+          const date = new URL(request.url).searchParams.get("date") || todayISO();
+          const changed = materializeTodos(store, date);
+          if (migrated || changed) await kvSet(kv, key, store);
+          const items = store.items.filter((i) => i.date === date).map(attachRecurrence);
+          return json({ items, date });
         }
         if (method === "POST") {
           const body = await request.json();
           const text = String(body.text || "").trim();
+          const date = body.date || todayISO();
           if (!text) return json({ error: "Texto obrigatório." }, 400);
-          const items = await kvGet(kv, key, []);
-          const item = { id: uid(), text, done: false, createdAt: new Date().toISOString() };
-          items.push(item);
-          await kvSet(kv, key, items);
-          return json({ item }, 201);
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return json({ error: "Data inválida." }, 400);
+
+          let templateId = null;
+          if (body.recurrence) {
+            if (!["daily", "weekdays", "weekly"].includes(body.recurrence)) {
+              return json({ error: "Recorrência inválida." }, 400);
+            }
+            const template = {
+              id: uid(),
+              text,
+              recurrence: body.recurrence,
+              weeklyDay: body.recurrence === "weekly" ? new Date(`${date}T00:00:00`).getDay() : null,
+              startDate: date,
+              createdAt: new Date().toISOString(),
+            };
+            store.templates.push(template);
+            templateId = template.id;
+          }
+          const item = { id: uid(), text, date, done: false, createdAt: new Date().toISOString(), templateId };
+          store.items.push(item);
+          await kvSet(kv, key, store);
+          return json({ item: attachRecurrence(item) }, 201);
         }
       } else {
-        const items = await kvGet(kv, key, []);
         if (method === "PUT") {
           const body = await request.json();
-          const updated = items.map((t) =>
-            t.id === id
-              ? {
-                  ...t,
-                  ...(body.text !== undefined ? { text: String(body.text) } : {}),
-                  ...(body.done !== undefined ? { done: Boolean(body.done) } : {}),
-                }
-              : t
-          );
-          await kvSet(kv, key, updated);
-          return json({ item: updated.find((t) => t.id === id) });
+          const idx = store.items.findIndex((t) => t.id === id);
+          if (idx === -1) return json({ error: "not found" }, 404);
+          store.items[idx] = {
+            ...store.items[idx],
+            ...(body.text !== undefined ? { text: String(body.text) } : {}),
+            ...(body.done !== undefined ? { done: Boolean(body.done) } : {}),
+          };
+          await kvSet(kv, key, store);
+          return json({ item: attachRecurrence(store.items[idx]) });
         }
         if (method === "DELETE") {
-          await kvSet(kv, key, items.filter((t) => t.id !== id));
+          const series = new URL(request.url).searchParams.get("series") === "1";
+          const target = store.items.find((t) => t.id === id);
+          if (series && target?.templateId) {
+            // Stop the series: drop the template (no more future materialization)
+            // and any not-yet-past instances, but keep history before today.
+            const today = todayISO();
+            store.templates = store.templates.filter((t) => t.id !== target.templateId);
+            store.items = store.items.filter((t) => t.templateId !== target.templateId || t.date < today);
+          } else {
+            store.items = store.items.filter((t) => t.id !== id);
+          }
+          await kvSet(kv, key, store);
           return json({ ok: true });
         }
       }

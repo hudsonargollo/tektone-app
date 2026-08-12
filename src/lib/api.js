@@ -140,11 +140,12 @@ export const api = {
   updateMember: (id, body) => req(`/kanban/members/${id}`, { method: "PUT", body }),
   deleteMember: (id) => req(`/kanban/members/${id}`, { method: "DELETE" }),
 
-  // private per-user daily todo checklist (sidepanel, never shared)
-  listTodos: () => req("/kanban/todos"),
-  createTodo: (text) => req("/kanban/todos", { method: "POST", body: { text } }),
+  // private per-user daily todo checklist (sidepanel, never shared), bundled by day
+  listTodos: (date) => req(`/kanban/todos?date=${date}`),
+  createTodo: (text, date, recurrence) =>
+    req("/kanban/todos", { method: "POST", body: { text, date, ...(recurrence ? { recurrence } : {}) } }),
   updateTodo: (id, body) => req(`/kanban/todos/${id}`, { method: "PUT", body }),
-  deleteTodo: (id) => req(`/kanban/todos/${id}`, { method: "DELETE" }),
+  deleteTodo: (id, series) => req(`/kanban/todos/${id}${series ? "?series=1" : ""}`, { method: "DELETE" }),
 
   // /blog admin (ADMIN only — see functions/api/blog/[[path]].js)
   listBlogPosts: (status) => req(`/blog/admin/posts${status ? `?status=${status}` : ""}`),
@@ -152,6 +153,7 @@ export const api = {
   approveBlogPost: (id) => req(`/blog/admin/posts/${id}/approve`, { method: "POST" }),
   rejectBlogPost: (id, reviewerNotes) => req(`/blog/admin/posts/${id}/reject`, { method: "POST", body: { reviewerNotes } }),
   generateBlogDrafts: () => req("/blog/admin/generate", { method: "POST" }),
+  generateBlogImage: (id, prompt) => req(`/blog/admin/posts/${id}/images`, { method: "POST", body: { prompt } }),
 
   // builder profile (gamification — see functions/_lib/gamification.js)
   getBuilderProfile: () => req("/gamification/me"),
