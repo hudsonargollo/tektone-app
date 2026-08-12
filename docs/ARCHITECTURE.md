@@ -110,8 +110,9 @@ One database, `migrations/` in numbered order. Grouped by when each module shipp
 | `addons_catalog`, `project_addons` | Add-on marketplace |
 | `workflow_templates` | Admin-authored task checklists, bulk-applied to a project — reused by CRM's won-lead automation |
 | `cost_categories`, `costs` | Internal cost ledger |
-| `leads`, `lead_events`, `sales`, `commissions` | **CRM** — pipeline + audit trail + sales + a single-beneficiary commission ledger (Hudson, 10%/sale — no affiliates yet, schema stays extensible) |
+| `leads`, `lead_events`, `sales`, `commissions` | **CRM** — pipeline + audit trail + sales + a single-beneficiary commission ledger (Hudson, 10%/sale — no affiliates yet, schema stays extensible). `leads.qualification`/`score`/`tier` (migration `0012`) hold the landing-page qualification form's raw answers and computed hot/warm/cold tier, kept separate from the freeform `notes` field a closer edits by hand. |
 | `kb_documents`, `lead_questions` | **CRM knowledge base** — the Business Specialist Copilot's grounding material + interaction log |
+| `blog_pillars`, `blog_posts` | **Blog** — AI-drafted (Claude for copy, Workers AI `flux-1-schnell` for the cover), admin-curated before anything publishes. `POST /api/blog/admin/generate` runs every active pillar and only fails loudly (502) if *all* of them error — one bad pillar no longer silently looks like success. |
 
 ## The CRM (`/crm`)
 
@@ -150,6 +151,29 @@ Approving a logged question promotes it into `kb_documents` as a `faq`-tier entr
 self-improving loop, same as the reference. **The knowledge base starts empty** — it needs
 Tektone's real service catalog, pricing, and case studies seeded before the copilot is
 useful for anything beyond the fail-open placeholder.
+
+## Public lead capture (`/crm/api/public/leads`)
+
+The landing page's qualification form (`marketing/components/QualificacaoSection.tsx`) is
+the only unauthenticated route on `tektone-crm` — visitors aren't logged in, so it can't sit
+behind `requireCrm` like every other `/crm/api/leads*` route. It recomputes the hot/warm/cold
+score **server-side** from the raw answers (`worker/crm-entry.js#scoreQualification`) rather
+than trusting a client-supplied score — the client bundle is public, so a spoofed score would
+otherwise be trivial. An elimination answer (`hasCompany: false`) short-circuits before any
+lead is created; everything else always creates a lead, `status` set to `qualified` (warm/hot)
+or `incomplete` (cold) so closers can still triage a cold lead without it disappearing.
+
+## Full-screen views, not modal popups (`/hub`)
+
+`AdminPanel`, `FinancePanel`, `CommercialPanel`, `BlogPanel`, `MeetingsPage` (combining the
+single-meeting analyze flow and the admin-only bulk Drive import as tabs), and
+`PersonalTodoPanel` are full-screen views switched via `App.jsx`'s `view` state, not centered
+modal popups over the board — `src/components/AppSidebar.jsx` is the persistent, collapsible
+nav between them (`hidden lg:flex`; mobile keeps the existing bottom-nav + sheet-menu
+pattern, wired to the same `view` state). The sidebar always opens collapsed when `view`
+becomes `"board"` — more horizontal room for kanban columns — regardless of the user's
+collapse preference elsewhere, but stays independently toggleable while there; outside the
+board it remembers the user's own choice via `localStorage` (`tk_app_sidebar_collapsed`).
 
 ## Non-obvious gotchas (all discovered by testing, not guessed)
 
@@ -223,7 +247,11 @@ reference against the routes portal can actually reach.
 
 ## Known outstanding items (content/ops, not architecture)
 
-1. **Secrets** aren't set on any Worker yet (table above).
+1. **Secrets** — `tektone-hub` has all six set (`SESSION_SECRET`, `ANTHROPIC_API_KEY`,
+   `INGEST_TOKEN`, `MEETINGS_WEBAPP_TOKEN`, `MEETINGS_WEBAPP_URL`, `RESEND_API_KEY`).
+   `tektone-portal`/`tektone-crm`'s own secrets haven't been re-verified since — confirm
+   `SESSION_SECRET` matches hub exactly before assuming cross-path login still works if either
+   Worker's secrets are ever rotated.
 2. **`tasks.tektone.com.br` → `/hub` redirect** — the old standalone Pages deployment there
    still works on its own; nothing forwards it to the new path yet.
 3. **`NOTIFY_FROM` on the live `tasks.tektone.com.br` Pages project** — a real bug was found
@@ -234,9 +262,18 @@ reference against the routes portal can actually reach.
    `/hub`, not domain root.
 4. **CRM content** — author a `workflow_templates` row named exactly "Onboarding padrão";
    seed `kb_documents` with Tektone's real service catalog/pricing/case studies.
-5. **`crm_role` grants** — nobody has one yet. Grant via direct D1 write (no admin UI for
-   this — low volume, not worth building yet):
+5. **`crm_role` grants** — `hudson@tektone.com.br` has `admin`; nobody else does yet. Grant
+   via direct D1 write (no admin UI for this — low volume, not worth building yet):
    ```sh
    npx wrangler d1 execute hub-tektone --remote --command \
      "UPDATE users SET crm_role = 'admin' WHERE email = 'someone@tektone.com.br'"
    ```
+6. **Blog content pipeline** — generation confirmed working end-to-end (4 real drafts sitting
+   in `pending_review` as of this writing); still needs an ADMIN to actually review/publish
+   them, and the homepage has no "latest posts" section yet (only `/blog` itself lists them).
+7. **Stripe** — the official `mcp.stripe.com` remote MCP server is registered locally in this
+   project (`claude mcp add --transport http stripe https://mcp.stripe.com`) but not yet
+   authenticated (`claude mcp login stripe`, run by whoever owns the Stripe account — not
+   something an agent should do on someone else's behalf). No payment integration code exists
+   yet; scope (project payments vs. portal add-on purchases vs. CRM sale checkout) isn't
+   decided.
