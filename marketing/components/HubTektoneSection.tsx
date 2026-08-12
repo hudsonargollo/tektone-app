@@ -121,18 +121,22 @@ export default function HubTektoneSection() {
         <div className="absolute inset-0 bp-lines-ink opacity-40" aria-hidden />
         <div className="absolute inset-0 grain-dark" aria-hidden />
 
-        {/* Second pass: the ambient backdrop now uses the dark counterpart
-            of the shared column motif — Doric silhouettes against the same
-            warm, cloud-lit dusk sky as the hero illustration — instead of
-            the first pass's unrelated drafting-table scene. Kept very faint
-            (screen blend lightens through the dark background) so it never
-            competes with the board or captions. */}
+        {/* Third pass: own generated illustration tied to this section's
+            actual message — "a operação exposta em tempo real... sem
+            caixa-preta". A classical building shown in architectural
+            cutaway, its facade sliced away to reveal a glowing, fully
+            visible interior — transparency as the literal image, not just
+            a generic dark backdrop. This section already used the login
+            page's own technique (full-bleed, mix-blend-screen, dark
+            background) before this pass, so only the image itself needed
+            replacing — kept at the same faint opacity so it stays ambient
+            behind the board and captions. */}
         <div
-          className="pointer-events-none absolute inset-0 opacity-[0.16] mix-blend-screen"
+          className="pointer-events-none absolute inset-0 opacity-[0.15] mix-blend-screen"
           aria-hidden
         >
           <Image
-            src="/illustration-column-motif-dark.jpg"
+            src="/illustration-hub.jpg"
             alt=""
             fill
             sizes="100vw"

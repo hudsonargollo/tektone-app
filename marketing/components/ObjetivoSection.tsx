@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import Image from "next/image";
 import SectionBlob from "@/components/SectionBlob";
+import GoldenRibbons from "@/components/GoldenRibbons";
 
 const EASE = [0.22, 1, 0.36, 1] as [number, number, number, number];
 
@@ -13,22 +14,26 @@ export default function ObjetivoSection() {
       <div className="absolute inset-0 grain-light mask-fade" aria-hidden />
       <SectionBlob tone="sand" className="-left-24 top-0 h-[28rem] w-[28rem]" />
 
-      {/* Third and smallest instance of the shared column motif — top-right,
-          slightly rotated. Consistent placement logic (corner + feathered
-          mask + multiply blend), varied just enough to avoid feeling like a
-          stamped repeat as the page scrolls. */}
+      {/* Own generated illustration for Objetivo — of the section's three
+          reasons clients arrive (recuperar o tempo, transformar ideia em
+          realidade, potencial não explorado), "transformar uma ideia em
+          realidade" is the most visual: a hand's sketch on a scroll lifting
+          off the page into a solid carved column. Placed top-right, bled
+          off the corner. Sparse composition like Processo's, so opacity
+          runs slightly above Agitação's denser image. */}
       <div
-        className="pointer-events-none absolute -right-6 top-0 h-36 w-28 opacity-[0.28] mix-blend-multiply mask-fade-corner [transform:rotate(4deg)] sm:-right-8 sm:h-48 sm:w-40"
+        className="pointer-events-none absolute -right-[6%] -top-[2%] h-[58%] w-[42%] opacity-[0.19] mix-blend-multiply sm:w-[36%] sm:opacity-[0.18]"
         aria-hidden
       >
         <Image
-          src="/illustration-column-motif-light.jpg"
+          src="/illustration-objetivo.jpg"
           alt=""
           fill
-          sizes="(max-width: 640px) 112px, 160px"
-          className="object-contain"
+          sizes="42vw"
+          className="object-contain object-top"
         />
       </div>
+      <GoldenRibbons className="pointer-events-none absolute -right-[3%] top-0 h-[46%] w-[54%] opacity-45" />
 
       <div className="relative mx-auto max-w-3xl px-6">
         <div className="space-y-10">

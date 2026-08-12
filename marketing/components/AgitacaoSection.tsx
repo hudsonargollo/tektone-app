@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import Image from "next/image";
 import SectionBlob from "@/components/SectionBlob";
+import GoldenRibbons from "@/components/GoldenRibbons";
 
 const EASE = [0.22, 1, 0.36, 1] as [number, number, number, number];
 
@@ -13,23 +14,27 @@ export default function AgitacaoSection() {
       <div className="absolute inset-0 grain-light mask-fade" aria-hidden />
       <SectionBlob tone="sand" className="-right-20 -top-24 h-96 w-96" />
 
-      {/* Second pass: one shared painterly column motif — same medium and
-          palette family as the new hero illustration — repeated with
-          variation (corner, mirroring, size) across the page's editorial
-          sections, instead of a different literal object bolted onto every
-          section. This is the first and largest instance, top-right. */}
+      {/* Third pass: own generated illustration, tied to this section's
+          copy — "o mercado oferece ferramentas, sistemas e plataformas, mas
+          nada sob medida". A stockyard of identical, mass-produced Doric
+          capitals shows the problem literally: generic, off-the-shelf,
+          nothing built for a specific building. Login-page technique — one
+          large painterly layer bled off the edge under mix-blend-multiply,
+          plus GoldenRibbons on top — instead of pass 2's small faint corner
+          icon. */}
       <div
-        className="pointer-events-none absolute -right-8 -top-4 h-44 w-36 opacity-[0.4] mix-blend-multiply mask-fade-corner sm:-right-4 sm:top-2 sm:h-60 sm:w-48"
+        className="pointer-events-none absolute -right-[8%] top-1/2 h-[150%] w-[46%] -translate-y-1/2 opacity-[0.16] mix-blend-multiply sm:w-[40%] sm:opacity-[0.15]"
         aria-hidden
       >
         <Image
-          src="/illustration-column-motif-light.jpg"
+          src="/illustration-agitacao.png"
           alt=""
           fill
-          sizes="(max-width: 640px) 144px, 192px"
-          className="object-contain"
+          sizes="46vw"
+          className="object-contain object-right"
         />
       </div>
+      <GoldenRibbons className="pointer-events-none absolute -right-[4%] top-1/2 h-[80%] w-[58%] -translate-y-1/2 opacity-50" />
 
       <div className="relative mx-auto max-w-3xl px-6">
         <div className="space-y-8">

@@ -15,6 +15,7 @@ import {
   Globe,
 } from "lucide-react";
 import SectionBlob from "@/components/SectionBlob";
+import GoldenRibbons from "@/components/GoldenRibbons";
 
 const EASE = [0.22, 1, 0.36, 1] as [number, number, number, number];
 
@@ -68,21 +69,26 @@ export default function ProcessoSection() {
       <div className="absolute inset-0 grain-light mask-fade" aria-hidden />
       <SectionBlob tone="green" className="-right-32 top-1/3 h-[30rem] w-[30rem]" />
 
-      {/* Same shared column motif as Agitação, mirrored (scaleX(-1)) and
-          moved to the opposite corner — the "variation" in the repeated
-          system, not a second illustration. */}
+      {/* Own generated illustration for Processo — a column shown mid
+          construction (raw block, fluted shaft, capital) with scaffolding
+          and mason's tools, illustrating the "três fases, um ativo novo"
+          build process. The composition is sparse (lots of blank parchment
+          around a slender column), so it runs a touch more opaque and
+          larger than Agitação's denser image to still register — left side,
+          mirroring Agitação's right placement. */}
       <div
-        className="pointer-events-none absolute -left-8 bottom-4 h-48 w-40 opacity-[0.3] mix-blend-multiply mask-fade-corner [transform:scaleX(-1)] sm:-left-10 sm:h-64 sm:w-52"
+        className="pointer-events-none absolute -left-[6%] bottom-0 h-[68%] w-[42%] opacity-[0.2] mix-blend-multiply sm:w-[36%] sm:opacity-[0.19]"
         aria-hidden
       >
         <Image
-          src="/illustration-column-motif-light.jpg"
+          src="/illustration-processo.jpg"
           alt=""
           fill
-          sizes="(max-width: 640px) 160px, 208px"
-          className="object-contain"
+          sizes="42vw"
+          className="object-contain object-bottom"
         />
       </div>
+      <GoldenRibbons className="pointer-events-none absolute -left-[3%] bottom-4 h-[50%] w-[54%] opacity-45 [transform:scaleX(-1)]" />
 
       <div className="relative mx-auto max-w-3xl px-6">
         <div className="mb-16">
