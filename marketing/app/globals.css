@@ -212,6 +212,26 @@ body {
   );
 }
 
+/* Same closest-side technique as .mask-fade-corner, but the opaque core
+   is much smaller (25% vs 55%) so the fade starts almost immediately.
+   For illustrations that are busy/dense edge-to-edge with no blank margin
+   of their own (e.g. a tiled pattern rather than a single centered
+   subject) — a shallow fade band isn't enough to hide the source image's
+   own hard content boundary, so the whole thing needs to dissolve early
+   instead of staying solid until the last moment. */
+.mask-fade-corner-soft {
+  -webkit-mask-image: radial-gradient(
+    ellipse closest-side at 50% 50%,
+    black 25%,
+    transparent 92%
+  );
+  mask-image: radial-gradient(
+    ellipse closest-side at 50% 50%,
+    black 25%,
+    transparent 92%
+  );
+}
+
 /* Golden ribbons (login hero) — actual drawn ribbon shapes in the brand's
    gold (Ochre/warning) and sand tones, not a blurred box-shadow/drop-shadow
    halo. Each ribbon draws itself in once on load (stroke-dashoffset), then

@@ -21,17 +21,30 @@ export default function AgitacaoSection() {
           nothing built for a specific building. Login-page technique — one
           large painterly layer bled off the edge under mix-blend-multiply,
           plus GoldenRibbons on top — instead of pass 2's small faint corner
-          icon. */}
+          icon.
+          Unlike Processo/Objetivo's illustrations, this source image is a
+          dense tiled pattern with no blank margin of its own, so it can't
+          rely on a shallow edge fade the way a sparse single-subject image
+          can — the source content itself would still read as "a rectangle
+          pasted on top" right up to where the fade kicks in. Two fixes
+          together: mask-fade-corner-soft (fades from 25% instead of 55%,
+          so the dissolve starts almost at the center) and a container
+          height close to the section's own bounds (h-[108%] instead of a
+          much taller box) so the fade zone actually lands inside the
+          visible, non-clipped area — a much taller box's own fade zone
+          sits past the section's overflow-hidden edge and never renders,
+          which is what produced the hard bottom edge originally. */}
       <div
-        className="pointer-events-none absolute -right-[8%] top-1/2 h-[150%] w-[46%] -translate-y-1/2 opacity-[0.22] mix-blend-multiply mask-fade-corner sm:w-[40%] sm:opacity-[0.2]"
+        className="pointer-events-none absolute -right-[10%] top-1/2 h-[108%] w-[42%] -translate-y-1/2 opacity-[0.16] mix-blend-multiply mask-fade-corner-soft sm:w-[36%] sm:opacity-[0.15]"
         aria-hidden
       >
         <Image
           src="/illustration-agitacao.png"
           alt=""
           fill
-          sizes="46vw"
-          className="object-cover object-right"
+          sizes="42vw"
+          className="object-cover"
+          style={{ objectPosition: "85% 35%" }}
         />
       </div>
       <GoldenRibbons className="pointer-events-none absolute -right-[4%] top-1/2 h-[80%] w-[58%] -translate-y-1/2 opacity-50" />
