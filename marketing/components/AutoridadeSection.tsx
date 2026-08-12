@@ -12,7 +12,15 @@ const EASE = [0.22, 1, 0.36, 1] as [number, number, number, number];
 // Hudson can compare them live before picking one. Remove this once he
 // decides: keep /pedro-silvestrini.jpeg (current) or revert to
 // /pedro-silvestrini-old.jpeg, then delete the loser and this rotation.
-const PORTRAIT_CANDIDATES = ["/pedro-silvestrini.jpeg", "/pedro-silvestrini-old.jpeg"];
+// Each candidate carries its own crop position — the two source photos
+// have very different compositions (desk shot vs. a much taller balcony
+// shot with the Acropolis in the background and Pedro's clasped hands
+// near the very bottom), so a single shared objectPosition cropped the
+// old photo's hands off and left too much empty sky visible.
+const PORTRAIT_CANDIDATES = [
+  { src: "/pedro-silvestrini.jpeg", position: "50% 30%" },
+  { src: "/pedro-silvestrini-old.jpeg", position: "50% 94%" },
+];
 
 const stats = [
   { value: 5, suffix: "+", label: "anos estruturando operações digitais" },
@@ -66,11 +74,11 @@ export default function AutoridadeSection() {
 
               <div className="relative aspect-[3/4] w-full overflow-hidden rounded-lg ring-1 ring-inset ring-ink/10">
                 <Image
-                  src={PORTRAIT_CANDIDATES[portraitIndex]}
+                  src={PORTRAIT_CANDIDATES[portraitIndex].src}
                   alt="Pedro Silvestrini, CEO e fundador da Tektone"
                   fill
                   className="object-cover"
-                  style={{ objectPosition: "50% 30%" }}
+                  style={{ objectPosition: PORTRAIT_CANDIDATES[portraitIndex].position }}
                   sizes="(min-width: 1024px) 24rem, 100vw"
                   priority
                 />
