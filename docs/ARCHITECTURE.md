@@ -310,12 +310,24 @@ reference against the routes portal can actually reach.
 6. **Blog content pipeline** — generation confirmed working end-to-end (4 real drafts sitting
    in `pending_review` as of this writing); still needs an ADMIN to actually review/publish
    them, and the homepage has no "latest posts" section yet (only `/blog` itself lists them).
-7. **Stripe** — the official `mcp.stripe.com` remote MCP server is registered locally in this
-   project (`claude mcp add --transport http stripe https://mcp.stripe.com`) but not yet
-   authenticated (`claude mcp login stripe`, run by whoever owns the Stripe account — not
-   something an agent should do on someone else's behalf). No payment integration code exists
-   yet; scope (project payments vs. portal add-on purchases vs. CRM sale checkout) isn't
-   decided.
+7. **Stripe** — the official `mcp.stripe.com` remote MCP server is registered
+   (`claude mcp add --transport http stripe https://mcp.stripe.com`) and authenticated
+   (`claude mcp login stripe`, run by Hudson from his own account). Its tools aren't callable
+   yet in any session that was already running when the server was added/authenticated — the
+   CLI only picks up MCP config changes on a fresh session start, confirmed via `claude mcp get
+   stripe` returning "no such server" inside an already-running session even though `claude mcp
+   list` shows it connected. **Next step: start a new Claude Code session, verify the Stripe
+   tools load, then build.** Scope is decided — **both**:
+   - **Portal add-on purchases** — `addons_catalog`/`project_addons` (migration
+     `0006_hub_marketplace.sql`) already model the catalog; needs real Stripe Checkout wired to
+     an actual purchase flow in `/portal`.
+   - **Contract/invoice payments** — `contracts`/`invoices` (migration
+     `0005_hub_commercial.sql`) are currently manual records with no online payment path; needs
+     Stripe wired so a customer can actually pay an invoice rather than it just being a number
+     staff track by hand.
+   
+   Explicitly deferred for now: CRM sale checkout (recording a sale in `/crm` when a lead is
+   won stays a manual amount entry, not a real payment flow).
 8. **Founder photo decision** — pick office photo vs. Acropolis photo, then delete
    `AutoridadeSection.tsx`'s temporary 5s rotation and the losing file (see "Landing-page
    illustrations and media" above).
