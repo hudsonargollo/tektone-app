@@ -183,21 +183,32 @@ body {
   mask-image: linear-gradient(to bottom, transparent 0%, black 34%);
 }
 
-/* Soft edge fade for small corner-anchored illustration accents — feathers
-   all four sides so no rectangular boundary is ever visible against the
+/* Soft edge fade for corner-anchored illustration accents — feathers all
+   four sides so no rectangular boundary is ever visible against the
    section background, regardless of the source image's own background
    color. Used together with mix-blend-multiply (light sections) or
-   mix-blend-screen (dark sections). */
+   mix-blend-screen (dark sections).
+
+   Two explicit-percentage attempts before this both got the sizing math
+   wrong (stop percentages are relative to the gradient's OWN defined
+   radius, which itself is a percentage of the box — the two percentages
+   compound, non-obviously). "closest-side" sidesteps that entirely: it
+   defines the gradient's 100% point at exactly the box's nearest edge (its
+   mid-side, the closest point on the box boundary to the center), so a
+   stop of "black 55%, transparent 100%" is unambiguous — the majority of
+   the box stays fully visible, the outer band fades cleanly, and opacity
+   hits exactly zero AT the edge, never leaving a residual seam. Corners
+   (farther than the nearest side) end up even more fully transparent. */
 .mask-fade-corner {
   -webkit-mask-image: radial-gradient(
-    ellipse 75% 75% at 50% 50%,
-    black 45%,
-    transparent 92%
+    ellipse closest-side at 50% 50%,
+    black 55%,
+    transparent 100%
   );
   mask-image: radial-gradient(
-    ellipse 75% 75% at 50% 50%,
-    black 45%,
-    transparent 92%
+    ellipse closest-side at 50% 50%,
+    black 55%,
+    transparent 100%
   );
 }
 

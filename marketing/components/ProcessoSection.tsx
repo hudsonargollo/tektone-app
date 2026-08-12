@@ -77,7 +77,7 @@ export default function ProcessoSection() {
           larger than Agitação's denser image to still register — left side,
           mirroring Agitação's right placement. */}
       <div
-        className="pointer-events-none absolute -left-[6%] bottom-0 h-[68%] w-[42%] opacity-[0.2] mix-blend-multiply sm:w-[36%] sm:opacity-[0.19]"
+        className="pointer-events-none absolute -left-[6%] bottom-0 h-[68%] w-[42%] opacity-[0.26] mix-blend-multiply mask-fade-corner sm:w-[36%] sm:opacity-[0.24]"
         aria-hidden
       >
         <Image
@@ -85,7 +85,7 @@ export default function ProcessoSection() {
           alt=""
           fill
           sizes="42vw"
-          className="object-contain object-bottom"
+          className="object-cover object-bottom"
         />
       </div>
       <GoldenRibbons className="pointer-events-none absolute -left-[3%] bottom-4 h-[50%] w-[54%] opacity-45 [transform:scaleX(-1)]" />

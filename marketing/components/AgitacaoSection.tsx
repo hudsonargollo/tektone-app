@@ -23,7 +23,7 @@ export default function AgitacaoSection() {
           plus GoldenRibbons on top — instead of pass 2's small faint corner
           icon. */}
       <div
-        className="pointer-events-none absolute -right-[8%] top-1/2 h-[150%] w-[46%] -translate-y-1/2 opacity-[0.16] mix-blend-multiply sm:w-[40%] sm:opacity-[0.15]"
+        className="pointer-events-none absolute -right-[8%] top-1/2 h-[150%] w-[46%] -translate-y-1/2 opacity-[0.22] mix-blend-multiply mask-fade-corner sm:w-[40%] sm:opacity-[0.2]"
         aria-hidden
       >
         <Image
@@ -31,7 +31,7 @@ export default function AgitacaoSection() {
           alt=""
           fill
           sizes="46vw"
-          className="object-contain object-right"
+          className="object-cover object-right"
         />
       </div>
       <GoldenRibbons className="pointer-events-none absolute -right-[4%] top-1/2 h-[80%] w-[58%] -translate-y-1/2 opacity-50" />

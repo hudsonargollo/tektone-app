@@ -22,7 +22,7 @@ export default function ObjetivoSection() {
           off the corner. Sparse composition like Processo's, so opacity
           runs slightly above Agitação's denser image. */}
       <div
-        className="pointer-events-none absolute -right-[6%] -top-[2%] h-[58%] w-[42%] opacity-[0.19] mix-blend-multiply sm:w-[36%] sm:opacity-[0.18]"
+        className="pointer-events-none absolute -right-[6%] -top-[2%] h-[58%] w-[42%] opacity-[0.24] mix-blend-multiply mask-fade-corner sm:w-[36%] sm:opacity-[0.22]"
         aria-hidden
       >
         <Image
@@ -30,7 +30,7 @@ export default function ObjetivoSection() {
           alt=""
           fill
           sizes="42vw"
-          className="object-contain object-top"
+          className="object-cover object-top"
         />
       </div>
       <GoldenRibbons className="pointer-events-none absolute -right-[3%] top-0 h-[46%] w-[54%] opacity-45" />

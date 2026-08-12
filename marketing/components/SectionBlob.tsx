@@ -22,7 +22,7 @@ export default function SectionBlob({
   return (
     <div
       aria-hidden
-      className={`pointer-events-none absolute opacity-[0.32] blur-3xl ${className}`}
+      className={`pointer-events-none absolute opacity-[0.32] blur-3xl mask-fade-corner ${className}`}
       style={{
         background: PALETTES[tone],
         borderRadius: "42% 58% 70% 30% / 45% 45% 55% 55%",
