@@ -37,3 +37,11 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# next-video — source files stored off-repo (Cloudflare R2), only the
+# JSON asset-metadata mapping gets committed
+videos/*
+!videos/*.json
+!videos/*.js
+!videos/*.ts
+public/_next-video

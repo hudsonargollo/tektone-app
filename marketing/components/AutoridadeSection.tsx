@@ -1,26 +1,12 @@
 "use client";
 
 import { motion } from "framer-motion";
-import Image from "next/image";
-import { useEffect, useState } from "react";
+import Video from "next-video";
+import pedroVideo from "/videos/pedro-silvestrini.mp4";
 import AnimatedNumber from "@/components/AnimatedNumber";
 import SectionBlob from "@/components/SectionBlob";
 
 const EASE = [0.22, 1, 0.36, 1] as [number, number, number, number];
-
-// TEMPORARY — rotates between the two candidate founder photos every 5s so
-// Hudson can compare them live before picking one. Remove this once he
-// decides: keep /pedro-silvestrini.jpeg (current) or revert to
-// /pedro-silvestrini-old.jpeg, then delete the loser and this rotation.
-// Each candidate carries its own crop position — the two source photos
-// have very different compositions (desk shot vs. a much taller balcony
-// shot with the Acropolis in the background and Pedro's clasped hands
-// near the very bottom), so a single shared objectPosition cropped the
-// old photo's hands off and left too much empty sky visible.
-const PORTRAIT_CANDIDATES = [
-  { src: "/pedro-silvestrini.jpeg", position: "50% 30%" },
-  { src: "/pedro-silvestrini-old.jpeg", position: "50% 94%" },
-];
 
 const stats = [
   { value: 5, suffix: "+", label: "anos estruturando operações digitais" },
@@ -30,14 +16,6 @@ const stats = [
 ];
 
 export default function AutoridadeSection() {
-  const [portraitIndex, setPortraitIndex] = useState(0);
-  useEffect(() => {
-    const id = setInterval(() => {
-      setPortraitIndex((i) => (i + 1) % PORTRAIT_CANDIDATES.length);
-    }, 5000);
-    return () => clearInterval(id);
-  }, []);
-
   return (
     <section id="autoridade" className="relative bg-ivory py-28 sm:py-36 overflow-hidden">
       <div className="absolute inset-0 bp-dots opacity-40 mask-fade" aria-hidden />
@@ -47,7 +25,10 @@ export default function AutoridadeSection() {
         <p className="label-tech mb-4">Quem lidera a Tektone</p>
 
         <div className="grid gap-12 lg:grid-cols-[0.8fr_1.2fr] lg:gap-16 items-start">
-          {/* Portrait */}
+          {/* Portrait — video instead of a static photo. Same passe-partout
+              mat/registration-mark framing as before; next-video's <Video>
+              handles poster generation + optimized delivery via the
+              Cloudflare R2 provider (see next.config.mjs) instead of Mux. */}
           <motion.div
             initial={{ opacity: 0, y: 24 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -73,16 +54,16 @@ export default function AutoridadeSection() {
               ))}
 
               <div className="relative aspect-[3/4] w-full overflow-hidden rounded-lg ring-1 ring-inset ring-ink/10">
-                <Image
-                  src={PORTRAIT_CANDIDATES[portraitIndex].src}
-                  alt="Pedro Silvestrini, CEO e fundador da Tektone"
-                  fill
-                  className="object-cover"
-                  style={{ objectPosition: PORTRAIT_CANDIDATES[portraitIndex].position }}
-                  sizes="(min-width: 1024px) 24rem, 100vw"
-                  priority
+                <Video
+                  src={pedroVideo}
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                  controls={false}
+                  className="h-full w-full [&_video]:h-full [&_video]:w-full [&_video]:object-cover"
                 />
-                <div className="absolute inset-0 grain-light" aria-hidden />
+                <div className="pointer-events-none absolute inset-0 grain-light" aria-hidden />
               </div>
             </div>
             <p className="mt-4 text-lg font-bold text-ink">
