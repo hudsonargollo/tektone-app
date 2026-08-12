@@ -113,7 +113,17 @@ export async function onRequest(context) {
 
       if (seg[1] === "generate" && method === "POST") {
         const results = await generateWeeklyDrafts(env);
-        return json({ results }, 201);
+        const drafted = results.filter((r) => !r.error).length;
+        const failed = results.filter((r) => r.error);
+        // generateWeeklyDrafts never throws (each pillar's error is caught
+        // and pushed into `results` so one bad pillar doesn't block the
+        // rest) — but that means "0 drafted, all failed" looked identical
+        // to success from the client's point of view. Surface it as a real
+        // error status so the UI doesn't silently show nothing happened.
+        if (drafted === 0 && failed.length > 0) {
+          return json({ results, error: failed[0].error }, 502);
+        }
+        return json({ results, drafted, failed: failed.length }, 201);
       }
 
       if (seg[1] === "pillars" && !seg[2] && method === "GET") {
