@@ -214,6 +214,96 @@ different compositions. This is explicit throwaway code (commented as TEMPORARY 
 once a decision is made, delete the loser file and the rotation logic, revert to one static
 `<Image>`.
 
+**Site is password-gated while pre-launch.** `marketing/middleware.ts` redirects every route
+(except `/gate` itself and static assets) to a password prompt until `/gate/verify` sets a
+cookie (`tk_preview_auth`, 60-day). Password is hardcoded in
+`app/gate/verify/route.ts` (`quemtemseda`) — deliberately not an env var, since this is a
+spoiler-blocker, not real auth. **Doesn't affect `/hub`, `/portal`, `/crm`** — those are separate
+Workers Routes that intercept requests before they ever reach this Pages Worker. Remove
+`middleware.ts` (and the `app/gate/` tree) once the site is ready to go public.
+
+**Hub Tektone video is framed, not blended.** Originally the video was masked at the edges to
+blend into the dark background (see above); that was later reversed to a deliberate "premium
+reveal" treatment — `.frame-gold` (metallic gradient border + glossy diagonal light-sweep
+pseudo-element) and `.vignette-frame` (radial-gradient corner darkening on the video itself),
+both in `app/globals.css`. If asked to touch this again, know that "blends into the page" and
+"glossy premium frame" are two different, previously-tried directions — check which one is
+currently live in `HubTektoneSection.tsx` before assuming.
+
+**Real Gemini image generation works, but not the obvious way.** A third-party Claude Code skill
+(`nano-banana`, installed via `npx skillfish add`) targets an OpenAI-compatible `chat.completions`
+surface — Google's actual Gemini API rejects that request shape outright (`Unknown name "seed"`,
+`Unknown name "response_modalities"`). The fix: call Gemini's **native** REST endpoint directly
+(`POST https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent`, header
+`x-goog-api-key`, body `{contents:[{parts:[{text: prompt}]}], generationConfig:
+{responseModalities:["IMAGE"]}}`) — same shape already proven in the sibling `fabrica-de-conteudo`
+project's `worker/src/services/geminiMediaService.js` (model `gemini-3.1-flash-image`, aka "Nano
+Banana 2"). **The API returns flat JPEG with no alpha channel even when the prompt asks for a
+"transparent background"** — the model draws a literal checkerboard pattern into the pixels
+instead. Working recipe: prompt for a **solid white background** explicitly, then flood-fill
+from the image's four corners (PIL `ImageDraw.floodfill`, matching a near-white starting pixel)
+into a transparent PNG locally — a global color-distance threshold would wrongly punch holes in
+any white highlight linework *inside* the illustration, so it has to be a corner-flood, not a
+blanket color-key. `ai.tektone.com.br` (a Groq-backed OpenAI-compatible proxy on the user's VPS)
+is text-only — not usable for this.
+
+**A full flat-color Greek illustration pass was built, then explicitly reverted.**
+Commit `76ee301` replaced `SectionBlob`'s plain blurred gradient with a two-layer treatment (soft
+color wash + a crisp flat-color classical bust silhouette on top) and swapped Agitação's
+CSS-patched sepia grid for a real transparent-PNG bust; commit `6ee517f` (`git revert 76ee301`)
+undid all of it after the user reviewed it live and didn't like the direction. **Don't
+re-attempt this exact treatment without new direction from the user** — the generation pipeline
+that made it possible (previous paragraph) is sound and reusable, but the specific "flat-color
+bust replacing the blob" design was tried and rejected, not abandoned for a technical reason.
+
+## Builder profile — gamification (`/hub`)
+
+Task moves/reviews on the kanban board log to `task_events` (append-only), which drives a
+per-builder XP/level engine (`functions/_lib/gamification.js`) wired into
+`functions/api/kanban/[[path]].js`'s existing review endpoints — no new UI surface for staff to
+learn, XP is just a side effect of doing the work they already do.
+
+- **Two independent accumulators per builder**: a global profile (`builder_profiles`) and one row
+  per project (`builder_project_profiles`) — the project-scoped one exists specifically so a
+  project's page can show "this builder's standing on *this* project," separate from their
+  overall level.
+- **XP formula** (schema/rationale documented inline in `migrations/0013_hub_builder_profile.sql`
+  and `gamification.js`): +20 base per reviewed task, +10 if on time (`reviewed_at` ≤
+  `due_date`), +10 (or +5) for cycle speed measured from `task_events` (first `inprogress` entry
+  → review) — real speed data, not just a same-day due-date check, since `tasks` itself has no
+  `completed_at`/estimate column. Level thresholds: cumulative XP for level *L* = `50*(L-1)*L`.
+- **12-card stoic + biblical wisdom deck** (`skill_cards`, seeded in the migration), one card per
+  level 1–12, unlocked into `builder_cards` on level-up — both a global unlock and, separately, a
+  per-project unlock against `builder_project_profiles.level`. Levels beyond 12 still accrue XP
+  normally; there's just no new card yet — a deliberate v1 content ceiling.
+- **Visibility**: private + admin. A builder reads only their own profile
+  (`GET /api/gamification/me`); `access_role='ADMIN'` can read anyone's
+  (`GET /api/gamification/user/:email`); a project roster is visible to STAFF/ADMIN or that
+  project's members (`GET /api/gamification/project/:projectId`). No public leaderboard in v1.
+- **Both new DB write paths fail open.** `logTaskEvent` and `awardXpForReviewedTask` are wrapped
+  in try/catch that only `console.error`s — a missing migration or any gamification bug can
+  never break the actual kanban move/review action they're layered onto. Verified locally
+  end-to-end (real D1, no mocks) before shipping: 40 XP for an on-time+fast review, reopen+re-
+  review correctly awards zero additional XP, level-up unlocks the right card.
+- **Deferred**: tasks reviewed for the first time after this shipped have no `inprogress`
+  `task_events` row to measure speed from (self-resolves as new events accumulate); multi-
+  assignee tasks award full XP to *every* assignee, not split (a deliberate "small team, generous
+  scoring" call — revisit if it gets gamed); the ADMIN-gated `/user/:email` route mirrors the
+  tested `/project/:id` gate logic but wasn't itself exercised against a second real ADMIN user.
+
+## Meeting Intelligence Drive search
+
+`automation/meeting-notes-sync.gs` is the source-of-truth copy of a Google Apps Script Web App
+that `functions/api/meetings/[[path]].js` proxies to (`MEETINGS_WEBAPP_URL`) — **editing the
+`.gs` file in this repo does nothing live**; changes must be manually pasted into the Apps
+Script editor (script.google.com) and redeployed as a new Web App version. `findNotesDocs()`
+now merges two sources: the original Drive-wide title search (`NAME_CONTAINS`, default
+`"Anotações"`) plus every Google Doc directly inside any folder named in
+`CONFIG.EXTRA_FOLDER_NAMES` (currently `["REGISTROS DE REUNIÕES"]`, resolved by name via
+`DriveApp.getFoldersByName()` — no folder ID to hardcode). Not yet confirmed live: whether a
+folder with that exact name is actually visible to whichever Google account runs the script —
+`getFoldersByName` fails silently (zero extra results, no error) on a name mismatch.
+
 ## Non-obvious gotchas (all discovered by testing, not guessed)
 
 | Gotcha | Why it matters |
@@ -336,3 +426,12 @@ reference against the routes portal can actually reach.
    piece) to hardcode + illustrate directly rather than run through the AI drafting pipeline;
    blocked because the paste got truncated mid-transit (154 lines missing) before this was
    acted on. Needs the full text resupplied (as a file, not a chat paste) before this can move.
+   `statue-blueprint.jpg`-style illustration (see "A full flat-color Greek illustration pass"
+   above) could be a good fit here even though it wasn't used on the homepage.
+10. **Meeting Drive search change needs a manual redeploy** — `automation/meeting-notes-sync.gs`
+    was updated to also search a "REGISTROS DE REUNIÕES" folder, but this only takes effect once
+    someone pastes it into the Apps Script editor and redeploys the Web App, then confirms via a
+    manual `syncMeetingNotes` run that the folder is actually found (see "Meeting Intelligence
+    Drive search" above).
+11. **Password gate is live** (`quemtemseda`) — intentional while pre-launch; remove
+    `marketing/middleware.ts` + `app/gate/` before the site should be publicly reachable.
