@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Sparkles, Check, ArrowLeft, FileText, AlertTriangle, CheckCircle2, Download } from "lucide-react";
 import { api } from "@/lib/api";
 import { Avatar, Spinner, PriorityBadge } from "@/components/ui";
@@ -19,7 +19,7 @@ function fmtDate(d) {
 
 export default function MeetingIntelligence({ clients, members, avatarByName, isAdmin, onClose, onSaved }) {
   const [phase, setPhase] = useState("input"); // input | review
-  const [mode, setMode] = useState("paste"); // paste | drive
+  const [mode, setMode] = useState("drive"); // paste | drive
   const [meetings, setMeetings] = useState(null);
   const [loadingId, setLoadingId] = useState(null);
   const [title, setTitle] = useState("");
@@ -31,15 +31,24 @@ export default function MeetingIntelligence({ clients, members, avatarByName, is
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
+  function loadMeetings() {
+    api
+      .listMeetings()
+      .then(({ meetings, error }) => (error ? setError(error) : setMeetings(meetings || [])))
+      .catch((e) => setError(e.body?.error || "Falha ao listar reuniões."));
+  }
+
+  // "drive" is the default mode (see useState above), so the list needs to
+  // load on mount too, not just when switchMode("drive") is clicked.
+  useEffect(() => {
+    if (mode === "drive" && meetings === null) loadMeetings();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   function switchMode(m) {
     setMode(m);
     setError("");
-    if (m === "drive" && meetings === null) {
-      api
-        .listMeetings()
-        .then(({ meetings, error }) => (error ? setError(error) : setMeetings(meetings || [])))
-        .catch((e) => setError(e.body?.error || "Falha ao listar reuniões."));
-    }
+    if (m === "drive" && meetings === null) loadMeetings();
   }
 
   async function pickMeeting(m) {
