@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
-import { X, Newspaper, Check, Ban, Sparkles, Pencil } from "lucide-react";
+import { ArrowLeft, Newspaper, Check, Ban, Sparkles, Pencil } from "lucide-react";
 import { api } from "@/lib/api";
 import { Spinner } from "@/components/ui";
 
@@ -85,39 +84,26 @@ export default function BlogPanel({ onClose }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <motion.div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-        onClick={onClose}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-      />
-      <motion.div
-        className="relative flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl surface-2 shadow-2xl"
-        initial={{ opacity: 0, y: 20, scale: 0.97 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 12, scale: 0.98 }}
-        transition={{ type: "spring", stiffness: 320, damping: 28 }}
-      >
-        <div className="flex items-center justify-between border-b border-ink/15 px-6 py-4">
-          <div className="flex items-center gap-2">
-            <Newspaper size={15} className="text-action" />
-            <span className="label-tech">Blog</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={generateNow}
-              disabled={generating}
-              className="flex items-center gap-1.5 rounded-lg border border-ink/15 px-2.5 py-1.5 font-mono text-[11px] text-stone-500 transition-colors hover:border-action/40 hover:text-action disabled:opacity-50"
-            >
-              {generating ? <Spinner /> : <Sparkles size={12} />} gerar agora
-            </button>
-            <button onClick={onClose} className="rounded-lg p-1.5 text-stone-500 hover:bg-ink/[0.05] hover:text-ink">
-              <X size={16} />
-            </button>
-          </div>
+    <div className="flex h-full flex-col surface-2">
+      <div className="flex items-center justify-between border-b border-ink/15 px-6 py-4">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onClose}
+            className="-ml-1.5 rounded-lg p-1.5 text-stone-500 hover:bg-ink/[0.05] hover:text-ink lg:hidden"
+          >
+            <ArrowLeft size={16} />
+          </button>
+          <Newspaper size={15} className="text-action" />
+          <span className="label-tech">Blog</span>
         </div>
+        <button
+          onClick={generateNow}
+          disabled={generating}
+          className="flex items-center gap-1.5 rounded-lg border border-ink/15 px-2.5 py-1.5 font-mono text-[11px] text-stone-500 transition-colors hover:border-action/40 hover:text-action disabled:opacity-50"
+        >
+          {generating ? <Spinner /> : <Sparkles size={12} />} gerar agora
+        </button>
+      </div>
 
         <div className="flex gap-1 border-b border-ink/15 px-6 pt-3">
           {Object.entries(STATUS_LABEL).map(([key, label]) => (
@@ -228,7 +214,6 @@ export default function BlogPanel({ onClose }) {
             </div>
           )}
         </div>
-      </motion.div>
     </div>
   );
 }

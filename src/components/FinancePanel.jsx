@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
-import { X, Wallet, TrendingDown, TrendingUp, Lock, Plus, Archive, ArchiveRestore, Pencil, FolderPlus, RefreshCw } from "lucide-react";
+import { ArrowLeft, Wallet, TrendingDown, TrendingUp, Lock, Plus, Archive, ArchiveRestore, Pencil, FolderPlus, RefreshCw } from "lucide-react";
 import { api } from "@/lib/api";
 import { Spinner } from "@/components/ui";
 
@@ -136,33 +135,22 @@ export default function FinancePanel({ clients, isAdmin, onClose }) {
   const marginColor = margin == null ? "text-stone-500" : margin >= 0 ? "text-success" : "text-danger";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <motion.div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-        onClick={onClose}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-      />
-      <motion.div
-        className="relative flex max-h-[88vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl surface-2 shadow-2xl"
-        initial={{ opacity: 0, y: 20, scale: 0.97 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 12, scale: 0.98 }}
-        transition={{ type: "spring", stiffness: 320, damping: 28 }}
-      >
-        <div className="flex items-center justify-between border-b border-ink/15 px-6 py-4">
-          <div className="flex items-center gap-2">
-            <Wallet size={15} className="text-action" />
-            <span className="label-tech">Financeiro interno</span>
-            <Lock size={11} className="text-stone-400" title="Visível apenas para staff/admin" />
-          </div>
-          <button onClick={onClose} className="rounded-lg p-1.5 text-stone-500 hover:bg-ink/[0.05] hover:text-ink">
-            <X size={16} />
+    <div className="flex h-full flex-col surface-2">
+      <div className="flex items-center justify-between border-b border-ink/15 px-6 py-4">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onClose}
+            className="-ml-1.5 rounded-lg p-1.5 text-stone-500 hover:bg-ink/[0.05] hover:text-ink lg:hidden"
+          >
+            <ArrowLeft size={16} />
           </button>
+          <Wallet size={15} className="text-action" />
+          <span className="label-tech">Financeiro interno</span>
+          <Lock size={11} className="text-stone-400" title="Visível apenas para staff/admin" />
         </div>
+      </div>
 
-        <div className="overflow-y-auto px-6 py-5">
+        <div className="flex-1 overflow-y-auto px-6 py-5">
           <select
             value={projectId}
             onChange={(e) => setProjectId(e.target.value)}
@@ -385,7 +373,6 @@ export default function FinancePanel({ clients, isAdmin, onClose }) {
             </>
           )}
         </div>
-      </motion.div>
     </div>
   );
 }

@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { motion } from "framer-motion";
 import { X, Plus, Square, CheckSquare, Lock } from "lucide-react";
 import { api } from "@/lib/api";
 import { Spinner } from "@/components/ui";
@@ -67,7 +66,7 @@ function Row({ item, onToggle, onEdit, onRemove }) {
   );
 }
 
-export default function PersonalTodoPanel({ onClose }) {
+export default function PersonalTodoPanel() {
   const [items, setItems] = useState(null); // null = loading
   const [text, setText] = useState("");
   const [error, setError] = useState("");
@@ -79,10 +78,7 @@ export default function PersonalTodoPanel({ onClose }) {
       .then(({ items }) => setItems(items))
       .catch(() => setError("Não foi possível carregar suas tarefas."));
     inputRef.current?.focus();
-    const onKey = (e) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, []);
 
   const done = (items ?? []).filter((i) => i.done).length;
   const pct = items?.length ? Math.round((done / items.length) * 100) : 0;
@@ -119,35 +115,13 @@ export default function PersonalTodoPanel({ onClose }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50">
-      <motion.div
-        className="absolute inset-0 bg-ink/40 backdrop-blur-sm"
-        onClick={onClose}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-      />
-      <motion.aside
-        initial={{ x: "100%" }}
-        animate={{ x: 0 }}
-        exit={{ x: "100%" }}
-        transition={{ type: "spring", stiffness: 340, damping: 34 }}
-        className="absolute right-0 top-0 flex h-full w-full max-w-sm flex-col bg-clay shadow-2xl"
-      >
-        <div className="flex items-start justify-between border-b border-ink/10 px-5 py-4">
-          <div>
-            <h2 className="text-lg font-bold text-ink">Minhas tarefas</h2>
-            <p className="mt-0.5 flex items-center gap-1.5 font-mono text-[11px] tracking-wide text-stone-500">
-              <Lock size={10} /> {todayLabel()} · só você vê isto
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            className="rounded-lg p-1.5 text-stone-500 transition-colors hover:bg-ink/[0.05] hover:text-ink"
-          >
-            <X size={18} />
-          </button>
-        </div>
+    <div className="flex h-full w-full flex-col">
+      <div className="border-b border-ink/10 px-5 py-4">
+        <h2 className="text-lg font-bold text-ink">Minhas tarefas</h2>
+        <p className="mt-0.5 flex items-center gap-1.5 font-mono text-[11px] tracking-wide text-stone-500">
+          <Lock size={10} /> {todayLabel()} · só você vê isto
+        </p>
+      </div>
 
         <div className="border-b border-ink/10 px-5 py-3">
           <div className="flex items-center gap-2">
@@ -206,7 +180,6 @@ export default function PersonalTodoPanel({ onClose }) {
             </div>
           )}
         </div>
-      </motion.aside>
     </div>
   );
 }

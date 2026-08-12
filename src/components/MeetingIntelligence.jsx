@@ -1,8 +1,7 @@
 import { useState } from "react";
-import { motion } from "framer-motion";
-import { X, Sparkles, Check, ArrowLeft, FileText, AlertTriangle, CheckCircle2, Download } from "lucide-react";
+import { Sparkles, Check, ArrowLeft, FileText, AlertTriangle, CheckCircle2, Download } from "lucide-react";
 import { api } from "@/lib/api";
-import { Avatar, Spinner, PriorityBadge, useIsMobile } from "@/components/ui";
+import { Avatar, Spinner, PriorityBadge } from "@/components/ui";
 
 const labelCls =
   "mb-1.5 block font-mono text-[11px] font-medium uppercase tracking-[0.16em] text-stone-500";
@@ -19,7 +18,6 @@ function fmtDate(d) {
 }
 
 export default function MeetingIntelligence({ clients, members, avatarByName, isAdmin, onClose, onSaved }) {
-  const isMobile = useIsMobile();
   const [phase, setPhase] = useState("input"); // input | review
   const [mode, setMode] = useState("paste"); // paste | drive
   const [meetings, setMeetings] = useState(null);
@@ -111,50 +109,26 @@ export default function MeetingIntelligence({ clients, members, avatarByName, is
   const keptCount = analysis ? analysis.actionItems.length - excluded.size : 0;
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-center lg:items-center lg:p-4">
-      <motion.div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-        onClick={onClose}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-      />
-      <motion.div
-        className={`relative flex w-full flex-col overflow-hidden surface-2 shadow-2xl ${
-          isMobile ? "h-full" : "max-h-[92vh] max-w-2xl rounded-2xl"
-        }`}
-        initial={isMobile ? { y: "100%" } : { opacity: 0, y: 20, scale: 0.97 }}
-        animate={isMobile ? { y: 0 } : { opacity: 1, y: 0, scale: 1 }}
-        exit={isMobile ? { y: "100%" } : { opacity: 0, y: 12, scale: 0.98 }}
-        transition={{ type: "spring", stiffness: 320, damping: 30 }}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between gap-3 border-b border-ink/15 px-6 py-4">
-          <div className="flex items-center gap-2.5">
-            {phase === "review" && (
-              <button
-                onClick={() => setPhase("input")}
-                className="rounded-lg p-1 text-stone-500 transition-colors hover:bg-ink/[0.05] hover:text-ink"
-                title="Voltar"
-              >
-                <ArrowLeft size={16} />
-              </button>
-            )}
-            <span
-              className="flex h-7 w-7 items-center justify-center rounded-lg"
-              style={{ background: "rgba(122,90,110,0.15)", color: "#7A5A6E" }}
-            >
-              <Sparkles size={15} />
-            </span>
-            <span className="text-sm font-bold text-ink">Inteligência de Reuniões</span>
-          </div>
+    <div className="flex h-full w-full flex-col overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center gap-2.5 border-b border-ink/15 px-6 py-4">
+        {phase === "review" && (
           <button
-            onClick={onClose}
-            className="rounded-lg p-1.5 text-stone-500 transition-colors hover:bg-ink/[0.05] hover:text-ink"
+            onClick={() => setPhase("input")}
+            className="rounded-lg p-1 text-stone-500 transition-colors hover:bg-ink/[0.05] hover:text-ink"
+            title="Voltar"
           >
-            <X size={16} />
+            <ArrowLeft size={16} />
           </button>
-        </div>
+        )}
+        <span
+          className="flex h-7 w-7 items-center justify-center rounded-lg"
+          style={{ background: "rgba(122,90,110,0.15)", color: "#7A5A6E" }}
+        >
+          <Sparkles size={15} />
+        </span>
+        <span className="text-sm font-bold text-ink">Analisar transcrição</span>
+      </div>
 
         <div className="flex-1 space-y-4 overflow-y-auto px-6 py-5">
           {error && <p className="font-mono text-[11px] text-danger">{error}</p>}
@@ -388,7 +362,6 @@ export default function MeetingIntelligence({ clients, members, avatarByName, is
             </button>
           )}
         </div>
-      </motion.div>
     </div>
   );
 }

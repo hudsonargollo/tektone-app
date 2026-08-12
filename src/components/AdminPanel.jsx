@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
-import { X, ShieldCheck, RotateCcw, Check, Clock, Wallet, Layers, Plus, Trash2, PlayCircle } from "lucide-react";
+import { ArrowLeft, ShieldCheck, RotateCcw, Check, Clock, Wallet, Layers, Plus, Trash2, PlayCircle } from "lucide-react";
 import { api } from "@/lib/api";
 import { Spinner } from "@/components/ui";
 
+// Full-screen view (not a modal) — mounted by App.jsx's view switch when
+// view === "admin". onClose navigates back to the board view; the X/back
+// control is mobile-only since desktop navigation lives in AppSidebar.
 export default function AdminPanel({ currentEmail, clients, onClose }) {
   const [tab, setTab] = useState("access");
   const [users, setUsers] = useState(null);
@@ -116,30 +118,19 @@ export default function AdminPanel({ currentEmail, clients, onClose }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <motion.div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-        onClick={onClose}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-      />
-      <motion.div
-        className="relative w-full max-w-md overflow-hidden rounded-2xl surface-2 shadow-2xl"
-        initial={{ opacity: 0, y: 20, scale: 0.97 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 12, scale: 0.98 }}
-        transition={{ type: "spring", stiffness: 320, damping: 28 }}
-      >
-        <div className="flex items-center justify-between border-b border-ink/15 px-6 py-4">
-          <div className="flex items-center gap-2">
-            <ShieldCheck size={15} className="text-action" />
-            <span className="label-tech">Admin</span>
-          </div>
-          <button onClick={onClose} className="rounded-lg p-1.5 text-stone-500 hover:bg-ink/[0.05] hover:text-ink">
-            <X size={16} />
+    <div className="flex h-full flex-col surface-2">
+      <div className="flex items-center justify-between border-b border-ink/15 px-6 py-4">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onClose}
+            className="-ml-1.5 rounded-lg p-1.5 text-stone-500 hover:bg-ink/[0.05] hover:text-ink lg:hidden"
+          >
+            <ArrowLeft size={16} />
           </button>
+          <ShieldCheck size={15} className="text-action" />
+          <span className="label-tech">Admin</span>
         </div>
+      </div>
 
         <div className="flex gap-1 border-b border-ink/15 px-6 pt-3">
           <button
@@ -156,7 +147,7 @@ export default function AdminPanel({ currentEmail, clients, onClose }) {
           </button>
         </div>
 
-        <div className="max-h-[70vh] overflow-y-auto px-6 py-5">
+        <div className="flex-1 overflow-y-auto px-6 py-5">
           {error && <p className="mb-3 font-mono text-[11px] text-danger">{error}</p>}
 
           {tab === "access" && (
@@ -318,7 +309,6 @@ export default function AdminPanel({ currentEmail, clients, onClose }) {
             </>
           )}
         </div>
-      </motion.div>
     </div>
   );
 }

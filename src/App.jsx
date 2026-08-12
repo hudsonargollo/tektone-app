@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { AlertCircle, LogOut, ShieldCheck, Menu, X, Sparkles, Package, Download, LayoutGrid, ListChecks, Wallet, Briefcase, Newspaper } from "lucide-react";
+import { AlertCircle, LogOut, ShieldCheck, Menu, X, Sparkles, Package, LayoutGrid, ListChecks, Wallet, Briefcase, Newspaper } from "lucide-react";
 import { api } from "@/lib/api";
 import { today } from "@/lib/constants";
 import { useRealtime } from "@/lib/useRealtime";
 import { fireDuotoneConfetti } from "@/lib/confetti";
 import { Spinner, Avatar } from "@/components/ui";
 import Sidebar from "@/components/Sidebar";
+import AppSidebar from "@/components/AppSidebar";
 import TopBar from "@/components/TopBar";
 import Board from "@/components/Board";
 import CardModal from "@/components/CardModal";
@@ -21,8 +22,7 @@ import CustomerShell from "@/components/CustomerShell";
 import ProfilePage from "@/components/ProfilePage";
 import PersonalTodoPanel from "@/components/PersonalTodoPanel";
 import ReviewPopup from "@/components/ReviewPopup";
-import MeetingIntelligence from "@/components/MeetingIntelligence";
-import MeetingFetch from "@/components/MeetingFetch";
+import MeetingsPage from "@/components/MeetingsPage";
 import NotificationsBell from "@/components/NotificationsBell";
 import LogoMark from "@/components/LogoMark";
 
@@ -48,14 +48,43 @@ export default function App() {
   const [financeAccess, setFinanceAccess] = useState(false);
   const [accessRole, setAccessRole] = useState(null);
   const [crmRole, setCrmRole] = useState(null);
-  const [showAdmin, setShowAdmin] = useState(false);
-  const [showFinance, setShowFinance] = useState(false);
-  const [showCommercial, setShowCommercial] = useState(false);
-  const [showBlog, setShowBlog] = useState(false);
+  // Full-screen views (board/admin/finance/commercial/blog) switched via the
+  // app-level AppSidebar — replaces the old showAdmin/showFinance/... modal
+  // booleans. `sidebarPref` is the user's persisted collapse choice, used
+  // everywhere EXCEPT the board view, which always starts collapsed (more
+  // horizontal room for columns) but can still be toggled independently
+  // while there — that toggle lives in `boardSidebarOpen` and resets every
+  // time you navigate back to the board.
+  const [view, setView] = useState("board");
+  const [sidebarPref, setSidebarPref] = useState(() => {
+    try {
+      return localStorage.getItem("tk_app_sidebar_collapsed") === "1";
+    } catch {
+      return false;
+    }
+  });
+  const [boardSidebarOpen, setBoardSidebarOpen] = useState(false); // "open" = expanded, board always starts collapsed
+  const sidebarCollapsed = view === "board" ? !boardSidebarOpen : sidebarPref;
+  const navigateTo = (v) => {
+    setView(v);
+    if (v === "board") setBoardSidebarOpen(false);
+  };
+  const toggleSidebarCollapse = () => {
+    if (view === "board") {
+      setBoardSidebarOpen((o) => !o);
+    } else {
+      setSidebarPref((prev) => {
+        const next = !prev;
+        try {
+          localStorage.setItem("tk_app_sidebar_collapsed", next ? "1" : "0");
+        } catch {
+          /* ignore */
+        }
+        return next;
+      });
+    }
+  };
   const [showProfile, setShowProfile] = useState(false);
-  const [showIntel, setShowIntel] = useState(false);
-  const [showFetch, setShowFetch] = useState(false);
-  const [showTodos, setShowTodos] = useState(false);
   const [reviews, setReviews] = useState([]);
   const [reviewActiveId, setReviewActiveId] = useState(null); // current carousel slide (meeting id)
   const [notifSignal, setNotifSignal] = useState(0);
@@ -519,77 +548,12 @@ export default function App() {
               {openRequestsGlobal === 1 ? "solicitação" : "solicitações"}
             </button>
           )}
-          <button
-            onClick={() => setShowIntel(true)}
-            className="flex items-center gap-1.5 rounded-lg border border-ink/15 px-2.5 py-1.5 font-mono text-[11px] tracking-wide text-stone-500 transition-colors hover:border-action/40 hover:text-action"
-            title="Analisar transcrição de reunião"
-          >
-            <Sparkles size={12} /> reuniões
-          </button>
-          <button
-            onClick={() => setShowTodos(true)}
-            className="flex items-center gap-1.5 rounded-lg border border-ink/15 px-2.5 py-1.5 font-mono text-[11px] tracking-wide text-stone-500 transition-colors hover:border-action/40 hover:text-action"
-            title="Minhas tarefas do dia (privado)"
-          >
-            <ListChecks size={12} /> minhas tarefas
-          </button>
           <a
             href="https://tektone.com.br"
             className="font-mono text-[11px] tracking-wide text-stone-500 transition-colors hover:text-action"
           >
             ← tektone.com.br
           </a>
-          {isAdmin && (
-            <button
-              onClick={() => setShowFetch(true)}
-              className="flex items-center gap-1.5 rounded-lg border border-ink/15 px-2.5 py-1.5 font-mono text-[11px] tracking-wide text-stone-500 transition-colors hover:border-action/40 hover:text-action"
-              title="Buscar reuniões do Drive"
-            >
-              <Download size={12} /> buscar
-            </button>
-          )}
-          {financeAccess && (
-            <button
-              onClick={() => setShowFinance(true)}
-              className="flex items-center gap-1.5 rounded-lg border border-ink/15 px-2.5 py-1.5 font-mono text-[11px] tracking-wide text-stone-500 transition-colors hover:border-action/40 hover:text-action"
-              title="Financeiro interno"
-            >
-              <Wallet size={12} /> financeiro
-            </button>
-          )}
-          <button
-            onClick={() => setShowCommercial(true)}
-            className="flex items-center gap-1.5 rounded-lg border border-ink/15 px-2.5 py-1.5 font-mono text-[11px] tracking-wide text-stone-500 transition-colors hover:border-action/40 hover:text-action"
-            title="Contratos, faturas e clientes"
-          >
-            <Briefcase size={12} /> comercial
-          </button>
-          {crmRole && (
-            <a
-              href="/crm"
-              className="flex items-center gap-1.5 rounded-lg border border-ink/15 px-2.5 py-1.5 font-mono text-[11px] tracking-wide text-stone-500 transition-colors hover:border-action/40 hover:text-action"
-              title="Pipeline de leads e vendas"
-            >
-              <Sparkles size={12} /> crm
-            </a>
-          )}
-          {isAdmin && (
-            <button
-              onClick={() => setShowBlog(true)}
-              className="flex items-center gap-1.5 rounded-lg border border-ink/15 px-2.5 py-1.5 font-mono text-[11px] tracking-wide text-stone-500 transition-colors hover:border-action/40 hover:text-action"
-              title="Curadoria do blog"
-            >
-              <Newspaper size={12} /> blog
-            </button>
-          )}
-          {isAdmin && (
-            <button
-              onClick={() => setShowAdmin(true)}
-              className="flex items-center gap-1.5 rounded-lg border border-ink/15 px-2.5 py-1.5 font-mono text-[11px] tracking-wide text-stone-500 transition-colors hover:border-action/40 hover:text-action"
-            >
-              <ShieldCheck size={12} /> admin
-            </button>
-          )}
           <button
             onClick={logout}
             className="flex items-center gap-1.5 rounded-lg border border-ink/15 px-2.5 py-1.5 font-mono text-[11px] tracking-wide text-stone-500 transition-colors hover:border-danger/40 hover:text-danger"
@@ -613,7 +577,41 @@ export default function App() {
       <div className="relative flex flex-1 overflow-hidden">
         <div className="pointer-events-none absolute inset-0 bp-dots opacity-50" aria-hidden />
 
-        {loading ? (
+        <AppSidebar
+          view={view}
+          onNavigate={navigateTo}
+          collapsed={sidebarCollapsed}
+          onToggleCollapse={toggleSidebarCollapse}
+          isAdmin={isAdmin}
+          financeAccess={financeAccess}
+          crmRole={crmRole}
+        />
+
+        {view !== "board" ? (
+          <div className="relative flex min-w-0 flex-1 overflow-hidden">
+            {view === "admin" && (
+              <AdminPanel currentEmail={userEmail} clients={clients} onClose={() => navigateTo("board")} />
+            )}
+            {view === "finance" && (
+              <FinancePanel clients={clients} isAdmin={isAdmin} onClose={() => navigateTo("board")} />
+            )}
+            {view === "commercial" && (
+              <CommercialPanel clients={clients} isAdmin={isAdmin} onClose={() => navigateTo("board")} />
+            )}
+            {view === "blog" && <BlogPanel onClose={() => navigateTo("board")} />}
+            {view === "todos" && <PersonalTodoPanel />}
+            {view === "meetings" && (
+              <MeetingsPage
+                clients={clients}
+                members={members}
+                avatarByName={avatarByName}
+                isAdmin={isAdmin}
+                onSaved={loadData}
+                onClose={() => navigateTo("board")}
+              />
+            )}
+          </div>
+        ) : loading ? (
           <div className="flex flex-1 items-center justify-center gap-3 text-stone-500">
             <Spinner />
             <span className="font-mono text-sm">carregando pipeline…</span>
@@ -632,7 +630,7 @@ export default function App() {
           </div>
         ) : (
           <div className="relative flex flex-1 overflow-hidden p-4 lg:gap-6 lg:p-6">
-            {/* Desktop sidebar */}
+            {/* Desktop project-filter sidebar (board-scoped, not app nav) */}
             <div className="hidden lg:block">
               <Sidebar {...sidebarProps} onSelect={setActiveId} />
             </div>
@@ -674,14 +672,17 @@ export default function App() {
       {/* Mobile bottom nav */}
       <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t border-ink/10 bg-clay/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl lg:hidden">
         <button
-          onClick={() => setRequestsOnly(false)}
+          onClick={() => {
+            navigateTo("board");
+            setRequestsOnly(false);
+          }}
           className={`flex flex-1 flex-col items-center gap-1 py-2 text-[10px] transition-colors ${
-            !requestsOnly ? "font-semibold text-action" : "font-medium text-stone-500"
+            view === "board" && !requestsOnly ? "font-semibold text-action" : "font-medium text-stone-500"
           }`}
         >
           <span
             className={`flex h-7 items-center justify-center rounded-full px-4 transition-colors ${
-              !requestsOnly ? "bg-action/15" : ""
+              view === "board" && !requestsOnly ? "bg-action/15" : ""
             }`}
           >
             <LayoutGrid size={20} />
@@ -712,8 +713,10 @@ export default function App() {
           Solicitações
         </button>
         <button
-          onClick={() => setShowIntel(true)}
-          className="flex flex-1 flex-col items-center gap-1 py-2 text-[10px] font-medium text-stone-500 transition-colors active:text-action"
+          onClick={() => navigateTo("meetings")}
+          className={`flex flex-1 flex-col items-center gap-1 py-2 text-[10px] transition-colors active:text-action ${
+            view === "meetings" ? "font-semibold text-action" : "font-medium text-stone-500"
+          }`}
         >
           <span className="flex h-7 items-center justify-center">
             <Sparkles size={20} />
@@ -771,28 +774,17 @@ export default function App() {
               )}
               <button
                 onClick={() => {
-                  setShowTodos(true);
+                  navigateTo("todos");
                   setMenuOpen(false);
                 }}
                 className="flex w-full items-center gap-3 border-b border-ink/10 px-5 py-3.5 text-left text-sm text-stone-700 transition-colors active:bg-ink/[0.04]"
               >
                 <ListChecks size={16} className="text-action" /> Minhas tarefas (privado)
               </button>
-              {isAdmin && (
-                <button
-                  onClick={() => {
-                    setShowFetch(true);
-                    setMenuOpen(false);
-                  }}
-                  className="flex w-full items-center gap-3 px-5 py-3.5 text-left text-sm text-stone-700 transition-colors active:bg-ink/[0.04]"
-                >
-                  <Download size={16} className="text-action" /> Buscar reuniões
-                </button>
-              )}
               {financeAccess && (
                 <button
                   onClick={() => {
-                    setShowFinance(true);
+                    navigateTo("finance");
                     setMenuOpen(false);
                   }}
                   className="flex w-full items-center gap-3 px-5 py-3.5 text-left text-sm text-stone-700 transition-colors active:bg-ink/[0.04]"
@@ -802,7 +794,7 @@ export default function App() {
               )}
               <button
                 onClick={() => {
-                  setShowCommercial(true);
+                  navigateTo("commercial");
                   setMenuOpen(false);
                 }}
                 className="flex w-full items-center gap-3 px-5 py-3.5 text-left text-sm text-stone-700 transition-colors active:bg-ink/[0.04]"
@@ -820,7 +812,7 @@ export default function App() {
               {isAdmin && (
                 <button
                   onClick={() => {
-                    setShowBlog(true);
+                    navigateTo("blog");
                     setMenuOpen(false);
                   }}
                   className="flex w-full items-center gap-3 px-5 py-3.5 text-left text-sm text-stone-700 transition-colors active:bg-ink/[0.04]"
@@ -831,7 +823,7 @@ export default function App() {
               {isAdmin && (
                 <button
                   onClick={() => {
-                    setShowAdmin(true);
+                    navigateTo("admin");
                     setMenuOpen(false);
                   }}
                   className="flex w-full items-center gap-3 px-5 py-3.5 text-left text-sm text-stone-700 transition-colors active:bg-ink/[0.04]"
@@ -945,21 +937,7 @@ export default function App() {
             }}
           />
         )}
-        {showAdmin && (
-          <AdminPanel currentEmail={userEmail} clients={clients} onClose={() => setShowAdmin(false)} />
-        )}
-        {showBlog && <BlogPanel onClose={() => setShowBlog(false)} />}
-        {showFinance && (
-          <FinancePanel clients={clients} isAdmin={isAdmin} onClose={() => setShowFinance(false)} />
-        )}
-        {showCommercial && (
-          <CommercialPanel clients={clients} isAdmin={isAdmin} onClose={() => setShowCommercial(false)} />
-        )}
-        {showTodos && <PersonalTodoPanel onClose={() => setShowTodos(false)} />}
-        {showFetch && (
-          <MeetingFetch onClose={() => setShowFetch(false)} onDone={loadData} />
-        )}
-        {reviews.length > 0 && !editing && !showProfile && !showAdmin && (
+        {reviews.length > 0 && !editing && !showProfile && view === "board" && (
           <ReviewPopup
             reviews={reviews}
             cards={cards}
@@ -971,16 +949,6 @@ export default function App() {
             onAckOne={ackOneReview}
             onEditTask={openCard}
             onDismissTask={deleteCard}
-          />
-        )}
-        {showIntel && (
-          <MeetingIntelligence
-            clients={clients}
-            members={members}
-            avatarByName={avatarByName}
-            isAdmin={isAdmin}
-            onClose={() => setShowIntel(false)}
-            onSaved={loadData}
           />
         )}
         {showProfile && (
