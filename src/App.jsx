@@ -21,6 +21,7 @@ import CommercialPanel from "@/components/CommercialPanel";
 import CustomerShell from "@/components/CustomerShell";
 import ProfilePage from "@/components/ProfilePage";
 import BuilderProfilePanel from "@/components/BuilderProfilePanel";
+import SocialPostGenerator from "@/components/SocialPostGenerator";
 import PersonalTodoPanel from "@/components/PersonalTodoPanel";
 import ReviewPopup from "@/components/ReviewPopup";
 import MeetingsPage from "@/components/MeetingsPage";
@@ -602,6 +603,7 @@ export default function App() {
             {view === "blog" && <BlogPanel onClose={() => navigateTo("board")} />}
             {view === "todos" && <PersonalTodoPanel />}
             {view === "journey" && <BuilderProfilePanel onClose={() => navigateTo("board")} />}
+            {view === "social" && <SocialPostGenerator onClose={() => navigateTo("board")} />}
             {view === "meetings" && (
               <MeetingsPage
                 clients={clients}

@@ -157,4 +157,10 @@ export const api = {
   getBuilderProfile: () => req("/gamification/me"),
   getBuilderProfileFor: (email) => req(`/gamification/user/${encodeURIComponent(email)}`),
   getProjectBuilders: (projectId) => req(`/gamification/project/${projectId}`),
+
+  // AI Instagram post generator (STAFF/ADMIN only — see functions/api/social/[[path]].js)
+  generateSocialPost: (body) => req("/social/generate", { method: "POST", body }),
+  listSocialPosts: () => req("/social"),
+  exportSocialPost: (id) => req(`/social/${id}`, { method: "PATCH" }),
+  deleteSocialPost: (id) => req(`/social/${id}`, { method: "DELETE" }),
 };
