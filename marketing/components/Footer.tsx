@@ -1,4 +1,5 @@
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, AtSign, Link as LinkIcon, Mail } from "lucide-react";
+import Link from "next/link";
 import Logo from "@/components/Logo";
 
 export default function Footer() {
@@ -34,19 +35,58 @@ export default function Footer() {
         </div>
       </div>
 
+      {/* Company info + contact */}
+      <div className="border-t border-ivory/[0.06]">
+        <div className="mx-auto flex max-w-6xl flex-col gap-6 px-6 py-10 sm:flex-row sm:items-start sm:justify-between">
+          <div className="space-y-1.5 font-mono text-[11px] tracking-wide text-sand/40">
+            <p className="text-sand/60">TEKTONE</p>
+            <p>Razão Social: PSL DIGITAL LTDA</p>
+            <p>CNPJ: 49.037.198/0001-77</p>
+          </div>
+          <div className="flex flex-col gap-2.5 font-mono text-[11px] tracking-wide text-sand/40">
+            <a
+              href="https://instagram.com/tektone.co"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 transition-colors hover:text-green-mist"
+            >
+              <AtSign className="h-3.5 w-3.5" /> @Tektone.co
+            </a>
+            <a
+              href="https://www.linkedin.com/company/tektone"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 transition-colors hover:text-green-mist"
+            >
+              <LinkIcon className="h-3.5 w-3.5" /> Tektone
+            </a>
+            <a
+              href="mailto:Matrix@tektone.com.br"
+              className="inline-flex items-center gap-2 transition-colors hover:text-green-mist"
+            >
+              <Mail className="h-3.5 w-3.5" /> Matrix@tektone.com.br
+            </a>
+          </div>
+        </div>
+      </div>
+
       {/* Legal */}
       <div className="border-t border-ivory/[0.06]">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 px-6 py-6 sm:flex-row">
           <p className="font-mono text-xs tracking-wide text-sand/40">
             © 2026 TEKTONE · Consultoria de Tecnologia &amp; Negócios
           </p>
+          <div className="flex items-center gap-4 font-mono text-[11px] tracking-wide text-sand/40">
+            <Link href="/politica-de-privacidade" className="transition-colors hover:text-green-mist">
+              Política de privacidade
+            </Link>
+            <span className="text-sand/20">·</span>
+            <Link href="/termos-de-uso" className="transition-colors hover:text-green-mist">
+              Termos de uso
+            </Link>
+          </div>
           <p className="font-mono text-[11px] tracking-wide text-sand/25">
             built in the dark
-          </p>
-        </div>
-        <div className="mx-auto max-w-6xl px-6 pb-6">
-          <p className="text-center font-mono text-[11px] tracking-wide text-sand/25 sm:text-left">
-            PSL Digital LTDA · CNPJ 49.037.198/0001-77
           </p>
         </div>
       </div>

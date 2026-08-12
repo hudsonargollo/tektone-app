@@ -52,10 +52,10 @@ export default function AutoridadeSection() {
               <div className="relative aspect-[3/4] w-full overflow-hidden rounded-lg ring-1 ring-inset ring-ink/10">
                 <Image
                   src="/pedro-silvestrini.jpeg"
-                  alt="Pedro Silvestrini, CEO e fundador da Tektone, com a Acrópole de Atenas ao fundo"
+                  alt="Pedro Silvestrini, CEO e fundador da Tektone, em seu escritório"
                   fill
                   className="object-cover"
-                  style={{ objectPosition: "50% 75%" }}
+                  style={{ objectPosition: "50% 30%" }}
                   sizes="(min-width: 1024px) 24rem, 100vw"
                   priority
                 />
