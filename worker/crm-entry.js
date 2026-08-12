@@ -85,6 +85,97 @@ app.post("/crm/api/leads", async (c) => {
   return json(c, { lead }, 201);
 });
 
+// Public, unauthenticated intake for the landing-page qualification form
+// (marketing/components/QualificacaoSection.tsx) — same-origin fetch from
+// tektone.com.br, no session required (visitors aren't logged in). Scoring
+// is recomputed server-side from raw answers rather than trusted from the
+// client, so the tier a lead lands in can't be spoofed by editing the
+// client bundle.
+app.post("/crm/api/public/leads", async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+
+  if (body.hasCompany === false) {
+    return json(c, { eliminated: true });
+  }
+
+  const name = String(body.name || "").trim().slice(0, 200);
+  const email = String(body.email || "").trim().slice(0, 200);
+  const phone = String(body.phone || "").trim().slice(0, 60);
+  if (!name || !email || !phone) {
+    return json(c, { error: "Nome, e-mail e WhatsApp são obrigatórios." }, 400);
+  }
+
+  const { score, tier } = scoreQualification(body);
+  const businessType =
+    body.businessType === "outro"
+      ? String(body.businessTypeOther || "Outro").trim().slice(0, 120)
+      : body.businessType || null;
+
+  const lead = await createLead(c.env.DB, {
+    name,
+    email,
+    phone,
+    company: null,
+    segmento: businessType,
+    utm_source: body.utmSource || null,
+    utm_medium: body.utmMedium || null,
+    utm_campaign: body.utmCampaign || null,
+    referrer: body.referrer || null,
+    qualification: JSON.stringify({
+      source: "landing_qualification_form",
+      instagram: body.instagram || null,
+      teamSize: body.teamSize || null,
+      revenue: body.revenue || null,
+      moment: body.moment || null,
+      goals: Array.isArray(body.goals) ? body.goals.slice(0, 20) : [],
+      goalsOther: body.goalsOther || null,
+      urgency: body.urgency || null,
+      investment: body.investment || null,
+      decision: body.decision || null,
+    }),
+    score,
+    tier,
+    status: tier === "cold" ? "incomplete" : "qualified",
+  });
+  await logLeadEvent(c.env.DB, lead.id, {
+    type: "created",
+    payload: { source: "landing_qualification_form", score, tier },
+    actorEmail: "public-form",
+  });
+
+  return json(c, { leadId: lead.id, score, tier }, 201);
+});
+
+const QUALIFICATION_POINTS = {
+  teamSize: { solo: 1, "2-5": 2, "6-15": 3, "16-50": 4, "50+": 5 },
+  revenue: { "0-10k": 0, "10-50k": 2, "50-200k": 5, "200-500k": 8, "500k-1m": 12, "1m+": 15 },
+  moment: {
+    problema_claro: 10,
+    poderia_melhor: 8,
+    ideia_oportunidade: 8,
+    nova_receita: 9,
+    entendendo_momento: 2,
+  },
+  urgency: { agora: 20, "3_meses": 15, "6_meses": 8, sem_prazo: 2 },
+  investment: {
+    pode_agora: 25,
+    precisa_entender: 23,
+    "30_dias": 20,
+    organizar: 8,
+    sem_disponibilidade: 0,
+  },
+  decision: { responsavel_final: 15, socios: 15, outro_responsavel: 7, nao_participa: 0 },
+};
+
+function scoreQualification(answers) {
+  let score = 0;
+  for (const [field, points] of Object.entries(QUALIFICATION_POINTS)) {
+    score += points[answers[field]] || 0;
+  }
+  const tier = score >= 68 ? "hot" : score >= 45 ? "warm" : "cold";
+  return { score, tier };
+}
+
 app.get("/crm/api/leads/:id", async (c) => {
   const lead = await getLead(c.env.DB, c.req.param("id"));
   if (!lead) return json(c, { error: "not found" }, 404);
@@ -227,8 +318,16 @@ app.get("/crm/api/dashboard", async (c) => {
   const byStatus = {};
   for (const s of VALID_STATUSES) byStatus[s] = 0;
   for (const l of leads) byStatus[l.status] = (byStatus[l.status] || 0) + 1;
+  const byTier = { hot: 0, warm: 0, cold: 0 };
+  for (const l of leads) if (l.tier && l.tier in byTier) byTier[l.tier]++;
   const totalSalesAmount = sales.reduce((sum, s) => sum + s.amount, 0);
-  return json(c, { leadsByStatus: byStatus, totalLeads: leads.length, totalSales: sales.length, totalSalesAmount });
+  return json(c, {
+    leadsByStatus: byStatus,
+    leadsByTier: byTier,
+    totalLeads: leads.length,
+    totalSales: sales.length,
+    totalSalesAmount,
+  });
 });
 
 // ── everything else (auth, static assets, SPA shell) — same compiled

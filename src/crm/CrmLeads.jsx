@@ -9,7 +9,15 @@ const STAGES = [
   { key: "qualified", label: "qualificado" },
   { key: "won", label: "ganho" },
   { key: "lost", label: "perdido" },
+  { key: "incomplete", label: "incompleto" },
 ];
+
+const TIER_STYLE = {
+  hot: "bg-danger/10 text-danger",
+  warm: "bg-warning/10 text-warning",
+  cold: "bg-ink/[0.06] text-stone-500",
+};
+const TIER_LABEL = { hot: "quente", warm: "morno", cold: "frio" };
 
 export default function CrmLeads({ onOpenLead }) {
   const [leads, setLeads] = useState(null);
@@ -113,9 +121,18 @@ export default function CrmLeads({ onOpenLead }) {
                   {[l.company, l.segmento].filter(Boolean).join(" · ") || "—"}
                 </p>
               </div>
-              <span className="shrink-0 rounded-full bg-ink/[0.06] px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider text-stone-600">
-                {STAGES.find((s) => s.key === l.status)?.label || l.status}
-              </span>
+              <div className="flex shrink-0 items-center gap-1.5">
+                {l.tier && (
+                  <span
+                    className={`rounded-full px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider ${TIER_STYLE[l.tier] || TIER_STYLE.cold}`}
+                  >
+                    {TIER_LABEL[l.tier] || l.tier}
+                  </span>
+                )}
+                <span className="rounded-full bg-ink/[0.06] px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider text-stone-600">
+                  {STAGES.find((s) => s.key === l.status)?.label || l.status}
+                </span>
+              </div>
             </button>
           ))}
         </div>

@@ -3,7 +3,7 @@ import { ArrowLeft, Save, Sparkles, Send, Check } from "lucide-react";
 import { crmApi } from "@/crm/crmApi";
 import { Spinner } from "@/components/ui";
 
-const STAGES = ["new", "contacted", "qualified", "won", "lost"];
+const STAGES = ["new", "contacted", "qualified", "won", "lost", "incomplete"];
 const STAGE_LABEL = {
   new: "novo",
   contacted: "contatado",
@@ -12,6 +12,63 @@ const STAGE_LABEL = {
   lost: "perdido",
   incomplete: "incompleto",
 };
+const TIER_STYLE = {
+  hot: "bg-danger/10 text-danger",
+  warm: "bg-warning/10 text-warning",
+  cold: "bg-ink/[0.06] text-stone-500",
+};
+const TIER_LABEL = { hot: "quente", warm: "morno", cold: "frio" };
+
+// Mirrors marketing/components/QualificacaoSection.tsx's option lists — kept
+// as a display-only lookup here (not shared as a package) so a closer sees
+// the same human labels the visitor picked, not raw enum values like
+// "50-200k" or "problema_claro".
+const QUALIFICATION_LABELS = {
+  teamSize: { solo: "Somente eu", "2-5": "2 a 5", "6-15": "6 a 15", "16-50": "16 a 50", "50+": "Mais de 50" },
+  revenue: {
+    "0-10k": "Até R$ 10 mil",
+    "10-50k": "R$ 10 mil a R$ 50 mil",
+    "50-200k": "R$ 50 mil a R$ 200 mil",
+    "200-500k": "R$ 200 mil a R$ 500 mil",
+    "500k-1m": "R$ 500 mil a R$ 1 milhão",
+    "1m+": "Acima de R$ 1 milhão",
+  },
+  moment: {
+    problema_claro: "Tem um problema claro e quer resolvê-lo",
+    poderia_melhor: "Sabe que a empresa poderia estar em outro nível, mas não sabe o quê mudar",
+    ideia_oportunidade: "Tem uma ideia ou oportunidade e quer tirá-la do papel",
+    nova_receita: "Quer criar uma nova fonte de receita",
+    entendendo_momento: "Ainda está entendendo se é o momento certo",
+  },
+  urgency: {
+    agora: "Agora — próximos 30 dias",
+    "3_meses": "Próximos 3 meses",
+    "6_meses": "Próximos 6 meses",
+    sem_prazo: "Sem prazo definido",
+  },
+  investment: {
+    pode_agora: "Pode investir agora",
+    precisa_entender: "Precisa entender a solução e o retorno primeiro",
+    "30_dias": "Consegue investir nos próximos 30 dias",
+    organizar: "Precisa se organizar financeiramente",
+    sem_disponibilidade: "Sem disponibilidade no momento",
+  },
+  decision: {
+    responsavel_final: "É o responsável final pela decisão",
+    socios: "Decide com sócio(s)",
+    outro_responsavel: "Precisa envolver outro responsável",
+    nao_participa: "Não participa da decisão",
+  },
+};
+const QUALIFICATION_FIELD_LABEL = {
+  teamSize: "Tamanho da equipe",
+  revenue: "Faturamento mensal",
+  moment: "Momento atual",
+  urgency: "Urgência",
+  investment: "Capacidade de investimento",
+  decision: "Poder de decisão",
+};
+
 const brl = (n) => Number(n || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 export default function CrmLeadDetail({ leadId, onBack }) {
@@ -113,6 +170,12 @@ export default function CrmLeadDetail({ leadId, onBack }) {
   }
 
   const { lead, events, sales } = data;
+  let qualification = null;
+  try {
+    qualification = lead.qualification ? JSON.parse(lead.qualification) : null;
+  } catch {
+    qualification = null;
+  }
 
   return (
     <div>
@@ -128,9 +191,16 @@ export default function CrmLeadDetail({ leadId, onBack }) {
               {[lead.email, lead.phone, lead.company, lead.segmento].filter(Boolean).join(" · ")}
             </p>
           </div>
-          <span className="shrink-0 rounded-full bg-ink/[0.06] px-3 py-1.5 font-mono text-[10px] uppercase tracking-wider text-stone-600">
-            {STAGE_LABEL[lead.status] || lead.status}
-          </span>
+          <div className="flex shrink-0 items-center gap-1.5">
+            {lead.tier && (
+              <span className={`rounded-full px-3 py-1.5 font-mono text-[10px] uppercase tracking-wider ${TIER_STYLE[lead.tier] || TIER_STYLE.cold}`}>
+                {TIER_LABEL[lead.tier] || lead.tier} {typeof lead.score === "number" ? `· ${lead.score}/90` : ""}
+              </span>
+            )}
+            <span className="rounded-full bg-ink/[0.06] px-3 py-1.5 font-mono text-[10px] uppercase tracking-wider text-stone-600">
+              {STAGE_LABEL[lead.status] || lead.status}
+            </span>
+          </div>
         </div>
 
         <div className="mb-4 flex flex-wrap gap-1.5">
@@ -163,6 +233,38 @@ export default function CrmLeadDetail({ leadId, onBack }) {
           {savingNotes ? <Spinner /> : <Save size={12} />} salvar notas
         </button>
       </div>
+
+      {qualification && (
+        <div className="mb-6 rounded-2xl surface-2 p-6">
+          <p className="label-tech mb-3">Qualificação (formulário do site)</p>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {["teamSize", "revenue", "moment", "urgency", "investment", "decision"].map((field) =>
+              qualification[field] ? (
+                <div key={field} className="rounded-lg surface-3 px-4 py-2.5">
+                  <p className="font-mono text-[10px] uppercase tracking-wider text-stone-400">
+                    {QUALIFICATION_FIELD_LABEL[field]}
+                  </p>
+                  <p className="mt-0.5 text-sm text-ink">
+                    {QUALIFICATION_LABELS[field]?.[qualification[field]] || qualification[field]}
+                  </p>
+                </div>
+              ) : null
+            )}
+          </div>
+          {qualification.goals?.length > 0 && (
+            <div className="mt-2 rounded-lg surface-3 px-4 py-2.5">
+              <p className="font-mono text-[10px] uppercase tracking-wider text-stone-400">Objetivos</p>
+              <p className="mt-0.5 text-sm text-ink">
+                {qualification.goals.join(" · ")}
+                {qualification.goalsOther ? ` · ${qualification.goalsOther}` : ""}
+              </p>
+            </div>
+          )}
+          {qualification.instagram && (
+            <p className="mt-2 font-mono text-[11px] text-stone-500">Instagram: {qualification.instagram}</p>
+          )}
+        </div>
+      )}
 
       <div className="mb-6 rounded-2xl surface-2 p-6">
         <p className="label-tech mb-3">Vendas</p>
