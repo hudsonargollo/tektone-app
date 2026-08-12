@@ -163,4 +163,6 @@ export const api = {
   listSocialPosts: () => req("/social"),
   exportSocialPost: (id) => req(`/social/${id}`, { method: "PATCH" }),
   deleteSocialPost: (id) => req(`/social/${id}`, { method: "DELETE" }),
+  exportSocialPostGroup: (groupId) => req(`/social/group/${groupId}`, { method: "PATCH" }),
+  deleteSocialPostGroup: (groupId) => req(`/social/group/${groupId}`, { method: "DELETE" }),
 };

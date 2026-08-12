@@ -5,11 +5,13 @@
 // already-authenticated hub, so it uses the same session gate every
 // other hub route uses instead of adding a second auth mechanism).
 //
-//   POST   /api/social/generate     — build master prompt, generate via Workers AI, store
-//   GET    /api/social              — gallery list, most recent first
-//   GET    /api/social/:id/image    — stream the R2 object (mirrors /api/blog/media/:key+)
-//   PATCH  /api/social/:id          — mark exported (called after canvas export succeeds)
-//   DELETE /api/social/:id          — remove a gallery entry + its R2 object
+//   POST   /api/social/generate         — build master prompt(s), generate via Workers AI, store
+//   GET    /api/social                  — gallery list, most recent first
+//   GET    /api/social/:id/image        — stream the R2 object (mirrors /api/blog/media/:key+)
+//   PATCH  /api/social/:id              — mark exported (called after canvas export succeeds)
+//   PATCH  /api/social/group/:groupId   — mark every slide in a carousel exported at once
+//   DELETE /api/social/:id              — remove a gallery entry + its R2 object
+//   DELETE /api/social/group/:groupId   — remove every slide in a carousel + their R2 objects
 import { getSessionEmail } from "../../_lib/session.js";
 import { getUserByEmail } from "../../_lib/db.js";
 import { isStaffOrAdmin } from "../../_lib/rbac.js";
@@ -19,7 +21,13 @@ const json = (data, status = 200) =>
   new Response(JSON.stringify(data), { status, headers: { "Content-Type": "application/json" } });
 
 const OBJECTIVES = new Set(["autoridade", "conversao", "bastidores"]);
-const ASPECT_RATIOS = new Set(["1080x1080", "1080x1350"]);
+// Feed and carousel slides share the same two crop ratios; a story is
+// always 1080x1920 and isn't user-selectable (see the "generate" handler).
+const FEED_ASPECT_RATIOS = new Set(["1080x1080", "1080x1350"]);
+const STORY_ASPECT_RATIO = "1080x1920";
+const POST_FORMATS = new Set(["feed", "carousel", "story"]);
+const MIN_CAROUSEL_SLIDES = 2;
+const MAX_CAROUSEL_SLIDES = 8; // see socialPostService.js's generateSocialPost docstring
 
 export async function onRequest(context) {
   const { request, env, params } = context;
@@ -54,24 +62,54 @@ export async function onRequest(context) {
     if (seg[0] === "generate" && !seg[1] && method === "POST") {
       const body = await request.json().catch(() => ({}));
       const objective = String(body.objective || "");
-      const subject = String(body.subject || "").trim();
       const visualTone = String(body.visualTone || "").trim();
-      const aspectRatio = ASPECT_RATIOS.has(body.aspectRatio) ? body.aspectRatio : "1080x1080";
+      const postFormat = POST_FORMATS.has(body.postFormat) ? body.postFormat : "feed";
 
       if (!OBJECTIVES.has(objective)) return json({ error: "objective inválido" }, 400);
-      if (!subject) return json({ error: "subject é obrigatório" }, 400);
       if (!visualTone) return json({ error: "visualTone é obrigatório" }, 400);
       if (!env.AI) return json({ error: "Workers AI (env.AI) não vinculado." }, 500);
       if (!env.BLOG_MEDIA) return json({ error: "R2 (BLOG_MEDIA) não vinculado." }, 500);
 
-      const post = await generateSocialPost(env, {
+      let aspectRatio;
+      let subject, subjects;
+
+      if (postFormat === "carousel") {
+        aspectRatio = FEED_ASPECT_RATIOS.has(body.aspectRatio) ? body.aspectRatio : "1080x1080";
+        subjects = Array.isArray(body.subjects) ? body.subjects.map((s) => String(s || "").trim()) : [];
+        if (subjects.length < MIN_CAROUSEL_SLIDES || subjects.length > MAX_CAROUSEL_SLIDES) {
+          return json({ error: `carrossel precisa de ${MIN_CAROUSEL_SLIDES} a ${MAX_CAROUSEL_SLIDES} slides` }, 400);
+        }
+        if (subjects.some((s) => !s)) return json({ error: "todo slide precisa de um assunto/contexto" }, 400);
+      } else {
+        aspectRatio = postFormat === "story" ? STORY_ASPECT_RATIO : (FEED_ASPECT_RATIOS.has(body.aspectRatio) ? body.aspectRatio : "1080x1080");
+        subject = String(body.subject || "").trim();
+        if (!subject) return json({ error: "subject é obrigatório" }, 400);
+      }
+
+      const result = await generateSocialPost(env, {
         createdBy: user.email,
         objective,
-        subject,
         visualTone,
+        postFormat,
         aspectRatio,
+        subject,
+        subjects,
       });
-      return json({ post }, 201);
+      return json(result, 201);
+    }
+
+    // ── mark whole carousel exported ────────────────────────────────────
+    if (seg[0] === "group" && seg[1] && !seg[2] && method === "PATCH") {
+      await db.prepare("UPDATE social_posts SET status = 'exported' WHERE group_id = ?").bind(seg[1]).run();
+      return json({ ok: true });
+    }
+
+    // ── delete whole carousel ────────────────────────────────────────────
+    if (seg[0] === "group" && seg[1] && !seg[2] && method === "DELETE") {
+      const { results: slides } = await db.prepare("SELECT r2_key FROM social_posts WHERE group_id = ?").bind(seg[1]).all();
+      if (env.BLOG_MEDIA) await Promise.all(slides.map((s) => env.BLOG_MEDIA.delete(s.r2_key).catch(() => {})));
+      await db.prepare("DELETE FROM social_posts WHERE group_id = ?").bind(seg[1]).run();
+      return json({ ok: true });
     }
 
     // ── gallery list ──────────────────────────────────────────────────

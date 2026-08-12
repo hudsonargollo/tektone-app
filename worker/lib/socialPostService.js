@@ -86,29 +86,82 @@ async function generateImage(env, prompt) {
   return new Uint8Array(buf);
 }
 
-/**
- * Full generate flow: build the brand-constrained master prompt, call
- * Workers AI, upload to R2 (BLOG_MEDIA bucket, social/ prefix — see
- * functions/api/social/[[path]].js's rationale comment for why this
- * reuses the existing bucket instead of provisioning a new one), insert a
- * `social_posts` row with status='draft'.
- */
-export async function generateSocialPost(env, { createdBy, objective, subject, visualTone, aspectRatio }) {
-  const brandKb = await loadBrandKb(env.DB);
+async function generateAndStoreSlide(env, { db, createdBy, objective, visualTone, brandKb, subject, aspectRatio, postFormat, groupId, slideIndex }) {
   const masterPrompt = buildMasterPrompt({ objective, subject, visualTone, brandKb });
-
   const imageBytes = await generateImage(env, masterPrompt);
 
   const id = uid();
   const r2Key = `social/${id}.png`;
   await env.BLOG_MEDIA.put(r2Key, imageBytes, { httpMetadata: { contentType: "image/png" } });
 
-  await env.DB.prepare(
-    `INSERT INTO social_posts (id, created_by, objective, subject_context, visual_tone, master_prompt, r2_key, aspect_ratio, status)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'draft')`
-  )
-    .bind(id, createdBy, objective, subject, visualTone, masterPrompt, r2Key, aspectRatio || "1080x1080")
+  await db
+    .prepare(
+      `INSERT INTO social_posts (id, created_by, objective, subject_context, visual_tone, master_prompt, r2_key, aspect_ratio, post_format, group_id, slide_index, status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft')`
+    )
+    .bind(id, createdBy, objective, subject, visualTone, masterPrompt, r2Key, aspectRatio, postFormat, groupId, slideIndex)
     .run();
 
-  return { id, r2Key, masterPrompt, aspectRatio: aspectRatio || "1080x1080" };
+  return { id, r2Key, masterPrompt, aspectRatio, postFormat, groupId, slideIndex };
+}
+
+/**
+ * Full generate flow: build the brand-constrained master prompt(s), call
+ * Workers AI, upload to R2 (BLOG_MEDIA bucket, social/ prefix — see
+ * functions/api/social/[[path]].js's rationale comment for why this
+ * reuses the existing bucket instead of provisioning a new one), insert a
+ * `social_posts` row per image with status='draft'.
+ *
+ * Three formats (migration 0015):
+ * - 'feed'/'story': one image, one row. `subject` is a single string.
+ *   Story forces aspect_ratio to 1080x1920 (IG stories are the only
+ *   format that isn't feed-shaped) — enforced by the caller
+ *   (functions/api/social/[[path]].js), not re-derived here.
+ * - 'carousel': N images (2-8 — capped to keep the request's total
+ *   Workers AI latency bounded; IG technically allows up to 10, but each
+ *   slide is a separate ~10-20s SDXL call), one row per slide, sharing a
+ *   `groupId` and ordered by `slideIndex`. `subjects` is an array of
+ *   per-slide subject/context strings so each card can tell a distinct
+ *   beat of the carousel instead of repeating one image. Slides generate
+ *   in parallel (Promise.all) rather than sequentially — otherwise an
+ *   8-slide carousel would serialize to ~8x a single post's latency and
+ *   risk the request timing out.
+ */
+export async function generateSocialPost(env, { createdBy, objective, visualTone, aspectRatio, postFormat, subject, subjects }) {
+  const brandKb = await loadBrandKb(env.DB);
+
+  if (postFormat === "carousel") {
+    const groupId = uid();
+    const slides = await Promise.all(
+      subjects.map((slideSubject, slideIndex) =>
+        generateAndStoreSlide(env, {
+          db: env.DB,
+          createdBy,
+          objective,
+          visualTone,
+          brandKb,
+          subject: slideSubject,
+          aspectRatio,
+          postFormat,
+          groupId,
+          slideIndex,
+        })
+      )
+    );
+    return { groupId, slides };
+  }
+
+  const post = await generateAndStoreSlide(env, {
+    db: env.DB,
+    createdBy,
+    objective,
+    visualTone,
+    brandKb,
+    subject,
+    aspectRatio,
+    postFormat,
+    groupId: null,
+    slideIndex: null,
+  });
+  return { groupId: null, slides: [post] };
 }
