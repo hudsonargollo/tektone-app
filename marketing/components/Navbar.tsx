@@ -8,6 +8,11 @@ const LINKS = [
   { label: "arquitetura", href: "#processo" },
   { label: "autoridade", href: "#autoridade" },
   { label: "faq", href: "#faq" },
+  // Entry point into the app itself (kanban/portal/CRM) — /login is the
+  // shared front door for every account type; it redirects by access_role
+  // after auth (CUSTOMER -> /portal, STAFF/ADMIN -> /hub), so linking here
+  // rather than straight to /hub works regardless of who clicks it.
+  { label: "sistema", href: "/login" },
 ];
 
 export default function Navbar() {
