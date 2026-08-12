@@ -200,7 +200,7 @@ export default function LoginPage() {
             <span className="logo-shimmer" aria-hidden />
           </motion.div>
           <span className="text-lg font-semibold tracking-[0.32em] text-ink">TEKTONE</span>
-          <p className="label-tech mt-1.5">acesso</p>
+          <p className="label-tech mt-1.5">workhub</p>
 
           {welcome && (
             <motion.div
