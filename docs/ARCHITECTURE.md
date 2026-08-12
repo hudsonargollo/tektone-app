@@ -175,6 +175,45 @@ becomes `"board"` — more horizontal room for kanban columns — regardless of 
 collapse preference elsewhere, but stays independently toggleable while there; outside the
 board it remembers the user's own choice via `localStorage` (`tk_app_sidebar_collapsed`).
 
+## Landing-page illustrations and media
+
+Section illustrations (`AgitacaoSection`, `ProcessoSection`, `ObjetivoSection`, the hero) are
+each generated art tied to that section's own copy — not one shared icon reused everywhere —
+composited with `mix-blend-multiply` (light sections) or `mix-blend-screen` (dark sections)
+plus `GoldenRibbons` (an SVG ornamental-linework component, same technique `/login` already
+used) layered on top.
+
+**The edge-fade math is easy to get wrong twice.** `mask-fade-corner` (`app/globals.css`) uses
+`radial-gradient(ellipse closest-side at 50% 50%, black 55%, transparent 100%)` specifically
+because `closest-side` is unambiguous — the gradient's 100% point is defined to land exactly at
+the box's nearest edge. Two earlier attempts used explicit percentage sizing (`ellipse 75% 75%`,
+then `ellipse 50% 50%`) and both were wrong in non-obvious ways: percentage color-stops are
+relative to the gradient's own defined radius, which is *itself* a percentage of the box, so the
+two percentages compound rather than reading as "55% of the way to the edge." Explicit
+percentage sizing for this kind of mask is a trap — use `closest-side`/`closest-corner`/etc.
+keywords instead, always.
+
+**A mask alone isn't sufficient if the image doesn't fill its box.** The illustration `<Image>`
+elements use `object-cover`, not `object-contain` — every source image's aspect ratio differs
+from its container, so `object-contain` left the actual artwork letterboxed well inside the
+mask's fully-opaque zone, completely bypassing the fade regardless of how correct the mask math
+was. If a future illustration still shows a hard edge after checking the mask math, check this
+first: is the image's own rendered content actually reaching the container's edges?
+
+**Hub Tektone section is a real video, not a mock.** `marketing/public/video/hub-tektone.mp4`
+(1080p, h264, no audio, ~4.7MB — compressed from an 83MB/4K source via `ffmpeg -vf scale=1920:-2
+-crf 26 -an`) plays muted/looped/no-controls, masked at the edges so it reads as page background
+rather than an embedded player. It replaced an earlier 420vh scroll-hijacking sequence that
+hand-animated a mock board component to simulate footage that didn't exist yet at the time.
+
+**Founder photo is temporarily rotating between two candidates.** `AutoridadeSection.tsx`
+alternates `/pedro-silvestrini.jpeg` (current office photo) and `/pedro-silvestrini-old.jpeg`
+(recovered from git history — an earlier commit fully replaced it rather than keeping both)
+every 5 seconds, each with its own tuned `objectPosition` since the two photos have very
+different compositions. This is explicit throwaway code (commented as TEMPORARY in the file) —
+once a decision is made, delete the loser file and the rotation logic, revert to one static
+`<Image>`.
+
 ## Non-obvious gotchas (all discovered by testing, not guessed)
 
 | Gotcha | Why it matters |
@@ -277,3 +316,11 @@ reference against the routes portal can actually reach.
    something an agent should do on someone else's behalf). No payment integration code exists
    yet; scope (project payments vs. portal add-on purchases vs. CRM sale checkout) isn't
    decided.
+8. **Founder photo decision** — pick office photo vs. Acropolis photo, then delete
+   `AutoridadeSection.tsx`'s temporary 5s rotation and the losing file (see "Landing-page
+   illustrations and media" above).
+9. **Two curated blog posts, pasted content but not yet built** — Hudson supplied full copy for
+   two specific posts ("Você realmente precisa esperar 12 meses..." and a Pedro-origin-story
+   piece) to hardcode + illustrate directly rather than run through the AI drafting pipeline;
+   blocked because the paste got truncated mid-transit (154 lines missing) before this was
+   acted on. Needs the full text resupplied (as a file, not a chat paste) before this can move.
