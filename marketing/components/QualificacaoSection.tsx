@@ -567,7 +567,7 @@ export default function QualificacaoSection() {
                       <Field label="@ do Instagram (opcional)">
                         <input
                           className={inputCls}
-                          placeholder="@suaempresa"
+                          placeholder="@seuinstagram"
                           value={data.instagram}
                           onChange={(e) => set("instagram", e.target.value)}
                         />
