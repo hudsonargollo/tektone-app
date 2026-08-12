@@ -2,10 +2,17 @@
 
 import { motion } from "framer-motion";
 import Image from "next/image";
+import { useEffect, useState } from "react";
 import AnimatedNumber from "@/components/AnimatedNumber";
 import SectionBlob from "@/components/SectionBlob";
 
 const EASE = [0.22, 1, 0.36, 1] as [number, number, number, number];
+
+// TEMPORARY — rotates between the two candidate founder photos every 5s so
+// Hudson can compare them live before picking one. Remove this once he
+// decides: keep /pedro-silvestrini.jpeg (current) or revert to
+// /pedro-silvestrini-old.jpeg, then delete the loser and this rotation.
+const PORTRAIT_CANDIDATES = ["/pedro-silvestrini.jpeg", "/pedro-silvestrini-old.jpeg"];
 
 const stats = [
   { value: 5, suffix: "+", label: "anos estruturando operações digitais" },
@@ -15,6 +22,14 @@ const stats = [
 ];
 
 export default function AutoridadeSection() {
+  const [portraitIndex, setPortraitIndex] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => {
+      setPortraitIndex((i) => (i + 1) % PORTRAIT_CANDIDATES.length);
+    }, 5000);
+    return () => clearInterval(id);
+  }, []);
+
   return (
     <section id="autoridade" className="relative bg-ivory py-28 sm:py-36 overflow-hidden">
       <div className="absolute inset-0 bp-dots opacity-40 mask-fade" aria-hidden />
@@ -51,8 +66,8 @@ export default function AutoridadeSection() {
 
               <div className="relative aspect-[3/4] w-full overflow-hidden rounded-lg ring-1 ring-inset ring-ink/10">
                 <Image
-                  src="/pedro-silvestrini.jpeg"
-                  alt="Pedro Silvestrini, CEO e fundador da Tektone, em seu escritório"
+                  src={PORTRAIT_CANDIDATES[portraitIndex]}
+                  alt="Pedro Silvestrini, CEO e fundador da Tektone"
                   fill
                   className="object-cover"
                   style={{ objectPosition: "50% 30%" }}
