@@ -89,7 +89,7 @@ export default function Navbar() {
             href="/login"
             className="hidden sm:inline-flex items-center gap-1.5 rounded-md border border-ivory/30 px-4 py-2 text-[13px] font-semibold text-ivory transition-all duration-200 hover:border-ivory/60 hover:bg-ivory/10"
           >
-            Sistema
+            ACESSAR HUB
           </a>
           <a
             href="#qualificacao"
