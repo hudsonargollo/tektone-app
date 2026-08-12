@@ -13,7 +13,7 @@
  *   CUSTOMER      -> /portal
  *   STAFF / ADMIN -> /hub
  */
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { Mail, Lock, ArrowRight, ArrowLeft, ShieldQuestion, UserPlus } from "lucide-react";
@@ -23,6 +23,54 @@ import GoldenRibbons from "@/components/GoldenRibbons";
 const AUTH_BASE = "/hub/api/auth";
 const ADMIN_CONTACT = "hudson@tektone.com.br";
 const EASE = [0.22, 1, 0.36, 1] as [number, number, number, number];
+
+// Same 12-entry deck as migrations/0013_hub_builder_profile.sql's
+// skill_cards (the gamification feature's stoic+biblical wisdom cards) —
+// duplicated here rather than fetched, since this page is public/
+// unauthenticated and the content is purely atmospheric, not data. Picked
+// deterministically by day-of-year so it reads as "today's phrase" (same
+// for every visitor that day) rather than a random reshuffle per load.
+const DAILY_WISDOM = [
+  { skill: "Disciplina", stoic: "Você tem poder sobre sua mente, não sobre eventos externos. Perceba isso, e encontrará força.", stoicSrc: "Marco Aurélio, Meditações", bible: "Aquele que domina o seu espírito é melhor do que o que toma uma cidade.", bibleRef: "Provérbios 16:32" },
+  { skill: "Diligência", stoic: "Não é porque as coisas são difíceis que não ousamos, é porque não ousamos que são difíceis.", stoicSrc: "Sêneca", bible: "A mão dos diligentes dominará, mas a mão preguiçosa ficará sob tributo.", bibleRef: "Provérbios 12:24" },
+  { skill: "Paciência", stoic: "Não é o que acontece com você, mas como você reage a isso, que importa.", stoicSrc: "Epicteto, Enquiridion", bible: "O fim das coisas é melhor do que o princípio delas; e o paciente de espírito é melhor do que o altivo de espírito.", bibleRef: "Eclesiastes 7:8" },
+  { skill: "Foco", stoic: "Concentre-se apenas no que está diante de você, como se fosse a última coisa que você faz na vida.", stoicSrc: "Marco Aurélio, Meditações", bible: "Os teus olhos olhem direto para diante de ti.", bibleRef: "Provérbios 4:25" },
+  { skill: "Humildade", stoic: "Nenhum homem é livre se não é senhor de si mesmo.", stoicSrc: "Epicteto", bible: "Antes da quebra vem a soberba, e antes da queda, o espírito altivo.", bibleRef: "Provérbios 16:18" },
+  { skill: "Coragem", stoic: "Não busque que as coisas aconteçam como você deseja, mas deseje que elas aconteçam como acontecem, e você viverá em paz.", stoicSrc: "Epicteto, Enquiridion", bible: "Sê forte e corajoso; não temas, nem te espantes; porque o Senhor teu Deus é contigo, por onde quer que andares.", bibleRef: "Josué 1:9" },
+  { skill: "Excelência", stoic: "Faze cada ato da vida como se fosse o último.", stoicSrc: "Marco Aurélio, Meditações", bible: "Tudo quanto te vier à mão para fazer, faze-o conforme as tuas forças.", bibleRef: "Eclesiastes 9:10" },
+  { skill: "Integridade", stoic: "Nunca estime como vantagem para si algo que um dia o obrigue a quebrar sua palavra ou perder o respeito por si mesmo.", stoicSrc: "Marco Aurélio, Meditações", bible: "A integridade dos retos os encaminhará, mas a perversidade dos aleivosos os destruirá.", bibleRef: "Provérbios 11:3" },
+  { skill: "Perseverança", stoic: "A dificuldade mostra o que os homens são.", stoicSrc: "Epicteto", bible: "Não nos cansemos de fazer o bem, pois a seu tempo colheremos, se não desfalecermos.", bibleRef: "Gálatas 6:9" },
+  { skill: "Domínio Próprio", stoic: "Se você quer melhorar, esteja disposto a ser considerado tolo e estúpido em relação às coisas externas.", stoicSrc: "Epicteto", bible: "Como a cidade derribada, sem muro, assim é o homem que não pode conter o seu espírito.", bibleRef: "Provérbios 25:28" },
+  { skill: "Sabedoria", stoic: "Não é o homem que tem pouco, mas o que deseja mais, que é pobre.", stoicSrc: "Sêneca", bible: "Pela sabedoria se edifica a casa, e pelo entendimento ela se firma.", bibleRef: "Provérbios 24:3" },
+  { skill: "Visão", stoic: "O obstáculo à ação avança a ação. O que está no caminho torna-se o caminho.", stoicSrc: "Marco Aurélio, Meditações", bible: "Sem visão, o povo perece; mas o que guarda a lei esse é bem-aventurado.", bibleRef: "Provérbios 29:18" },
+];
+
+function greetingFor(hour: number) {
+  if (hour >= 5 && hour < 12) return "Bom dia";
+  if (hour >= 12 && hour < 18) return "Boa tarde";
+  return "Boa noite";
+}
+
+function useDailyWelcome() {
+  const [state, setState] = useState<{
+    greeting: string;
+    entry: (typeof DAILY_WISDOM)[number];
+    useStoic: boolean;
+  } | null>(null);
+
+  useEffect(() => {
+    const now = new Date();
+    const startOfYear = new Date(now.getFullYear(), 0, 0);
+    const dayOfYear = Math.floor((now.getTime() - startOfYear.getTime()) / 86400000);
+    setState({
+      greeting: greetingFor(now.getHours()),
+      entry: DAILY_WISDOM[dayOfYear % DAILY_WISDOM.length],
+      useStoic: dayOfYear % 2 === 0,
+    });
+  }, []);
+
+  return state;
+}
 
 const fieldCls =
   "w-full rounded-lg border border-ink/15 bg-ink/[0.03] py-2.5 pl-9 pr-3 text-sm text-ink outline-none transition-colors placeholder:text-ink/40 focus:border-green";
@@ -42,6 +90,7 @@ async function api(path: string, body?: unknown) {
 }
 
 export default function LoginPage() {
+  const welcome = useDailyWelcome();
   const [step, setStep] = useState<Step>("email");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -152,6 +201,25 @@ export default function LoginPage() {
           </motion.div>
           <span className="text-lg font-semibold tracking-[0.32em] text-ink">TEKTONE</span>
           <p className="label-tech mt-1.5">acesso</p>
+
+          {welcome && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, ease: EASE }}
+              className="mt-5 max-w-xs"
+            >
+              <p className="text-base font-semibold text-ink">
+                {welcome.greeting}, construtor.
+              </p>
+              <p className="text-editorial mt-2 text-[15px] italic leading-snug text-ink/70">
+                &ldquo;{welcome.useStoic ? welcome.entry.stoic : welcome.entry.bible}&rdquo;
+              </p>
+              <p className="mt-1.5 font-mono text-[11px] tracking-wide text-ink/45">
+                — {welcome.useStoic ? welcome.entry.stoicSrc : welcome.entry.bibleRef}
+              </p>
+            </motion.div>
+          )}
         </div>
 
         <div className="rounded-2xl surface-paper-raised p-7">
