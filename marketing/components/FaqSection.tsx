@@ -40,6 +40,13 @@ export default function FaqSection() {
       <div className="absolute inset-0 bp-dots opacity-60 mask-fade" aria-hidden />
       <div className="absolute inset-0 grain-light mask-fade" aria-hidden />
       <SectionBlob tone="sand" className="-right-24 top-0 h-[26rem] w-[26rem]" />
+
+      {/* Second pass: no corner illustration here, matching the restraint
+          call made on QualificacaoFitSection. FAQ is an accordion — dense,
+          functional, read line by line — and decorative art at the corner
+          competed with the questions rather than framing them. SectionBlob
+          + grain + dots carry the section's identity instead. */}
+
       <div className="relative mx-auto max-w-3xl px-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}

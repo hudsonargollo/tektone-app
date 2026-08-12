@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import type { Variants } from "framer-motion";
+import Image from "next/image";
 import { ArrowRight } from "lucide-react";
 import ColumnBlueprint from "@/components/ColumnBlueprint";
 import Logo from "@/components/Logo";
@@ -58,13 +59,40 @@ export default function HeroSection() {
   return (
     <section
       id="top"
-      className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden bg-ink-950"
+      className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden bg-ink-950 pb-[clamp(220px,34vh,400px)]"
     >
       {/* Structural backdrop — stepped foundation + rising flutes */}
       <div className="absolute inset-0 bp-lines-ink mask-fade" aria-hidden />
       <div className="absolute inset-0 grain-dark" aria-hidden />
       <div className="absolute inset-0 opacity-80 mask-fade" aria-hidden>
         <ColumnBlueprint />
+      </div>
+
+      {/* Second pass: the illustration moves from an abstract gold-line
+          engraving to a full painterly scene — Doric columns still being
+          raised, scaffolding and cut stone at their feet, warm gold light
+          against a dark, cloud-lit sky (echoing "tekton" = builder, and
+          the brand's classical mythology, now rendered with atmosphere
+          instead of flat linework). Composed like the Wandor reference the
+          owner supplied: the art lives in its own band anchored along the
+          very bottom of the viewport — never centered behind the text.
+          The `pb-[clamp(...)]` on the section reserves that exact strip as
+          empty space, so the headline column above is guaranteed clear of
+          it at every viewport height, not just "usually clear." Only the
+          band's top edge needs a fade (mask-fade-top); left/right/bottom
+          are already full-bleed to the section edge. */}
+      <div
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-[clamp(220px,34vh,400px)] mask-fade-top"
+        aria-hidden
+      >
+        <Image
+          src="/hero-columns-construction.jpg"
+          alt=""
+          fill
+          sizes="100vw"
+          className="object-cover object-bottom"
+          priority
+        />
       </div>
 
       {/* Single, contained light source — never a neon halo */}
@@ -157,10 +185,12 @@ export default function HeroSection() {
         </motion.div>
       </div>
 
-      {/* Scroll indicator */}
+      {/* Scroll indicator — parked just above the illustration band so it
+          never sits on top of the artwork */}
       <motion.div
         aria-hidden
-        className="absolute bottom-8 left-1/2 -translate-x-1/2"
+        className="absolute left-1/2 -translate-x-1/2"
+        style={{ bottom: "calc(clamp(220px, 34vh, 400px) + 28px)" }}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 1.4, duration: 0.7 }}

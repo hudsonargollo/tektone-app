@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef } from "react";
+import Image from "next/image";
 import { motion, useScroll, useTransform } from "framer-motion";
 import {
   ScanSearch,
@@ -66,6 +67,23 @@ export default function ProcessoSection() {
     <section id="processo" className="relative bg-ivory pt-12 pb-28 sm:pt-16 sm:pb-36 overflow-hidden">
       <div className="absolute inset-0 grain-light mask-fade" aria-hidden />
       <SectionBlob tone="green" className="-right-32 top-1/3 h-[30rem] w-[30rem]" />
+
+      {/* Same shared column motif as Agitação, mirrored (scaleX(-1)) and
+          moved to the opposite corner — the "variation" in the repeated
+          system, not a second illustration. */}
+      <div
+        className="pointer-events-none absolute -left-8 bottom-4 h-48 w-40 opacity-[0.3] mix-blend-multiply mask-fade-corner [transform:scaleX(-1)] sm:-left-10 sm:h-64 sm:w-52"
+        aria-hidden
+      >
+        <Image
+          src="/illustration-column-motif-light.jpg"
+          alt=""
+          fill
+          sizes="(max-width: 640px) 160px, 208px"
+          className="object-contain"
+        />
+      </div>
+
       <div className="relative mx-auto max-w-3xl px-6">
         <div className="mb-16">
           <p className="label-tech mb-4">Nossa arquitetura de construção</p>

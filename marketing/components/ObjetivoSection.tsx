@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import Image from "next/image";
 import SectionBlob from "@/components/SectionBlob";
 
 const EASE = [0.22, 1, 0.36, 1] as [number, number, number, number];
@@ -11,6 +12,24 @@ export default function ObjetivoSection() {
       <div className="absolute inset-0 bp-dots opacity-60 mask-fade" aria-hidden />
       <div className="absolute inset-0 grain-light mask-fade" aria-hidden />
       <SectionBlob tone="sand" className="-left-24 top-0 h-[28rem] w-[28rem]" />
+
+      {/* Third and smallest instance of the shared column motif — top-right,
+          slightly rotated. Consistent placement logic (corner + feathered
+          mask + multiply blend), varied just enough to avoid feeling like a
+          stamped repeat as the page scrolls. */}
+      <div
+        className="pointer-events-none absolute -right-6 top-0 h-36 w-28 opacity-[0.28] mix-blend-multiply mask-fade-corner [transform:rotate(4deg)] sm:-right-8 sm:h-48 sm:w-40"
+        aria-hidden
+      >
+        <Image
+          src="/illustration-column-motif-light.jpg"
+          alt=""
+          fill
+          sizes="(max-width: 640px) 112px, 160px"
+          className="object-contain"
+        />
+      </div>
+
       <div className="relative mx-auto max-w-3xl px-6">
         <div className="space-y-10">
           <motion.p

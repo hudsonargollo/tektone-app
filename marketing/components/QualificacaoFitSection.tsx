@@ -32,6 +32,13 @@ export default function QualificacaoFitSection() {
       <div className="absolute inset-0 bp-dots opacity-60 mask-fade" aria-hidden />
       <div className="absolute inset-0 grain-light mask-fade" aria-hidden />
       <SectionBlob tone="green" className="-left-24 bottom-0 h-[28rem] w-[28rem]" />
+
+      {/* Second pass: no corner illustration here. This section is a dense
+          2x2 requirement grid — the "concise" system means not every
+          section gets one of the shared column motifs; a busy functional
+          grid reads cleaner without decorative art competing for corner
+          space. SectionBlob + grain + dots carry the section's identity. */}
+
       <div className="relative mx-auto max-w-4xl px-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef } from "react";
+import Image from "next/image";
 import { motion, useScroll, useTransform } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import HubBoard from "@/components/HubBoard";
@@ -119,6 +120,25 @@ export default function HubTektoneSection() {
       <div className="sticky top-0 h-screen overflow-hidden">
         <div className="absolute inset-0 bp-lines-ink opacity-40" aria-hidden />
         <div className="absolute inset-0 grain-dark" aria-hidden />
+
+        {/* Second pass: the ambient backdrop now uses the dark counterpart
+            of the shared column motif — Doric silhouettes against the same
+            warm, cloud-lit dusk sky as the hero illustration — instead of
+            the first pass's unrelated drafting-table scene. Kept very faint
+            (screen blend lightens through the dark background) so it never
+            competes with the board or captions. */}
+        <div
+          className="pointer-events-none absolute inset-0 opacity-[0.16] mix-blend-screen"
+          aria-hidden
+        >
+          <Image
+            src="/illustration-column-motif-dark.jpg"
+            alt=""
+            fill
+            sizes="100vw"
+            className="object-cover"
+          />
+        </div>
 
         {/* Camera stage */}
         <motion.div

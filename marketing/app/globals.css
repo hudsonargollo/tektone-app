@@ -170,6 +170,37 @@ body {
   );
 }
 
+/* Directional top-edge fade — for full-bleed bottom-anchored art (hero
+   illustration band) where only the top edge needs to dissolve into the
+   section's own background color; left/right/bottom are already full-bleed
+   to the viewport/section edge so they need no fade. */
+.mask-fade-top {
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    black 34%
+  );
+  mask-image: linear-gradient(to bottom, transparent 0%, black 34%);
+}
+
+/* Soft edge fade for small corner-anchored illustration accents — feathers
+   all four sides so no rectangular boundary is ever visible against the
+   section background, regardless of the source image's own background
+   color. Used together with mix-blend-multiply (light sections) or
+   mix-blend-screen (dark sections). */
+.mask-fade-corner {
+  -webkit-mask-image: radial-gradient(
+    ellipse 75% 75% at 50% 50%,
+    black 45%,
+    transparent 92%
+  );
+  mask-image: radial-gradient(
+    ellipse 75% 75% at 50% 50%,
+    black 45%,
+    transparent 92%
+  );
+}
+
 /* Golden ribbons (login hero) — actual drawn ribbon shapes in the brand's
    gold (Ochre/warning) and sand tones, not a blurred box-shadow/drop-shadow
    halo. Each ribbon draws itself in once on load (stroke-dashoffset), then
