@@ -9,10 +9,11 @@ const EASE = [0.22, 1, 0.36, 1] as [number, number, number, number];
 // Replaces the old scroll-hijacking fake-cinematic sequence (hand-animated
 // captions + a mock board standing in for footage) with the real thing —
 // hubtektonev2.mp4 is the actual walkthrough that sequence was scripted to
-// simulate. No <video> chrome (no controls, no border, no rounded card):
-// autoplays muted/looped as ambient footage, masked at the edges so it
-// reads as part of the dark background rather than a bordered player
-// sitting on top of it.
+// simulate. No native <video> chrome (no controls) — but unlike a plain
+// ambient background clip, this one is deliberately presented as a
+// premium object: a glossy gold bezel (.frame-gold) plus an inner vignette
+// (.vignette-frame) so it reads as a lit, framed reveal rather than raw
+// footage blending into the dark section.
 export default function HubTektoneSection() {
   return (
     <section className="relative overflow-hidden bg-ink-950 py-28 sm:py-36">
@@ -58,17 +59,19 @@ export default function HubTektoneSection() {
         transition={{ duration: 0.7, delay: 0.15, ease: EASE }}
         className="relative mx-auto mt-14 aspect-video w-full max-w-5xl px-6"
       >
-        <div className="relative h-full w-full mask-fade overflow-hidden">
-          <video
-            src="/video/hub-tektone.mp4"
-            autoPlay
-            muted
-            loop
-            playsInline
-            disablePictureInPicture
-            controlsList="nodownload noremoteplayback nofullscreen"
-            className="h-full w-full object-cover"
-          />
+        <div className="frame-gold h-full w-full rounded-[1.75rem] p-[3px]">
+          <div className="vignette-frame h-full w-full overflow-hidden rounded-[1.55rem]">
+            <video
+              src="/video/hub-tektone.mp4"
+              autoPlay
+              muted
+              loop
+              playsInline
+              disablePictureInPicture
+              controlsList="nodownload noremoteplayback nofullscreen"
+              className="h-full w-full object-cover"
+            />
+          </div>
         </div>
       </motion.div>
 

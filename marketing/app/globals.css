@@ -232,6 +232,62 @@ body {
   );
 }
 
+/* Glossy gold bezel — frames premium/hero media (currently only the Hub
+   Tektone video) in the brand's Ochre/sand metal tones: a metallic-gradient
+   border, a soft ambient gold glow behind it, and a diagonal light-sweep
+   highlight layered on top so the border reads as brushed/polished metal
+   catching light rather than a flat CSS border. Apply to the OUTER wrapper
+   (the one that also carries the border-radius and padding that reveals
+   the gradient as a frame); the ::before sweep inherits that radius. */
+.frame-gold {
+  position: relative;
+  background: linear-gradient(
+    135deg,
+    #a9976f 0%,
+    #e7ce93 22%,
+    #b8862f 48%,
+    #e7ce93 74%,
+    #a9976f 100%
+  );
+  box-shadow:
+    0 0 0 1px rgba(231, 206, 147, 0.28),
+    0 24px 70px -12px rgba(184, 134, 47, 0.4),
+    0 10px 30px rgba(0, 0, 0, 0.45);
+}
+.frame-gold::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    115deg,
+    transparent 32%,
+    rgba(255, 255, 255, 0.6) 47%,
+    transparent 62%
+  );
+  mix-blend-mode: overlay;
+  opacity: 0.65;
+  pointer-events: none;
+}
+
+/* Vignette for the gold-framed video's inner (masked) layer — darkens the
+   corners so the footage reads as a lit, contained scene rather than a flat
+   rectangle, echoing a museum-lit frame instead of a raw <video> crop. */
+.vignette-frame {
+  position: relative;
+}
+.vignette-frame::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 48%,
+    rgba(8, 6, 3, 0.6) 100%
+  );
+}
+
 /* Golden ribbons (login hero) — actual drawn ribbon shapes in the brand's
    gold (Ochre/warning) and sand tones, not a blurred box-shadow/drop-shadow
    halo. Each ribbon draws itself in once on load (stroke-dashoffset), then
