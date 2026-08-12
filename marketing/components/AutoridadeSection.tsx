@@ -83,16 +83,29 @@ export default function AutoridadeSection() {
               transition={{ duration: 0.6, delay: 0.1, ease: EASE }}
               className="space-y-5 text-pretty text-lg leading-relaxed text-ink/70"
             >
+              <p>Prazer, Pedro Silvestrini.</p>
               <p>
-                Há mais de 5 anos, estruturando operações de marketing
-                digital de 7 dígitos em 3 continentes, já conheceu 24 países
-                e fala 4 idiomas.
+                Aos 24 anos, Pedro já construiu uma trajetória um pouquinho
+                acima da média.
               </p>
               <p>
-                Descobriu que o mercado vende tecnologia que “funciona”. Mas
-                ninguém vende tecnologia que converte, escala e gera equity.
+                Há mais de 5 anos, atua na construção e escala de negócios
+                digitais, participando de operações de marketing de múltiplos
+                7 dígitos, produtos de tecnologia e aplicativos que já
+                alcançaram milhões de downloads.
               </p>
-              <p className="font-semibold text-ink">Então construiu a Tektone.</p>
+              <p>
+                Nesse período, construiu negócios em 3 continentes, viveu
+                como nômade digital por 24 países e aprendeu 4 idiomas,
+                repertório que ampliou sua forma de enxergar empresas,
+                mercados e tecnologia.
+              </p>
+              <p>
+                Ao longo dessa trajetória, ajudou mais de 50 empresários a
+                fortalecer posicionamento e aquisição, implementar IA,
+                automatizar processos e transformar operações manuais em
+                estruturas mais eficientes, enxutas e escaláveis.
+              </p>
             </motion.div>
 
             <motion.dl
@@ -125,11 +138,10 @@ export default function AutoridadeSection() {
               transition={{ duration: 0.6, delay: 0.3, ease: EASE }}
               className="text-editorial mt-10 border-l-2 border-green pl-6 text-xl leading-relaxed text-ink"
             >
-              “Queremos que seu projeto funcione. Queremos que ele dê lucro.
-              Queremos que você fique feliz, vendo a sua ideia tomando
-              forma. Desde a primeira reunião, oficializamos: vamos te
-              ajudar a melhorar sua ideia, mas você será o responsável por
-              trazê-la ao mundo.”
+              “Você já construiu uma empresa que funciona. Nosso papel é
+              ajudar a construir a empresa que pode se tornar mais
+              tecnológica, mais eficiente, mais escalável e menos
+              dependente de você.”
               <footer className="mt-3 font-sans text-sm not-italic font-semibold text-ink/60">
                 — Pedro Silvestrini
               </footer>
