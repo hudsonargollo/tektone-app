@@ -59,7 +59,7 @@ export default function HeroSection() {
   return (
     <section
       id="top"
-      className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden bg-ink-950 pb-[clamp(220px,34vh,400px)]"
+      className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden bg-ink-950"
     >
       {/* Structural backdrop — stepped foundation + rising flutes */}
       <div className="absolute inset-0 bp-lines-ink mask-fade" aria-hidden />
@@ -68,21 +68,16 @@ export default function HeroSection() {
         <ColumnBlueprint />
       </div>
 
-      {/* Second pass: the illustration moves from an abstract gold-line
-          engraving to a full painterly scene — Doric columns still being
-          raised, scaffolding and cut stone at their feet, warm gold light
-          against a dark, cloud-lit sky (echoing "tekton" = builder, and
-          the brand's classical mythology, now rendered with atmosphere
-          instead of flat linework). Composed like the Wandor reference the
-          owner supplied: the art lives in its own band anchored along the
-          very bottom of the viewport — never centered behind the text.
-          The `pb-[clamp(...)]` on the section reserves that exact strip as
-          empty space, so the headline column above is guaranteed clear of
-          it at every viewport height, not just "usually clear." Only the
-          band's top edge needs a fade (mask-fade-top); left/right/bottom
-          are already full-bleed to the section edge. */}
+      {/* Third pass: the columns-under-construction scene now shares the
+          same visual plane as the bp-lines-ink grid above instead of
+          living in its own thin strip below it — tall enough (85% of the
+          section) to actually read as atmosphere behind the whole hero,
+          not just a sliver pasted along the bottom edge. mask-fade-top
+          still feathers the top into the dark background so the headline
+          column stays legible; opacity is higher than the first attempt
+          (0.09) since that read as barely-there against a busy scene. */}
       <div
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-[clamp(220px,34vh,400px)] mask-fade-top"
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-[85%] opacity-[0.32] mix-blend-screen mask-fade-top"
         aria-hidden
       >
         <Image
@@ -185,12 +180,10 @@ export default function HeroSection() {
         </motion.div>
       </div>
 
-      {/* Scroll indicator — parked just above the illustration band so it
-          never sits on top of the artwork */}
+      {/* Scroll indicator */}
       <motion.div
         aria-hidden
-        className="absolute left-1/2 -translate-x-1/2"
-        style={{ bottom: "calc(clamp(220px, 34vh, 400px) + 28px)" }}
+        className="absolute bottom-8 left-1/2 -translate-x-1/2"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 1.4, duration: 0.7 }}
