@@ -44,6 +44,20 @@ const CONFIG = {
   // certain meetings. Ignored when FOLDER_ID is set.
   NAME_CONTAINS: "Anotações",
 
+  // Extra Drive folders to ALWAYS include, on top of the default search above
+  // (not instead of it) — e.g. a manually-organized meeting-records folder
+  // whose docs don't necessarily contain NAME_CONTAINS in their titles.
+  // Matched by exact folder NAME via DriveApp.getFoldersByName, same
+  // name-based approach as NAME_CONTAINS — no folder ID to look up/hardcode.
+  // Every Google Doc directly inside each matching folder is included
+  // (non-recursive — subfolders aren't scanned); non-Doc files (PDFs,
+  // Sheets, recordings) are skipped since the pipeline only reads Google
+  // Docs text via DocumentApp. If no folder with this exact name is visible
+  // to the script's account, it's silently skipped (Drive returns an empty
+  // iterator, not an error) — check Executions/Logs after a manual run to
+  // confirm it was actually found.
+  EXTRA_FOLDER_NAMES: ["REGISTROS DE REUNIÕES"],
+
   // Optional: force every doc into a fixed project. Leave "" to auto-detect
   // the project from the notes text.
   PROJECT_HINT: "",
@@ -92,20 +106,47 @@ function installDailyTrigger() {
   Logger.log("Trigger installed: syncMeetingNotes daily around " + CONFIG.RUN_HOUR + ":00.");
 }
 
-// Returns a FileIterator over candidate notes Docs (folder, or every Doc this
-// account can see by title — NOT restricted to "shared with me": Gemini saves
-// notes straight to the host's own Drive, so a Doc for a meeting *you* hosted
-// is owned by you, never "shared with me" from your own point of view. Only
-// searching sharedWithMe silently missed every meeting the script's own
-// account hosted — this covers both directions.
+// Returns an array of candidate notes Docs (deduped by file ID), combining:
+//   1. the default search — one specific folder (FOLDER_ID) OR every Doc this
+//      account can see by title (NAME_CONTAINS) — NOT restricted to "shared
+//      with me": Gemini saves notes straight to the host's own Drive, so a
+//      Doc for a meeting *you* hosted is owned by you, never "shared with
+//      me" from your own point of view. Only searching sharedWithMe silently
+//      missed every meeting the script's own account hosted — this covers
+//      both directions.
+//   2. every Google Doc directly inside each folder named in
+//      EXTRA_FOLDER_NAMES — added ON TOP of (1), not instead of it, so a
+//      manually-organized records folder whose docs don't match
+//      NAME_CONTAINS still gets picked up.
 function findNotesDocs() {
-  if (CONFIG.FOLDER_ID) {
-    return DriveApp.getFolderById(CONFIG.FOLDER_ID).getFilesByType(MimeType.GOOGLE_DOCS);
+  const out = [];
+  const seenIds = new Set();
+  function addFile(f) {
+    const id = f.getId();
+    if (seenIds.has(id)) return;
+    seenIds.add(id);
+    out.push(f);
   }
-  const name = String(CONFIG.NAME_CONTAINS || "").replace(/'/g, "\\'");
-  let query = "mimeType = 'application/vnd.google-apps.document' and trashed = false";
-  if (name) query += " and title contains '" + name + "'";
-  return DriveApp.searchFiles(query);
+
+  const primary = CONFIG.FOLDER_ID
+    ? DriveApp.getFolderById(CONFIG.FOLDER_ID).getFilesByType(MimeType.GOOGLE_DOCS)
+    : (function () {
+        const name = String(CONFIG.NAME_CONTAINS || "").replace(/'/g, "\\'");
+        let query = "mimeType = 'application/vnd.google-apps.document' and trashed = false";
+        if (name) query += " and title contains '" + name + "'";
+        return DriveApp.searchFiles(query);
+      })();
+  while (primary.hasNext()) addFile(primary.next());
+
+  (CONFIG.EXTRA_FOLDER_NAMES || []).forEach(function (folderName) {
+    const folders = DriveApp.getFoldersByName(folderName);
+    while (folders.hasNext()) {
+      const files = folders.next().getFilesByType(MimeType.GOOGLE_DOCS);
+      while (files.hasNext()) addFile(files.next());
+    }
+  });
+
+  return out;
 }
 
 // Prefer a yyyy-mm-dd date parsed from the title (the real meeting date),
@@ -127,8 +168,7 @@ function syncMeetingNotes() {
 
   const files = findNotesDocs();
   let sent = 0;
-  while (files.hasNext()) {
-    const file = files.next();
+  for (const file of files) {
     const id = file.getId();
     if (seen.has(id)) continue;
 
@@ -193,11 +233,9 @@ function listMeetingDocs_() {
   );
   const files = findNotesDocs();
   const out = [];
-  let n = 0;
-  while (files.hasNext() && n < 100) {
-    const f = files.next();
+  for (const f of files) {
+    if (out.length >= 100) break;
     out.push({ id: f.getId(), title: f.getName(), date: docDate(f), processed: seen.has(f.getId()) });
-    n++;
   }
   out.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
   return out;

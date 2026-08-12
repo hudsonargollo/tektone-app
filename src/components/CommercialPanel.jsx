@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowLeft, Briefcase, Plus, UserPlus, CheckCircle2, Clock, ShoppingBag, Trash2, EyeOff, Eye, ImagePlus } from "lucide-react";
+import { ArrowLeft, Briefcase, Plus, UserPlus, CheckCircle2, Clock, ShoppingBag, Trash2, EyeOff, Eye, ImagePlus, Award } from "lucide-react";
 import { api } from "@/lib/api";
 import { Spinner } from "@/components/ui";
 
@@ -46,6 +46,7 @@ export default function CommercialPanel({ clients, isAdmin, onClose }) {
   const [contracts, setContracts] = useState(null);
   const [invoices, setInvoices] = useState(null);
   const [catalog, setCatalog] = useState(null);
+  const [builders, setBuilders] = useState(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -66,6 +67,7 @@ export default function CommercialPanel({ clients, isAdmin, onClose }) {
     api.listProjectUsers(projectId).then(({ users }) => setMembers(users)).catch(() => {});
     api.listContracts(projectId).then(({ contracts }) => setContracts(contracts)).catch(() => {});
     api.listInvoices(projectId).then(({ invoices }) => setInvoices(invoices)).catch(() => {});
+    api.getProjectBuilders(projectId).then(({ builders }) => setBuilders(builders)).catch(() => {});
   }
   useEffect(load, [projectId]);
 
@@ -225,7 +227,7 @@ export default function CommercialPanel({ clients, isAdmin, onClose }) {
           {error && <p className="mb-3 font-mono text-[11px] text-danger">{error}</p>}
 
           <div className="mb-4 flex gap-1 rounded-lg surface-3 p-1">
-            {["members", "contracts", "invoices", ...(isAdmin ? ["addons"] : [])].map((t) => (
+            {["members", "contracts", "invoices", "builders", ...(isAdmin ? ["addons"] : [])].map((t) => (
               <button
                 key={t}
                 onClick={() => setTab(t)}
@@ -233,7 +235,7 @@ export default function CommercialPanel({ clients, isAdmin, onClose }) {
                   tab === t ? "bg-clay text-ink shadow-sm" : "text-stone-500"
                 }`}
               >
-                {t === "members" ? "clientes" : t === "contracts" ? "contratos" : t === "invoices" ? "faturas" : "add-ons"}
+                {t === "members" ? "clientes" : t === "contracts" ? "contratos" : t === "invoices" ? "faturas" : t === "builders" ? "construtores" : "add-ons"}
               </button>
             ))}
           </div>
@@ -266,6 +268,34 @@ export default function CommercialPanel({ clients, isAdmin, onClose }) {
                     <li key={m.user_email} className="flex items-center justify-between rounded-lg surface-3 px-3 py-2 text-sm">
                       <span className="truncate text-ink">{m.user_email}</span>
                       <span className="font-mono text-[10px] uppercase tracking-wider text-stone-500">{m.role}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+
+          {tab === "builders" && (
+            <div>
+              <p className="mb-3 text-xs text-stone-500">
+                Nível e XP de cada construtor, ganhos apenas com tarefas revisadas dentro deste projeto — um espelho do
+                perfil "Jornada" de cada um, restrito ao que foi feito aqui.
+              </p>
+              {builders === null ? (
+                <div className="flex justify-center py-6"><Spinner /></div>
+              ) : builders.length === 0 ? (
+                <p className="text-xs text-stone-500">Nenhuma tarefa revisada neste projeto ainda.</p>
+              ) : (
+                <ul className="space-y-1.5">
+                  {builders.map((b) => (
+                    <li key={b.email} className="flex items-center justify-between rounded-lg surface-3 px-3 py-2 text-sm">
+                      <span className="truncate text-ink">{b.name}</span>
+                      <span className="flex items-center gap-2 shrink-0">
+                        <span className="font-mono text-[10px] text-stone-500">{b.xp} XP</span>
+                        <span className="inline-flex items-center gap-1 rounded-md bg-action/10 px-2 py-0.5 font-mono text-[10px] font-semibold text-action">
+                          <Award size={11} /> nível {b.level}
+                        </span>
+                      </span>
                     </li>
                   ))}
                 </ul>

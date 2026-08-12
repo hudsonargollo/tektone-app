@@ -33,6 +33,7 @@ import { getSessionEmail } from "../../_lib/session.js";
 import { isAdmin } from "../../_lib/allowlist.js";
 import { loadCards, saveCards } from "../../_lib/tasksStore.js";
 import { buildPushPayload } from "@block65/webcrypto-web-push";
+import { logTaskEvent, resolveAssigneeEmails, awardXpForReviewedTask } from "../../_lib/gamification.js";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -637,9 +638,32 @@ export async function onRequest(context) {
         const authUsers = await kvGet(kv, "auth:users", []);
         const reviewerName =
           members.find((m) => String(m.email).toLowerCase() === email.toLowerCase())?.name || email;
+        const fromColumn = card.columnId;
+        const assigneeEmails = resolveAssigneeEmails(card, members);
         const { mentioned } = markReviewed(card, members, email, reviewerName);
         await saveCards(env,cards);
         await notifyReview(context, env, kv, card, mentioned, members, authUsers, email, reviewerName);
+        if (env.DB) {
+          // Award XP BEFORE logging the "reviewed" task_event — the award
+          // function's reopen guard (wasAlreadyReviewed) counts existing
+          // to_column='reviewed' rows for this task, so logging first would
+          // make it see its own just-written row and skip itself.
+          await awardXpForReviewedTask(env.DB, {
+            taskId: card.id,
+            projectId: card.clientId,
+            dueDate: card.dueDate,
+            createdAt: card.createdAt,
+            reviewedAtIso: card.reviewedAt,
+            assigneeEmails,
+          });
+          await logTaskEvent(env.DB, {
+            taskId: card.id,
+            projectId: card.clientId,
+            fromColumn,
+            toColumn: "reviewed",
+            actorEmail: email,
+          });
+        }
         return json({ card });
       }
 
@@ -713,12 +737,34 @@ export async function onRequest(context) {
         const reviewed = [];
         for (const card of cards) {
           if (!ids.has(card.id)) continue;
+          const fromColumn = card.columnId;
+          const assigneeEmails = resolveAssigneeEmails(card, members);
           const { mentioned } = markReviewed(card, members, email, reviewerName);
-          reviewed.push({ card, mentioned });
+          reviewed.push({ card, mentioned, fromColumn, assigneeEmails });
         }
         await saveCards(env,cards);
         for (const r of reviewed) {
           await notifyReview(context, env, kv, r.card, r.mentioned, members, authUsers, email, reviewerName);
+          if (env.DB) {
+            // Award before logging — see the single-review handler above
+            // for why this order matters (the reopen guard would otherwise
+            // see its own just-written "reviewed" event).
+            await awardXpForReviewedTask(env.DB, {
+              taskId: r.card.id,
+              projectId: r.card.clientId,
+              dueDate: r.card.dueDate,
+              createdAt: r.card.createdAt,
+              reviewedAtIso: r.card.reviewedAt,
+              assigneeEmails: r.assigneeEmails,
+            });
+            await logTaskEvent(env.DB, {
+              taskId: r.card.id,
+              projectId: r.card.clientId,
+              fromColumn: r.fromColumn,
+              toColumn: "reviewed",
+              actorEmail: email,
+            });
+          }
         }
         return json({ cards: reviewed.map((r) => r.card) });
       } else {
@@ -786,6 +832,8 @@ export async function onRequest(context) {
             : [];
 
           // never let a card edit overwrite the comment thread
+          const columnChanged = "columnId" in body && body.columnId !== card.columnId;
+          const fromColumn = card.columnId;
           const updated = cards.map((c) => {
             if (c.id !== id) return c;
             const merged = { ...c, ...body, id, comments: c.comments };
@@ -794,6 +842,16 @@ export async function onRequest(context) {
           });
           await saveCards(env,updated);
           const updatedCard = updated.find((c) => c.id === id);
+
+          if (columnChanged && env.DB) {
+            await logTaskEvent(env.DB, {
+              taskId: id,
+              projectId: updatedCard.clientId,
+              fromColumn,
+              toColumn: body.columnId,
+              actorEmail: email,
+            });
+          }
 
           if (addedEmails.length) {
             await pushNotifs(

@@ -119,6 +119,13 @@ pick which to import. Already-imported docs are flagged and skipped (no duplicat
        meetings.
      - *Alternative:* set `FOLDER_ID` to a folder you own to scan just that folder
        (ID = last segment of the folder URL `…/folders/<FOLDER_ID>`).
+     - **On top of either of the above**, every Google Doc inside each folder listed
+       in `EXTRA_FOLDER_NAMES` (default: `["REGISTROS DE REUNIÕES"]`) is always
+       included too — matched by exact folder name, not ID, so nothing to look up.
+       Useful for a manually-organized records folder whose docs don't match
+       `NAME_CONTAINS`. If a folder with that exact name isn't visible to the
+       script's account, it's silently skipped (no error) — check **Executions/Logs**
+       after a manual run to confirm it was found.
 4. **Set the time zone** under **Project Settings (⚙) → Time zone → "(GMT-03:00)
    São Paulo"** (`America/Sao_Paulo`). This must always be São Paulo so the run hour
    is correct. (The `appsscript.json` in this folder pins the same value.)

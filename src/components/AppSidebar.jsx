@@ -1,4 +1,4 @@
-import { LayoutGrid, Wallet, Briefcase, Newspaper, Sparkles, ShieldCheck, ListChecks, TrendingUp, ChevronsLeft, ChevronsRight } from "lucide-react";
+import { LayoutGrid, Wallet, Briefcase, Newspaper, Sparkles, ShieldCheck, ListChecks, TrendingUp, ChevronsLeft, ChevronsRight, Award } from "lucide-react";
 
 // Persistent, collapsible desktop-only app-level navigation — distinct from
 // the project-filter <Sidebar/> shown inside the board view. Replaces the
@@ -11,6 +11,7 @@ import { LayoutGrid, Wallet, Briefcase, Newspaper, Sparkles, ShieldCheck, ListCh
 const NAV_ITEMS = [
   { key: "board", label: "Quadro", icon: LayoutGrid, show: () => true },
   { key: "todos", label: "Minhas tarefas", icon: ListChecks, show: () => true },
+  { key: "journey", label: "Jornada", icon: Award, show: () => true },
   { key: "meetings", label: "Reuniões", icon: Sparkles, show: () => true },
   { key: "finance", label: "Financeiro", icon: Wallet, show: (p) => p.financeAccess },
   { key: "commercial", label: "Comercial", icon: Briefcase, show: () => true },

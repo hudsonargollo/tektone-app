@@ -152,4 +152,9 @@ export const api = {
   approveBlogPost: (id) => req(`/blog/admin/posts/${id}/approve`, { method: "POST" }),
   rejectBlogPost: (id, reviewerNotes) => req(`/blog/admin/posts/${id}/reject`, { method: "POST", body: { reviewerNotes } }),
   generateBlogDrafts: () => req("/blog/admin/generate", { method: "POST" }),
+
+  // builder profile (gamification — see functions/_lib/gamification.js)
+  getBuilderProfile: () => req("/gamification/me"),
+  getBuilderProfileFor: (email) => req(`/gamification/user/${encodeURIComponent(email)}`),
+  getProjectBuilders: (projectId) => req(`/gamification/project/${projectId}`),
 };
