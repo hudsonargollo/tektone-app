@@ -17,7 +17,14 @@ export default function AnimatedNumber({
   className?: string;
 }) {
   const ref = useRef<HTMLSpanElement>(null);
-  const inView = useInView(ref, { once: true, margin: "-60px" });
+  // margin is a CSS-margin-shorthand string forwarded straight to
+  // IntersectionObserver's rootMargin — a single value shrinks all four
+  // sides, not just top/bottom. On narrow (mobile, multi-column) grids the
+  // left-column items sit inside that horizontal exclusion zone and would
+  // never register as intersecting, no matter how far you scroll, leaving
+  // their counters frozen at 0. Use the two-value form ("vertical
+  // horizontal") so only the top/bottom edges are inset.
+  const inView = useInView(ref, { once: true, margin: "-60px 0px" });
   const mv = useMotionValue(0);
   const text = useTransform(mv, (v) =>
     prefix +
