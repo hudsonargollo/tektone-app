@@ -8,11 +8,6 @@ const LINKS = [
   { label: "arquitetura", href: "#processo" },
   { label: "autoridade", href: "#autoridade" },
   { label: "faq", href: "#faq" },
-  // Entry point into the app itself (kanban/portal/CRM) — /login is the
-  // shared front door for every account type; it redirects by access_role
-  // after auth (CUSTOMER -> /portal, STAFF/ADMIN -> /hub), so linking here
-  // rather than straight to /hub works regardless of who clicks it.
-  { label: "sistema", href: "/login" },
 ];
 
 export default function Navbar() {
@@ -82,14 +77,28 @@ export default function Navbar() {
           ))}
         </ul>
 
-        {/* CTA */}
-        <a
-          href="#qualificacao"
-          className="group inline-flex items-center gap-1.5 rounded-md bg-ivory px-4 py-2 text-[13px] font-semibold text-ink transition-all duration-200 hover:bg-sand"
-        >
-          Agendar call
-          <ArrowUpRight className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-        </a>
+        {/* Buttons */}
+        <div className="flex items-center gap-3">
+          {/* Entry point into the app itself (kanban/portal/CRM) — /login is
+              the shared front door for every account type; it redirects by
+              access_role after auth (CUSTOMER -> /portal, STAFF/ADMIN ->
+              /hub), so linking here rather than straight to /hub works
+              regardless of who clicks it. Secondary/outline styling so it
+              doesn't compete with the primary CTA. */}
+          <a
+            href="/login"
+            className="hidden sm:inline-flex items-center gap-1.5 rounded-md border border-ivory/30 px-4 py-2 text-[13px] font-semibold text-ivory transition-all duration-200 hover:border-ivory/60 hover:bg-ivory/10"
+          >
+            Sistema
+          </a>
+          <a
+            href="#qualificacao"
+            className="group inline-flex items-center gap-1.5 rounded-md bg-ivory px-4 py-2 text-[13px] font-semibold text-ink transition-all duration-200 hover:bg-sand"
+          >
+            Agendar call
+            <ArrowUpRight className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+          </a>
+        </div>
       </nav>
     </motion.header>
   );
