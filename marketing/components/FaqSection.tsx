@@ -36,7 +36,7 @@ const faqs = [
 
 export default function FaqSection() {
   return (
-    <section id="faq" className="relative bg-ivory py-28 sm:py-36 overflow-hidden">
+    <section id="faq" className="relative bg-ivory py-16 sm:py-24 overflow-hidden">
       <div className="absolute inset-0 bp-dots opacity-60 mask-fade" aria-hidden />
       <div className="absolute inset-0 grain-light mask-fade" aria-hidden />
       <SectionBlob tone="sand" className="-right-24 top-0 h-[26rem] w-[26rem]" />

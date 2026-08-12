@@ -66,7 +66,7 @@ const TONE_STYLES = {
 
 export default function ObjetivoSection() {
   return (
-    <section className="relative bg-ivory py-28 sm:py-36 overflow-hidden">
+    <section className="relative bg-ivory py-16 sm:py-24 overflow-hidden">
       <div className="absolute inset-0 bp-dots opacity-60 mask-fade" aria-hidden />
       <div className="absolute inset-0 grain-light mask-fade" aria-hidden />
       <SectionBlob tone="sand" className="-left-24 top-0 h-[28rem] w-[28rem]" />

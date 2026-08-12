@@ -9,7 +9,7 @@ const EASE = [0.22, 1, 0.36, 1] as [number, number, number, number];
 
 export default function AgitacaoSection() {
   return (
-    <section className="relative bg-ivory pt-28 pb-12 sm:pt-36 sm:pb-16 overflow-hidden">
+    <section className="relative bg-ivory pt-16 pb-12 sm:pt-24 sm:pb-16 overflow-hidden">
       <div className="absolute inset-0 bp-dots opacity-60 mask-fade" aria-hidden />
       <div className="absolute inset-0 grain-light mask-fade" aria-hidden />
       <SectionBlob tone="sand" className="-right-20 -top-24 h-96 w-96" />

@@ -319,7 +319,7 @@ export default function QualificacaoSection() {
         : ((stepIndex + (canAdvance ? 0.5 : 0)) / STEP_KEYS.length) * 100;
 
   return (
-    <section id="qualificacao" className="relative bg-ivory py-28 sm:py-36 overflow-hidden">
+    <section id="qualificacao" className="relative bg-ivory py-16 sm:py-24 overflow-hidden">
       <div className="absolute inset-0 bp-dots opacity-40 mask-fade" aria-hidden />
       <div className="absolute inset-0 grain-light mask-fade" aria-hidden />
       <SectionBlob tone="ochre" className="-right-28 bottom-0 h-[30rem] w-[30rem]" />
@@ -700,8 +700,10 @@ export default function QualificacaoSection() {
                         />
                         Ao enviar este formulário, você concorda com o tratamento
                         dos seus dados pessoais pela Tektone para análise da sua
-                        solicitação, contato comercial e condução do processo de
-                        qualificação, conforme nossa{" "}
+                        solicitação, contato comercial, condução do processo de
+                        qualificação e envio de comunicações de marketing
+                        (novidades, conteúdos e ofertas). Você pode revogar esse
+                        consentimento a qualquer momento, conforme nossa{" "}
                         <a href="/politica-de-privacidade" className="underline hover:text-ink">
                           Política de Privacidade
                         </a>

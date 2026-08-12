@@ -28,7 +28,7 @@ const criteria = [
 
 export default function QualificacaoFitSection() {
   return (
-    <section className="relative bg-ivory py-28 sm:py-36 overflow-hidden">
+    <section className="relative bg-ivory py-16 sm:py-24 overflow-hidden">
       <div className="absolute inset-0 bp-dots opacity-60 mask-fade" aria-hidden />
       <div className="absolute inset-0 grain-light mask-fade" aria-hidden />
       <SectionBlob tone="green" className="-left-24 bottom-0 h-[28rem] w-[28rem]" />
@@ -85,17 +85,17 @@ export default function QualificacaoFitSection() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-80px" }}
           transition={{ duration: 0.6, delay: 0.2, ease: EASE }}
-          className="mt-10 rounded-xl border border-sand-dark/30 bg-paper p-8 text-center"
+          className="mt-6 sm:mt-10 rounded-xl border border-sand-dark/30 bg-paper p-6 sm:p-8 text-center"
         >
           <p className="text-balance text-xl sm:text-2xl font-semibold tracking-tightish leading-snug text-ink">
             Porque são duas empresas por mês. Não mais do que isso.
           </p>
-          <p className="mt-3 text-pretty mx-auto max-w-xl leading-relaxed text-ink/60">
+          <p className="mt-2 sm:mt-3 text-pretty mx-auto max-w-xl leading-relaxed text-ink/60">
             Esse é o limite para manter o fundador presente, o diagnóstico
             profundo e a qualidade que uma solução sob medida exige.
           </p>
 
-          <div className="mt-8 flex flex-col items-center gap-3">
+          <div className="mt-5 sm:mt-8 flex flex-col items-center gap-3">
             <Button size="lg" nativeButton={false} render={<a href="#qualificacao" />}>
               AGENDAR CALL DE QUALIFICAÇÃO
             </Button>

@@ -17,7 +17,7 @@ const stats = [
 
 export default function AutoridadeSection() {
   return (
-    <section id="autoridade" className="relative bg-ivory py-28 sm:py-36 overflow-hidden">
+    <section id="autoridade" className="relative bg-ivory py-16 sm:py-24 overflow-hidden">
       <div className="absolute inset-0 bp-dots opacity-40 mask-fade" aria-hidden />
       <div className="absolute inset-0 grain-light mask-fade" aria-hidden />
       <SectionBlob tone="ochre" className="-left-24 top-10 h-[26rem] w-[26rem]" />

@@ -13,7 +13,7 @@ const EASE = [0.22, 1, 0.36, 1] as [number, number, number, number];
 // this comment) once there's a version ready to ship.
 export default function HubTektoneSection() {
   return (
-    <section className="relative overflow-hidden bg-ink-950 py-28 sm:py-36">
+    <section className="relative overflow-hidden bg-ink-950 py-16 sm:py-24">
       <div className="absolute inset-0 bp-lines-ink opacity-40" aria-hidden />
       <div className="absolute inset-0 grain-dark" aria-hidden />
 

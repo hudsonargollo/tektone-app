@@ -65,7 +65,7 @@ export default function ProcessoSection() {
   const railScale = useTransform(scrollYProgress, [0, 1], [0, 1]);
 
   return (
-    <section id="processo" className="relative bg-ivory pt-12 pb-28 sm:pt-16 sm:pb-36 overflow-hidden">
+    <section id="processo" className="relative bg-ivory pt-12 pb-16 sm:pt-16 sm:pb-24 overflow-hidden">
       <div className="absolute inset-0 grain-light mask-fade" aria-hidden />
       <SectionBlob tone="green" className="-right-32 top-1/3 h-[30rem] w-[30rem]" />
 
