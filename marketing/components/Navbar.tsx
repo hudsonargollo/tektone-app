@@ -87,13 +87,13 @@ export default function Navbar() {
               doesn't compete with the primary CTA. */}
           <a
             href="/login"
-            className="hidden sm:inline-flex items-center gap-1.5 rounded-md border border-ivory/30 px-4 py-2 text-[13px] font-semibold text-ivory transition-all duration-200 hover:border-ivory/60 hover:bg-ivory/10"
+            className="inline-flex items-center gap-1.5 rounded-md border border-ivory/30 px-2.5 sm:px-4 py-2 text-[11px] sm:text-[13px] font-semibold text-ivory transition-all duration-200 hover:border-ivory/60 hover:bg-ivory/10"
           >
             ACESSAR HUB
           </a>
           <a
             href="#qualificacao"
-            className="group inline-flex items-center gap-1.5 rounded-md bg-ivory px-4 py-2 text-[13px] font-semibold text-ink transition-all duration-200 hover:bg-sand"
+            className="group inline-flex items-center gap-1.5 rounded-md bg-ivory px-2.5 sm:px-4 py-2 text-[11px] sm:text-[13px] font-semibold text-ink transition-all duration-200 hover:bg-sand"
           >
             Agendar call
             <ArrowUpRight className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
