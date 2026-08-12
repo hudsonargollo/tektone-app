@@ -43,6 +43,16 @@ export default function AutoridadeSection() {
       <div className="absolute inset-0 bp-dots opacity-40 mask-fade" aria-hidden />
       <div className="absolute inset-0 grain-light mask-fade" aria-hidden />
       <SectionBlob tone="ochre" className="-left-24 top-10 h-[26rem] w-[26rem]" />
+
+      {/* Flat-color gold capital, opposite corner from the blob — a small,
+          tasteful accent (not a full illustration) since this section's
+          real visual anchor is the founder portrait. Real alpha PNG, so no
+          fade mask needed — object-contain lets the transparency do the
+          work. */}
+      <div className="pointer-events-none absolute -right-16 top-6 h-40 w-40 opacity-[0.55] sm:h-52 sm:w-52" aria-hidden>
+        <Image src="/capital-gold.png" alt="" fill sizes="13rem" className="object-contain" />
+      </div>
+
       <div className="relative mx-auto max-w-6xl px-6">
         <p className="label-tech mb-4">Quem lidera a Tektone</p>
 
