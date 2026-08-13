@@ -26,7 +26,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
 
   return (
     <>
-      <Navbar />
+      <Navbar theme="light" />
       <main className="relative min-h-screen bg-ivory pt-32 pb-24">
         <div className="absolute inset-0 grain-light mask-fade" aria-hidden />
         <article className="relative mx-auto max-w-2xl px-6">

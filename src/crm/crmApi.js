@@ -48,4 +48,13 @@ export const crmApi = {
   suggestCopilot: (leadId) => req(`/leads/${leadId}/suggest`, { method: "POST" }),
   listQuestions: (leadId) => req(`/leads/${leadId}/questions`),
   approveQuestion: (id) => req(`/questions/${id}/approve`, { method: "POST" }),
+
+  // WhatsApp/URL short-link manager
+  listWaLinks: () => req("/wa-links"),
+  createWaLink: (body) => req("/wa-links", { method: "POST", body }),
+  updateWaLink: (slug, body) => req(`/wa-links/${slug}`, { method: "PATCH", body }),
+  deleteWaLink: (slug) => req(`/wa-links/${slug}`, { method: "DELETE" }),
+  listWaNumbers: () => req("/wa-numbers"),
+  createWaNumber: (body) => req("/wa-numbers", { method: "POST", body }),
+  deleteWaNumber: (id) => req(`/wa-numbers/${id}`, { method: "DELETE" }),
 };

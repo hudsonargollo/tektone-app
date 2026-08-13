@@ -137,22 +137,31 @@ body {
 
 /* Grain — stone/parchment texture, layered over color fields and photos.
    Fractal-noise SVG tile, tinted per surface so it reads as texture rather
-   than digital static. */
+   than digital static. Purely decorative (always `aria-hidden`), so
+   pointer-events: none here — one of the ~18 call sites (AutoridadeSection)
+   had to add it inline to keep its content clickable; every other one
+   (including Footer's legal links and Navbar's own nav) was silently
+   swallowing clicks across its entire absolutely-positioned inset-0 area,
+   since a positioned element paints (and hit-tests) above its non-positioned
+   siblings regardless of DOM order. */
 .grain-light {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   opacity: 0.5;
   mix-blend-mode: multiply;
+  pointer-events: none;
 }
 .grain-dark {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   opacity: 0.16;
   mix-blend-mode: screen;
+  pointer-events: none;
 }
 /* Denser, coarser variant for photo frames — closer to a stone/paper fiber
    texture than fine digital noise */
 .grain-heavy {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.55' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   opacity: 0.4;
+  pointer-events: none;
   mix-blend-mode: multiply;
 }
 

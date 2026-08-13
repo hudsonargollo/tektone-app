@@ -48,6 +48,7 @@ const PROFILE_FIELD_MAP = {
   bio: "bio",
   avatar: "avatar",
   emailNotifications: "email_notifications",
+  timezone: "timezone",
 };
 const MAX_AVATAR_LEN = 700000; // ~512 KB image as a data URL
 const publicProfile = (u) => ({
@@ -59,6 +60,7 @@ const publicProfile = (u) => ({
   bio: u.bio ?? "",
   avatar: u.avatar ?? "",
   emailNotifications: u.email_notifications !== 0,
+  timezone: u.timezone || "",
   admin: checkIsAdmin(u),
   createdAt: u.created_at ?? null,
 });
@@ -99,6 +101,7 @@ async function handle(context) {
       crmRole: authed ? (user.crm_role ?? null) : null,
       name: user?.name ?? null,
       avatar: user?.avatar ?? null,
+      timezone: user?.timezone || null,
     });
   }
 

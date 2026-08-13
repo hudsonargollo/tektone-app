@@ -1,0 +1,21 @@
+# Standalone redirector for go.tektone.com.br — Tektone's own short-link
+# domain, kept separate from Código Internacional's links.tektone.com.br
+# (a different, unrelated business already live on that subdomain). See
+# ~/.claude/plans/clever-crunching-raccoon.md, Phase D.
+#
+# Deploy:
+#   cd worker-links && npx wrangler deploy
+
+name = "tektone-wa-links-redirect"
+main = "./src/index.js"
+compatibility_date = "2024-11-01"
+account_id = "193882a3226d5fb9c3611ea50c95992e"
+
+routes = [
+  { pattern = "go.tektone.com.br", custom_domain = true },
+]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "hub-tektone"
+database_id = "062719db-dc4e-46c0-a9d9-bdb4fef61a30"

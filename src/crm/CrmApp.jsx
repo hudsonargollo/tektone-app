@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { LogOut, LayoutGrid, Users, DollarSign } from "lucide-react";
+import { LogOut, LayoutGrid, Users, DollarSign, Link2 } from "lucide-react";
 import { crmApi } from "@/crm/crmApi";
 import { Spinner, Avatar } from "@/components/ui";
 import Login from "@/components/Login";
@@ -8,12 +8,13 @@ import CrmDashboard from "@/crm/CrmDashboard";
 import CrmLeads from "@/crm/CrmLeads";
 import CrmLeadDetail from "@/crm/CrmLeadDetail";
 import CrmSales from "@/crm/CrmSales";
+import CrmWaLinks from "@/crm/CrmWaLinks";
 
-// Phase D (WhatsApp/URL link manager) adds a "links" entry + CrmWaLinks import here.
 const NAV_ITEMS = [
   { key: "dashboard", label: "Dashboard", icon: LayoutGrid },
   { key: "leads", label: "Pipeline", icon: Users },
   { key: "sales", label: "Vendas", icon: DollarSign },
+  { key: "links", label: "Links", icon: Link2 },
 ];
 
 // Root of the CRM (tektone.com.br/crm) — same auth-gate shape as
@@ -27,17 +28,19 @@ export default function CrmApp() {
   const [userEmail, setUserEmail] = useState(null);
   const [userName, setUserName] = useState(null);
   const [userAvatar, setUserAvatar] = useState(null);
+  const [userTimezone, setUserTimezone] = useState(null);
   const [view, setView] = useState({ tab: "dashboard" });
 
   const refreshMe = useCallback(() => {
     crmApi
       .me()
-      .then(({ authed, email, crmRole, name, avatar }) => {
+      .then(({ authed, email, crmRole, name, avatar, timezone }) => {
         setAuthed(Boolean(authed));
         setUserEmail(email);
         setCrmRole(crmRole);
         setUserName(name);
         setUserAvatar(avatar);
+        setUserTimezone(timezone);
       })
       .catch(() => setAuthed(false));
   }, []);
@@ -166,8 +169,11 @@ export default function CrmApp() {
       <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
         {view.tab === "dashboard" && <CrmDashboard />}
         {view.tab === "leads" && <CrmLeads onOpenLead={(id) => setView({ tab: "lead", leadId: id })} />}
-        {view.tab === "lead" && <CrmLeadDetail leadId={view.leadId} onBack={() => setView({ tab: "leads" })} />}
+        {view.tab === "lead" && (
+          <CrmLeadDetail leadId={view.leadId} timezone={userTimezone} onBack={() => setView({ tab: "leads" })} />
+        )}
         {view.tab === "sales" && <CrmSales />}
+        {view.tab === "links" && <CrmWaLinks />}
       </div>
     </div>
   );

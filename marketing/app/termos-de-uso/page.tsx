@@ -2,6 +2,7 @@ import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import MarkdownBody from "@/components/MarkdownBody";
+import Logo from "@/components/Logo";
 
 export const metadata = {
   title: "Termos de Uso — Tektone",
@@ -254,17 +255,28 @@ Eventuais controvérsias serão submetidas ao foro competente determinado pela l
 export default function TermosDeUsoPage() {
   return (
     <>
-      <Navbar />
+      <Navbar theme="light" />
       <main className="relative min-h-screen bg-ivory pt-32 pb-24">
         <div className="absolute inset-0 grain-light mask-fade" aria-hidden />
         <article className="relative mx-auto max-w-2xl px-6">
-          <p className="label-tech mb-3">Institucional</p>
-          <h1 className="text-balance text-3xl sm:text-4xl font-bold leading-tight tracking-display text-ink">
-            Termos de Uso
-          </h1>
-          <p className="mt-3 font-mono text-xs tracking-wide text-ink/40">
-            Última atualização: 11 de agosto de 2026
-          </p>
+          <div className="mb-14 flex flex-col items-center text-center">
+            <Logo variant="ink" className="mb-8 h-16 w-auto sm:h-20" />
+            <p className="label-tech mb-3">Institucional</p>
+            <h1 className="text-editorial text-balance text-4xl sm:text-5xl leading-tight text-ink">
+              Termos de Uso
+            </h1>
+            <p className="mt-4 font-mono text-xs tracking-wide text-ink/40">
+              Última atualização: 11 de agosto de 2026
+            </p>
+            <div
+              aria-hidden
+              className="mt-8 h-px w-64"
+              style={{
+                background:
+                  "linear-gradient(90deg, transparent 0%, rgba(199,183,156,0.5) 20%, rgba(184,134,47,0.85) 50%, rgba(199,183,156,0.5) 80%, transparent 100%)",
+              }}
+            />
+          </div>
 
           <div className="mt-10">
             <MarkdownBody content={CONTENT} />

@@ -12,8 +12,8 @@ const VARIANTS = {
   },
   ivory: {
     sand: "#C7B79C",
-    panel: "#EFE8DC",
-    shaft: "#7FA396",
+    panel: "#F5EFE3",
+    shaft: "#4A6F62",
   },
 } as const;
 

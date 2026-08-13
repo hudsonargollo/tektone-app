@@ -20,7 +20,7 @@ export default async function BlogIndexPage() {
 
   return (
     <>
-      <Navbar />
+      <Navbar theme="light" />
       <main className="relative min-h-screen bg-ivory pt-32 pb-24">
         <div className="absolute inset-0 grain-light mask-fade" aria-hidden />
         <div className="relative mx-auto max-w-5xl px-6">

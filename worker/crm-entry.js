@@ -30,6 +30,8 @@ import {
 import { runWonAutomation } from "./lib/wonAutomation.js";
 import { ask as askBusinessSpecialist, suggest as suggestBusinessSpecialist } from "./lib/businessSpecialistService.js";
 import { createKbDocument, listKbDocuments, archiveKbDocument, promoteQuestionToFaq } from "./lib/crmKbService.js";
+import { listWaLinks, createWaLink, updateWaLink, deleteWaLink, resolveWaLink } from "./lib/waLinksService.js";
+import { listWaNumbers, createWaNumber, deleteWaNumber } from "./lib/waNumbersService.js";
 import pagesHandler from "../dist/_worker.js/index.js";
 
 const app = new Hono();
@@ -47,6 +49,10 @@ app.use("/crm/api/sales", requireCrm);
 app.use("/crm/api/dashboard", requireCrm);
 app.use("/crm/api/kb/*", requireCrm);
 app.use("/crm/api/questions/*", requireCrm);
+app.use("/crm/api/wa-links", requireCrm);
+app.use("/crm/api/wa-links/*", requireCrm);
+app.use("/crm/api/wa-numbers", requireCrm);
+app.use("/crm/api/wa-numbers/*", requireCrm);
 
 async function requireCrm(c, next) {
   const email = await getSessionEmail(c.req.raw, c.env);
@@ -311,6 +317,56 @@ app.post("/crm/api/kb/documents/:id/archive", async (c) => {
   await archiveKbDocument(c.env.DB, c.req.param("id"));
   return json(c, { ok: true });
 });
+
+// ── wa-links (WhatsApp/URL short-link manager) ──────────────────────────
+app.get("/crm/api/wa-links", async (c) => json(c, { links: await listWaLinks(c.env.DB) }));
+
+app.post("/crm/api/wa-links", async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  try {
+    const link = await createWaLink(c.env.DB, { ...body, actor: c.get("user").email });
+    return json(c, { link }, 201);
+  } catch (e) {
+    return json(c, { error: e.message }, 400);
+  }
+});
+
+app.patch("/crm/api/wa-links/:slug", async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  try {
+    const link = await updateWaLink(c.env.DB, c.req.param("slug"), body);
+    return json(c, { link });
+  } catch (e) {
+    return json(c, { error: e.message }, 400);
+  }
+});
+
+app.delete("/crm/api/wa-links/:slug", async (c) => json(c, await deleteWaLink(c.env.DB, c.req.param("slug"))));
+
+// Public, unauthenticated resolve — called by the go.tektone.com.br
+// redirector Worker for every visit. Deliberately outside the
+// /crm/api/wa-links* prefix (see requireCrm registrations above) so it
+// isn't gated behind a session, same pattern as /crm/api/public/leads.
+app.get("/crm/api/public/wa-links/resolve/:slug", async (c) => {
+  const link = await resolveWaLink(c.env.DB, c.req.param("slug"));
+  if (!link) return json(c, { error: "not found" }, 404);
+  return json(c, link);
+});
+
+// ── wa-numbers (saved quick-pick numbers for the link creator) ─────────
+app.get("/crm/api/wa-numbers", async (c) => json(c, { numbers: await listWaNumbers(c.env.DB) }));
+
+app.post("/crm/api/wa-numbers", async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  try {
+    const number = await createWaNumber(c.env.DB, body);
+    return json(c, { number }, 201);
+  } catch (e) {
+    return json(c, { error: e.message }, 400);
+  }
+});
+
+app.delete("/crm/api/wa-numbers/:id", async (c) => json(c, await deleteWaNumber(c.env.DB, c.req.param("id"))));
 
 // ── dashboard ────────────────────────────────────────────────────────────
 app.get("/crm/api/dashboard", async (c) => {

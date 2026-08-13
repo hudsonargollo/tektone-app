@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { crmApi } from "@/crm/crmApi";
 import { Spinner } from "@/components/ui";
-import { LEAD_STATUSES, TIER_COLOR, TIER_LABEL, waLink, timeAgo } from "@/crm/crmStatus";
+import { LEAD_STATUSES, TIER_COLOR, TIER_LABEL, waLink, timeAgo, withAlpha } from "@/crm/crmStatus";
 
 // Kanban pipeline board — ports the structure/interaction model of Código
 // Internacional's own CrmLeads.jsx (drag-and-drop lanes, search, filter
@@ -168,7 +168,7 @@ export default function CrmLeads({ onOpenLead }) {
                   <div
                     className="flex flex-col overflow-hidden rounded-xl border transition-colors"
                     style={{
-                      background: isDragOver ? `${s.color}0f` : undefined,
+                      background: isDragOver ? withAlpha(s.color, 6) : undefined,
                       borderColor: isDragOver ? s.color : undefined,
                       borderTopColor: s.color,
                       borderTopWidth: 3,
@@ -192,7 +192,7 @@ export default function CrmLeads({ onOpenLead }) {
                       </div>
                       <span
                         className="shrink-0 rounded-full px-2 py-0.5 text-center font-mono text-[10.5px] font-bold"
-                        style={{ color: s.color, background: `${s.color}1a`, border: `1px solid ${s.color}40` }}
+                        style={{ color: s.color, background: withAlpha(s.color, 10), border: `1px solid ${withAlpha(s.color, 25)}` }}
                       >
                         {col.length}
                       </span>
@@ -273,7 +273,11 @@ function LeadCard({ lead, onClick, dragging, onDragStart, onDragEnd }) {
         {lead.tier && (
           <span
             className="inline-flex items-center gap-1 truncate rounded-full px-2 py-0.5 font-mono text-[10px]"
-            style={{ color: TIER_COLOR[lead.tier], background: `${TIER_COLOR[lead.tier]}1a`, border: `1px solid ${TIER_COLOR[lead.tier]}55` }}
+            style={{
+              color: TIER_COLOR[lead.tier],
+              background: withAlpha(TIER_COLOR[lead.tier], 10),
+              border: `1px solid ${withAlpha(TIER_COLOR[lead.tier], 33)}`,
+            }}
             title={typeof lead.score === "number" ? `Pontuação: ${lead.score}/90` : undefined}
           >
             <Flame size={10} /> <span className="truncate">{TIER_LABEL[lead.tier] || lead.tier}</span>
@@ -360,7 +364,7 @@ function FilterPanel({ open, filters, setFilters, sourceOptions, resultCount, on
                 style={
                   active
                     ? { background: color, color: "var(--color-clay)", border: `1px solid ${color}` }
-                    : { background: `${color}14`, color, border: `1px solid ${color}40` }
+                    : { background: withAlpha(color, 8), color, border: `1px solid ${withAlpha(color, 25)}` }
                 }
               >
                 {t.label}

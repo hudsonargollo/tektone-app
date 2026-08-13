@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { ArrowLeft, Save, Sparkles, Send, Check } from "lucide-react";
 import { crmApi } from "@/crm/crmApi";
 import { Spinner } from "@/components/ui";
+import { fmtDateTime } from "@/lib/timezone";
 
 const STAGES = ["new", "contacted", "qualified", "won", "lost", "incomplete"];
 const STAGE_LABEL = {
@@ -71,7 +72,7 @@ const QUALIFICATION_FIELD_LABEL = {
 
 const brl = (n) => Number(n || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
-export default function CrmLeadDetail({ leadId, onBack }) {
+export default function CrmLeadDetail({ leadId, timezone, onBack }) {
   const [data, setData] = useState(null);
   const [notes, setNotes] = useState("");
   const [savingNotes, setSavingNotes] = useState(false);
@@ -371,7 +372,7 @@ export default function CrmLeadDetail({ leadId, onBack }) {
           {events.map((e) => (
             <div key={e.id} className="rounded-lg surface-3 px-4 py-2.5">
               <p className="font-mono text-[10px] uppercase tracking-wider text-stone-500">{e.type}</p>
-              <p className="text-[11px] text-stone-400">{new Date(e.created_at).toLocaleString("pt-BR")} · {e.actor_email}</p>
+              <p className="text-[11px] text-stone-400">{fmtDateTime(e.created_at, timezone, { seconds: true })} · {e.actor_email}</p>
             </div>
           ))}
         </div>

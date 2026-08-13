@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { X, Camera, Trash2, Check, Mail, Bell } from "lucide-react";
+import { X, Camera, Trash2, Check, Mail, Bell, Globe } from "lucide-react";
 import { api } from "@/lib/api";
 import { Avatar, Spinner, Toggle } from "@/components/ui";
 import PushPermissionPrompt from "@/components/PushPermissionPrompt";
+import { DEFAULT_TIMEZONE, tzCityLabel, timezoneOptions } from "@/lib/timezone";
+
+const TIMEZONE_OPTIONS = timezoneOptions();
 
 const labelCls =
   "mb-1.5 block font-mono text-[11px] font-medium uppercase tracking-[0.16em] text-stone-500";
@@ -78,6 +81,7 @@ export default function ProfilePage({ onClose, onSaved }) {
         bio: p.bio,
         avatar: p.avatar,
         emailNotifications: p.emailNotifications,
+        timezone: p.timezone,
       });
       setP(profile);
       onSaved?.(profile);
@@ -214,6 +218,28 @@ export default function ProfilePage({ onClose, onSaved }) {
                 placeholder="Cidade, país"
                 className={inputCls}
               />
+            </div>
+
+            <div>
+              <label className={labelCls}>Fuso horário</label>
+              <div className="relative">
+                <Globe size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
+                <select
+                  value={p.timezone || ""}
+                  onChange={(e) => set("timezone", e.target.value)}
+                  className={`${inputCls} appearance-none pl-9`}
+                >
+                  <option value="">Padrão da equipe ({tzCityLabel(DEFAULT_TIMEZONE)})</option>
+                  {TIMEZONE_OPTIONS.map((tz) => (
+                    <option key={tz} value={tz}>
+                      {tzCityLabel(tz)} — {tz}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <p className="mt-1.5 text-xs text-stone-500">
+                Todas as datas e horários do app aparecem neste fuso, com a cidade indicada ao lado.
+              </p>
             </div>
 
             <div>

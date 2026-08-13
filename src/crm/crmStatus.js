@@ -1,18 +1,25 @@
 // Shared status metadata + small helpers for the pipeline board and
-// dashboard. Stage colors follow the conventional new→won progression
-// (blue → purple → sand → green → red) rather than reusing Código
-// Internacional's own brand accent — Tektone's board reads dark like CI's,
-// but with Tektone's own mineral sand/green/danger tones (see crm-theme.css).
+// dashboard. Stage/tier colors reference the SAME design tokens
+// crm-theme.css defines (sand/action/success/danger/warning) instead of
+// hardcoded hex or borrowed hues from Código Internacional's own board —
+// every color here is one already in Tektone's brand system, so the board
+// always stays bound to Tektone's own palette (and stays correct if the
+// dark-theme values in crm-theme.css ever get retuned).
 export const LEAD_STATUSES = [
-  { key: "new", label: "Novo", color: "#6FA8CF" },
-  { key: "contacted", label: "Contatado", color: "#9B87C4" },
-  { key: "qualified", label: "Qualificado", color: "#C7B79C" },
-  { key: "won", label: "Fechado", color: "#5FAE82" },
-  { key: "lost", label: "Descartado", color: "#D97B68" },
+  { key: "new", label: "Novo", color: "var(--color-sand)" },
+  { key: "contacted", label: "Contatado", color: "var(--color-warning)" },
+  { key: "qualified", label: "Qualificado", color: "var(--color-action)" },
+  { key: "won", label: "Fechado", color: "var(--color-success)" },
+  { key: "lost", label: "Descartado", color: "var(--color-danger)" },
 ];
 
-export const TIER_COLOR = { hot: "#D97B68", warm: "#D1A24A", cold: "#6FA8CF" };
+export const TIER_COLOR = { hot: "var(--color-danger)", warm: "var(--color-warning)", cold: "var(--color-sand)" };
 export const TIER_LABEL = { hot: "Quente", warm: "Morno", cold: "Frio" };
+
+/** Alpha-blends a color token against transparent — needed since stage/tier
+ *  colors are CSS var() references now, which can't take a hex alpha suffix
+ *  concatenated onto them the way a raw hex string could. */
+export const withAlpha = (color, pct) => `color-mix(in srgb, ${color} ${pct}%, transparent)`;
 
 export const brl = (n, currency = "BRL") =>
   Number(n || 0).toLocaleString("pt-BR", { style: "currency", currency });
