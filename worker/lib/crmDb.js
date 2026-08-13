@@ -5,11 +5,19 @@
 // under functions/ calls crypto.randomUUID() inline, so this matches that.
 const uid = () => crypto.randomUUID();
 
+// LEFT JOINs the closer's display name (users.name) onto assigned_closer_email
+// — the pipeline board and dashboard both need a human name to show, not a
+// raw email, and users.name is already there (migration 0001) with no extra
+// binding needed since DB is shared across the whole hub.
 export async function listLeads(db, { status } = {}) {
-  const where = status ? "WHERE status = ?" : "";
+  const where = status ? "WHERE l.status = ?" : "";
   const params = status ? [status] : [];
   const { results } = await db
-    .prepare(`SELECT * FROM leads ${where} ORDER BY updated_at DESC`)
+    .prepare(
+      `SELECT l.*, u.name AS closer_name
+       FROM leads l LEFT JOIN users u ON u.email = l.assigned_closer_email
+       ${where} ORDER BY l.updated_at DESC`
+    )
     .bind(...params)
     .all();
   return results;
