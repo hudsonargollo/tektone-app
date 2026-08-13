@@ -4,6 +4,16 @@
  * variants, never stretch off the 100×116 viewBox.
  */
 
+// Both variants render the same true brand-guide colors (Mineral Black
+// core, Mineral Green pillar, Sand frame — matches src/components/
+// LogoMark.jsx, the Hub's own logo, which never had a separate "light
+// background" palette). The sand frame is what silhouettes the mark
+// against a dark background — it doesn't need a brightened core to read;
+// a brightened core just collapses the panel/frame contrast that makes
+// the three materials legible in the first place. "ivory" is kept as a
+// distinct key (rather than collapsing to one variant) only so a future
+// genuinely-inverted use case (e.g. mono-on-black favicon) has somewhere
+// to diverge from "ink" without touching every call site again.
 const VARIANTS = {
   ink: {
     sand: "#C7B79C",
@@ -12,8 +22,8 @@ const VARIANTS = {
   },
   ivory: {
     sand: "#C7B79C",
-    panel: "#F5EFE3",
-    shaft: "#4A6F62",
+    panel: "#141618",
+    shaft: "#2E4A43",
   },
 } as const;
 
