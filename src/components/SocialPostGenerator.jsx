@@ -1,14 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, Instagram, Download, Trash2, Sparkles, Plus, X } from "lucide-react";
+import { ArrowLeft, Instagram, Download, Trash2, Sparkles, Plus, X, RefreshCw } from "lucide-react";
 import { api } from "@/lib/api";
 import { Spinner } from "@/components/ui";
 
 // AI Instagram Post Generator (PRD, 2026-08-12) — a guided form (not a
 // blank textbox, per the PRD's "Guided Prompt Interface") that generates
-// brand-constrained image(s) via Workers AI SDXL, then a canvas
-// post-processing step applies brand tokens (optional watermark, no
-// glow/neon/halo per the Mineral System's hard constraint — see
-// docs/BRAND_VISUAL_SYSTEM.md) before export. Backend: functions/api/social/[[path]].js.
+// brand-constrained image(s) via Workers AI SDXL plus a short, on-brand
+// overlay caption via Claude (grounded in brand_kb voice + positioning —
+// see socialPostService.js's generateCaption), then a canvas
+// post-processing step applies brand tokens (that caption, optional
+// watermark, no glow/neon/halo per the Mineral System's hard constraint —
+// see docs/BRAND_VISUAL_SYSTEM.md) before export. Backend: functions/api/social/[[path]].js.
 //
 // Three formats (migration 0015 added carousel/story on top of the
 // original feed-only generator):
@@ -99,7 +101,8 @@ export default function SocialPostGenerator({ onClose }) {
   const [results, setResults] = useState([]); // posts from the last generation (1 for feed/story, N for carousel)
   const [groupId, setGroupId] = useState(null);
   const [showWatermark, setShowWatermark] = useState(true);
-  const [captions, setCaptions] = useState({}); // postId -> overlay caption
+  const [captions, setCaptions] = useState({}); // postId -> overlay caption (AI-suggested, editable)
+  const [regeneratingCaption, setRegeneratingCaption] = useState(null); // postId currently rerolling, or null
 
   const [gallery, setGallery] = useState(null);
   const [galleryError, setGalleryError] = useState("");
@@ -151,12 +154,24 @@ export default function SocialPostGenerator({ onClose }) {
       const { groupId: newGroupId, slides: newPosts } = await api.generateSocialPost(body);
       setResults(newPosts);
       setGroupId(newGroupId);
-      setCaptions({});
+      setCaptions(Object.fromEntries(newPosts.map((p) => [p.id, p.caption || ""])));
       loadGallery();
     } catch (err) {
       setError(err?.body?.error || "Falha ao gerar a imagem.");
     } finally {
       setGenerating(false);
+    }
+  }
+
+  async function handleRegenerateCaption(postId) {
+    setRegeneratingCaption(postId);
+    try {
+      const { caption } = await api.regenerateSocialCaption(postId);
+      setCaptions((prev) => ({ ...prev, [postId]: caption || "" }));
+    } catch {
+      /* keep the existing caption on failure */
+    } finally {
+      setRegeneratingCaption(null);
     }
   }
 
@@ -341,7 +356,7 @@ export default function SocialPostGenerator({ onClose }) {
               </div>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="flex flex-col gap-4">
               <div>
                 <label className="mb-1.5 block font-mono text-[10px] uppercase tracking-wide text-stone-500">
                   Objetivo
@@ -349,7 +364,7 @@ export default function SocialPostGenerator({ onClose }) {
                 <select
                   value={objective}
                   onChange={(e) => setObjective(e.target.value)}
-                  className="w-full rounded-lg border border-ink/15 bg-clay px-3 py-2 text-sm text-ink outline-none focus:border-action"
+                  className="w-full max-w-sm rounded-lg border border-ink/15 bg-clay px-3 py-2 text-sm text-ink outline-none focus:border-action"
                 >
                   {OBJECTIVES.map((o) => (
                     <option key={o.value} value={o.value}>
@@ -366,7 +381,7 @@ export default function SocialPostGenerator({ onClose }) {
                 <select
                   value={visualTone}
                   onChange={(e) => setVisualTone(e.target.value)}
-                  className="w-full rounded-lg border border-ink/15 bg-clay px-3 py-2 text-sm text-ink outline-none focus:border-action"
+                  className="w-full max-w-sm rounded-lg border border-ink/15 bg-clay px-3 py-2 text-sm text-ink outline-none focus:border-action"
                 >
                   {VISUAL_TONES.map((t) => (
                     <option key={t} value={t}>
@@ -377,7 +392,7 @@ export default function SocialPostGenerator({ onClose }) {
               </div>
 
               {postFormat !== "carousel" && (
-                <div className="sm:col-span-2">
+                <div>
                   <label className="mb-1.5 block font-mono text-[10px] uppercase tracking-wide text-stone-500">
                     Assunto / contexto
                   </label>
@@ -399,7 +414,7 @@ export default function SocialPostGenerator({ onClose }) {
                   <select
                     value={aspectRatio}
                     onChange={(e) => setAspectRatio(e.target.value)}
-                    className="w-full rounded-lg border border-ink/15 bg-clay px-3 py-2 text-sm text-ink outline-none focus:border-action"
+                    className="w-full max-w-sm rounded-lg border border-ink/15 bg-clay px-3 py-2 text-sm text-ink outline-none focus:border-action"
                   >
                     {ASPECT_RATIOS.map((a) => (
                       <option key={a.value} value={a.value}>
@@ -415,14 +430,14 @@ export default function SocialPostGenerator({ onClose }) {
                   <label className="mb-1.5 block font-mono text-[10px] uppercase tracking-wide text-stone-500">
                     Proporção
                   </label>
-                  <p className="rounded-lg border border-ink/15 bg-clay px-3 py-2 text-sm text-stone-500">
+                  <p className="max-w-sm rounded-lg border border-ink/15 bg-clay px-3 py-2 text-sm text-stone-500">
                     1080 × 1920 (fixo para story)
                   </p>
                 </div>
               )}
 
               {postFormat === "carousel" && (
-                <div className="sm:col-span-2">
+                <div>
                   <label className="mb-1.5 block font-mono text-[10px] uppercase tracking-wide text-stone-500">
                     Proporção (aplicada a todos os slides)
                   </label>
@@ -516,12 +531,32 @@ export default function SocialPostGenerator({ onClose }) {
                       <canvas ref={(el) => { if (el) canvasRefs.current[post.id] = el; }} className="block w-full" />
                     </div>
                     <div className={results.length > 1 ? "space-y-2" : "flex-1 space-y-3"}>
-                      <input
-                        value={captions[post.id] || ""}
-                        onChange={(e) => setCaptions((prev) => ({ ...prev, [post.id]: e.target.value }))}
-                        placeholder="legenda sobreposta (opcional)"
-                        className="w-full rounded-lg border border-ink/15 bg-clay px-3 py-2 text-sm text-ink outline-none placeholder:text-stone-400 focus:border-action"
-                      />
+                      <div>
+                        <div className="mb-1.5 flex items-center justify-between">
+                          <label className="font-mono text-[10px] uppercase tracking-wide text-stone-500">
+                            Legenda (sugerida pela IA, edite se quiser)
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => handleRegenerateCaption(post.id)}
+                            disabled={regeneratingCaption === post.id}
+                            title="Sugerir outra legenda"
+                            className="shrink-0 rounded p-1 text-stone-400 transition-colors hover:bg-ink/[0.06] hover:text-ink disabled:cursor-not-allowed disabled:opacity-40"
+                          >
+                            <RefreshCw size={12} className={regeneratingCaption === post.id ? "animate-spin" : ""} />
+                          </button>
+                        </div>
+                        <input
+                          value={captions[post.id] || ""}
+                          onChange={(e) => setCaptions((prev) => ({ ...prev, [post.id]: e.target.value }))}
+                          placeholder="sem legenda — a imagem fica só com a foto"
+                          maxLength={90}
+                          className="w-full rounded-lg border border-ink/15 bg-clay px-3 py-2 text-sm text-ink outline-none placeholder:text-stone-400 focus:border-action"
+                        />
+                        <p className="mt-1 text-right font-mono text-[9px] text-stone-400">
+                          {(captions[post.id] || "").length}/90 — quanto mais curta, melhor a leitura sobre a imagem
+                        </p>
+                      </div>
                       {results.length === 1 && (
                         <details>
                           <summary className="cursor-pointer font-mono text-[10px] text-stone-500">

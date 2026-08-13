@@ -24,7 +24,7 @@ export default function BuilderProfilePanel({ onClose }) {
   const progressPct = profile ? Math.min(100, Math.round(((profile.xp - levelFloor) / span) * 100)) : 0;
 
   return (
-    <div className="flex h-full flex-col surface-2">
+    <div className="flex h-full w-full flex-col surface-2">
       <div className="flex items-center justify-between border-b border-ink/15 px-6 py-4">
         <div className="flex items-center gap-2">
           <button
@@ -46,47 +46,39 @@ export default function BuilderProfilePanel({ onClose }) {
             <Spinner />
           </div>
         ) : (
-          <div className="mx-auto max-w-3xl space-y-6">
+          <div className="mx-auto w-full max-w-6xl space-y-6">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <StatTile icon={Award} label="Nível" value={profile.level} />
+              <StatTile icon={BookOpen} label="XP total" value={profile.xp} />
+              <StatTile
+                icon={Flame}
+                label="Sequência"
+                value={`${profile.currentStreak} ${profile.currentStreak === 1 ? "dia" : "dias"}`}
+                highlight={profile.currentStreak > 0}
+              />
+              <StatTile
+                icon={Award}
+                label="Melhor sequência"
+                value={profile.longestStreak > 0 ? `${profile.longestStreak} ${profile.longestStreak === 1 ? "dia" : "dias"}` : "—"}
+              />
+            </div>
+
             <div className="rounded-xl surface-3 p-5">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-stone-500">Nível</p>
-                  <p className="text-3xl font-bold text-ink">{profile.level}</p>
-                </div>
-                <div className="flex items-center gap-2 rounded-lg surface-2 px-3 py-2">
-                  <Flame size={16} className="text-action" />
-                  <div className="text-right">
-                    <p className="font-mono text-[10px] uppercase tracking-wide text-stone-500">sequência</p>
-                    <p className="text-sm font-bold text-ink">
-                      {profile.currentStreak} {profile.currentStreak === 1 ? "dia" : "dias"}
-                    </p>
-                  </div>
-                </div>
+              <div className="mb-1.5 flex items-center justify-between font-mono text-[10px] text-stone-500">
+                <span>{profile.xp} XP</span>
+                <span>próximo nível: {profile.nextLevelXp} XP</span>
               </div>
-
-              <div className="mt-4">
-                <div className="mb-1.5 flex items-center justify-between font-mono text-[10px] text-stone-500">
-                  <span>{profile.xp} XP</span>
-                  <span>próximo nível: {profile.nextLevelXp} XP</span>
-                </div>
-                <div className="h-2 w-full overflow-hidden rounded-full bg-ink/10">
-                  <div
-                    className="h-full rounded-full bg-action transition-all duration-500"
-                    style={{ width: `${progressPct}%` }}
-                  />
-                </div>
+              <div className="h-2 w-full overflow-hidden rounded-full bg-ink/10">
+                <div
+                  className="h-full rounded-full bg-action transition-all duration-500"
+                  style={{ width: `${progressPct}%` }}
+                />
               </div>
-
-              {profile.longestStreak > 0 && (
-                <p className="mt-3 font-mono text-[10px] text-stone-500">
-                  melhor sequência: {profile.longestStreak} {profile.longestStreak === 1 ? "dia" : "dias"}
-                </p>
-              )}
             </div>
 
             <div>
               <p className="label-tech mb-3">Cartas de sabedoria</p>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {profile.cards.map((card) => (
                   <SkillCard key={card.id} card={card} />
                 ))}
@@ -106,6 +98,18 @@ function xpForLevelFloor(level) {
   if (level <= 1) return 0;
   const l = level - 1;
   return 50 * l * (l + 1);
+}
+
+function StatTile({ icon: Icon, label, value, highlight }) {
+  return (
+    <div className="rounded-xl surface-3 p-4">
+      <div className={`mb-2 flex items-center gap-1.5 ${highlight ? "text-action" : "text-stone-400"}`}>
+        <Icon size={14} />
+        <span className="font-mono text-[10px] uppercase tracking-wide">{label}</span>
+      </div>
+      <p className="text-2xl font-bold text-ink">{value}</p>
+    </div>
+  );
 }
 
 function SkillCard({ card }) {

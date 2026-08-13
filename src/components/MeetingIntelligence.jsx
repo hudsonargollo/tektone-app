@@ -147,8 +147,8 @@ export default function MeetingIntelligence({ clients, members, avatarByName, is
               {isAdmin && (
                 <div className="flex gap-1.5 rounded-lg border border-ink/15 bg-ink/[0.03] p-0.5">
                   {[
-                    ["paste", "Colar texto"],
                     ["drive", "Buscar do Drive"],
+                    ["paste", "Colar texto"],
                   ].map(([m, label]) => (
                     <button
                       key={m}

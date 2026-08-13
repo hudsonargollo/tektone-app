@@ -13,6 +13,8 @@
  * ReadableStream of PNG bytes — must be read via `new
  * Response(result).arrayBuffer()`, not base64-decoded.
  */
+import { fetchWithRetry } from "./retry.js";
+
 const uid = () => crypto.randomUUID().replace(/-/g, "").slice(0, 12);
 
 const OBJECTIVE_LABELS = {
@@ -86,9 +88,66 @@ async function generateImage(env, prompt) {
   return new Uint8Array(buf);
 }
 
+/**
+ * Drafts the short overlay line rendered onto the image (canvas step in
+ * SocialPostGenerator.jsx), grounded in brand_kb's voice + the positioning
+ * angle matched to the chosen objective — so it stays concise and on the
+ * actual Tektone sales proposition instead of a blank field the human has
+ * to fill in from scratch every time. Best-effort: caption generation must
+ * never block or fail image generation, so any error here just falls back
+ * to null (the human can still type their own overlay text, same as before
+ * this feature existed).
+ */
+async function generateCaption(env, { objective, subject, brandKb }) {
+  const apiKey = env.ANTHROPIC_API_KEY;
+  if (!apiKey) return null;
+  try {
+    const voiceLine = brandKb.find((r) => r.category === "voice" && r.id === "bkb-voi-1")?.content;
+    const positioningTitle = OBJECTIVE_POSITIONING_TITLE[objective];
+    const positioning = brandKb.find((r) => r.category === "positioning" && r.title === positioningTitle)?.content;
+    const objectiveLabel = OBJECTIVE_LABELS[objective] || objective;
+
+    const prompt = `Você escreve legendas curtas de overlay para posts de Instagram da Tektone, uma consultoria de tecnologia e negócios sob medida (não é agência, não é software house, não é fábrica de apps).
+
+Voz da marca: "${voiceLine || "Tektone fala devagar. Nunca grita. Quando precisa cortar, corta com clareza."}"
+Objetivo deste post: ${objectiveLabel}.${positioning ? ` Proposta de negócio / posicionamento a reforçar: ${positioning}` : ""}
+Assunto/contexto da imagem: ${subject}
+
+Escreva UMA frase curta (no máximo 12 palavras) para sobrepor na imagem. Direta, confiante, específica ao contexto — nunca genérica, nunca promocional, sem hashtags, sem emojis, sem aspas. Responda apenas com a frase, nada mais.`;
+
+    const res = await fetchWithRetry(
+      "https://api.anthropic.com/v1/messages",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify({
+          model: env.BLOG_AI_MODEL || "claude-sonnet-5",
+          max_tokens: 100,
+          messages: [{ role: "user", content: prompt }],
+        }),
+      },
+      { tries: 2, baseMs: 500 }
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    const text = (Array.isArray(data?.content) ? data.content.find((b) => b?.type === "text") : null)?.text;
+    return text ? text.trim().replace(/^["'“]+|["'”]+$/g, "") : null;
+  } catch (err) {
+    console.warn("[social] caption generation failed, continuing without", err.message);
+    return null;
+  }
+}
+
 async function generateAndStoreSlide(env, { db, createdBy, objective, visualTone, brandKb, subject, aspectRatio, postFormat, groupId, slideIndex }) {
   const masterPrompt = buildMasterPrompt({ objective, subject, visualTone, brandKb });
-  const imageBytes = await generateImage(env, masterPrompt);
+  const [imageBytes, caption] = await Promise.all([
+    generateImage(env, masterPrompt),
+    generateCaption(env, { objective, subject, brandKb }),
+  ]);
 
   const id = uid();
   const r2Key = `social/${id}.png`;
@@ -96,13 +155,27 @@ async function generateAndStoreSlide(env, { db, createdBy, objective, visualTone
 
   await db
     .prepare(
-      `INSERT INTO social_posts (id, created_by, objective, subject_context, visual_tone, master_prompt, r2_key, aspect_ratio, post_format, group_id, slide_index, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft')`
+      `INSERT INTO social_posts (id, created_by, objective, subject_context, visual_tone, master_prompt, r2_key, aspect_ratio, post_format, group_id, slide_index, caption, status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft')`
     )
-    .bind(id, createdBy, objective, subject, visualTone, masterPrompt, r2Key, aspectRatio, postFormat, groupId, slideIndex)
+    .bind(id, createdBy, objective, subject, visualTone, masterPrompt, r2Key, aspectRatio, postFormat, groupId, slideIndex, caption)
     .run();
 
-  return { id, r2Key, masterPrompt, aspectRatio, postFormat, groupId, slideIndex };
+  return { id, r2Key, masterPrompt, aspectRatio, postFormat, groupId, slideIndex, caption };
+}
+
+/**
+ * Rerolls just the overlay caption for one already-generated post — used
+ * by the "sugerir outra" control in SocialPostGenerator.jsx when the
+ * AI-drafted line doesn't land, without paying for a fresh SDXL image.
+ */
+export async function regenerateCaption(env, { id }) {
+  const post = await env.DB.prepare("SELECT objective, subject_context FROM social_posts WHERE id = ?").bind(id).first();
+  if (!post) return null;
+  const brandKb = await loadBrandKb(env.DB);
+  const caption = await generateCaption(env, { objective: post.objective, subject: post.subject_context, brandKb });
+  await env.DB.prepare("UPDATE social_posts SET caption = ? WHERE id = ?").bind(caption, id).run();
+  return caption;
 }
 
 /**

@@ -8,6 +8,7 @@
 //   POST   /api/social/generate         — build master prompt(s), generate via Workers AI, store
 //   GET    /api/social                  — gallery list, most recent first
 //   GET    /api/social/:id/image        — stream the R2 object (mirrors /api/blog/media/:key+)
+//   POST   /api/social/:id/caption      — reroll just the AI overlay caption for one post
 //   PATCH  /api/social/:id              — mark exported (called after canvas export succeeds)
 //   PATCH  /api/social/group/:groupId   — mark every slide in a carousel exported at once
 //   DELETE /api/social/:id              — remove a gallery entry + its R2 object
@@ -15,7 +16,7 @@
 import { getSessionEmail } from "../../_lib/session.js";
 import { getUserByEmail } from "../../_lib/db.js";
 import { isStaffOrAdmin } from "../../_lib/rbac.js";
-import { generateSocialPost } from "../../../worker/lib/socialPostService.js";
+import { generateSocialPost, regenerateCaption } from "../../../worker/lib/socialPostService.js";
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), { status, headers: { "Content-Type": "application/json" } });
@@ -96,6 +97,15 @@ export async function onRequest(context) {
         subjects,
       });
       return json(result, 201);
+    }
+
+    // ── reroll overlay caption for one post ─────────────────────────────
+    if (seg[0] && seg[1] === "caption" && !seg[2] && method === "POST") {
+      const existing = await db.prepare("SELECT id FROM social_posts WHERE id = ?").bind(seg[0]).first();
+      if (!existing) return json({ error: "not found" }, 404);
+      if (!env.ANTHROPIC_API_KEY) return json({ error: "ANTHROPIC_API_KEY não configurada." }, 500);
+      const caption = await regenerateCaption(env, { id: seg[0] });
+      return json({ caption });
     }
 
     // ── mark whole carousel exported ────────────────────────────────────
