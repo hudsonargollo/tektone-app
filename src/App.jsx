@@ -509,11 +509,12 @@ export default function App() {
             <Menu size={20} />
           </button>
           <LogoMark className="h-8 w-auto sm:h-7" />
+          <span className="hidden h-6 w-px shrink-0 bg-ink/15 sm:block" aria-hidden="true" />
           <span className="hidden text-sm font-semibold tracking-[0.28em] text-ink sm:inline sm:tracking-[0.3em]">
             TEKTONE
           </span>
-          <span className="serif hidden text-[13px] text-stone-500 md:inline">
-            Operações
+          <span className="hidden font-mono text-[11px] font-semibold tracking-[0.18em] text-action sm:inline">
+            WORKHUB
           </span>
         </div>
 

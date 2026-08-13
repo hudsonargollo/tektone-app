@@ -40,11 +40,17 @@ export const api = {
     req("/auth/admin/finance-access", { method: "POST", body: { email, authorized } }),
 
   // internal financial tracking (STAFF/ADMIN only — see rbac.hasFinanceAccess)
-  getFinances: (projectId) => req(`/finances/${projectId}`),
+  getFinances: (projectId, month) => req(`/finances/${projectId}${month ? `?month=${month}` : ""}`),
   updateFinances: (projectId, body) => req(`/finances/${projectId}`, { method: "PUT", body }),
   listCostCategories: () => req("/finances/categories"),
   createCostCategory: (body) => req("/finances/categories", { method: "POST", body }),
-  listCosts: (projectId, all) => req(`/finances/${projectId}/costs${all ? "?status=all" : ""}`),
+  listCosts: (projectId, { all, month } = {}) => {
+    const params = new URLSearchParams();
+    if (all) params.set("status", "all");
+    if (month) params.set("month", month);
+    const qs = params.toString();
+    return req(`/finances/${projectId}/costs${qs ? `?${qs}` : ""}`);
+  },
   createCost: (projectId, body) => req(`/finances/${projectId}/costs`, { method: "POST", body }),
   updateCost: (projectId, costId, body) => req(`/finances/${projectId}/costs/${costId}`, { method: "PUT", body }),
   toggleCostArchive: (projectId, costId) => req(`/finances/${projectId}/costs/${costId}/archive`, { method: "POST" }),

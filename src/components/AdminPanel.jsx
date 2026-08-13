@@ -118,7 +118,7 @@ export default function AdminPanel({ currentEmail, clients, onClose }) {
   }
 
   return (
-    <div className="flex h-full flex-col surface-2">
+    <div className="flex h-full w-full flex-col surface-2">
       <div className="flex items-center justify-between border-b border-ink/15 px-6 py-4">
         <div className="flex items-center gap-2">
           <button
@@ -147,7 +147,7 @@ export default function AdminPanel({ currentEmail, clients, onClose }) {
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-6 py-5">
+        <div className="mx-auto w-full max-w-5xl flex-1 overflow-y-auto px-6 py-5">
           {error && <p className="mb-3 font-mono text-[11px] text-danger">{error}</p>}
 
           {tab === "access" && (

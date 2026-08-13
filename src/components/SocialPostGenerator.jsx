@@ -314,7 +314,7 @@ export default function SocialPostGenerator({ onClose }) {
   const canSubmit = postFormat === "carousel" ? slides.every((s) => s.trim()) : subject.trim().length > 0;
 
   return (
-    <div className="flex h-full flex-col surface-2">
+    <div className="flex h-full w-full flex-col surface-2">
       <div className="flex items-center justify-between border-b border-ink/15 px-6 py-4">
         <div className="flex items-center gap-2">
           <button
