@@ -57,4 +57,8 @@ export const crmApi = {
   listWaNumbers: () => req("/wa-numbers"),
   createWaNumber: (body) => req("/wa-numbers", { method: "POST", body }),
   deleteWaNumber: (id) => req(`/wa-numbers/${id}`, { method: "DELETE" }),
+
+  // dashboard settings
+  getRevenueGoal: () => req("/settings/revenue-goal"),
+  setRevenueGoal: (revenueGoal) => req("/settings/revenue-goal", { method: "PUT", body: { revenueGoal } }),
 };

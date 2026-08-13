@@ -167,7 +167,7 @@ export default function CrmApp() {
       )}
 
       <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-        {view.tab === "dashboard" && <CrmDashboard />}
+        {view.tab === "dashboard" && <CrmDashboard isAdmin={crmRole === "admin"} />}
         {view.tab === "leads" && <CrmLeads onOpenLead={(id) => setView({ tab: "lead", leadId: id })} />}
         {view.tab === "lead" && (
           <CrmLeadDetail leadId={view.leadId} timezone={userTimezone} onBack={() => setView({ tab: "leads" })} />

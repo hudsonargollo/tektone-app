@@ -16,6 +16,21 @@ export const LEAD_STATUSES = [
 export const TIER_COLOR = { hot: "var(--color-danger)", warm: "var(--color-warning)", cold: "var(--color-sand)" };
 export const TIER_LABEL = { hot: "Quente", warm: "Morno", cold: "Frio" };
 
+// Categorical palette for arbitrary-cardinality series (e.g. "leads by
+// source") — every entry is either an existing design token or a
+// color-mix() blend of two of them, so an unbounded list of categories
+// never has to introduce a hue outside the brand system.
+export const CATEGORY_PALETTE = [
+  "var(--color-action)",
+  "var(--color-sand)",
+  "var(--color-warning)",
+  "var(--color-success)",
+  "var(--color-danger)",
+  "color-mix(in srgb, var(--color-action) 55%, var(--color-sand) 45%)",
+  "color-mix(in srgb, var(--color-warning) 55%, var(--color-danger) 45%)",
+  "color-mix(in srgb, var(--color-success) 55%, var(--color-sand) 45%)",
+];
+
 /** Alpha-blends a color token against transparent — needed since stage/tier
  *  colors are CSS var() references now, which can't take a hex alpha suffix
  *  concatenated onto them the way a raw hex string could. */

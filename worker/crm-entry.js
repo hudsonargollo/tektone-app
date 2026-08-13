@@ -10,7 +10,7 @@
 import { Hono } from "hono";
 import { getSessionEmail } from "../functions/_lib/session.js";
 import { getUserByEmail } from "../functions/_lib/db.js";
-import { isCrmCloserOrAbove } from "./lib/crmRbac.js";
+import { isCrmCloserOrAbove, isCrmAdmin } from "./lib/crmRbac.js";
 import {
   listLeads,
   getLead,
@@ -53,6 +53,7 @@ app.use("/crm/api/wa-links", requireCrm);
 app.use("/crm/api/wa-links/*", requireCrm);
 app.use("/crm/api/wa-numbers", requireCrm);
 app.use("/crm/api/wa-numbers/*", requireCrm);
+app.use("/crm/api/settings/*", requireCrm);
 
 async function requireCrm(c, next) {
   const email = await getSessionEmail(c.req.raw, c.env);
@@ -368,21 +369,117 @@ app.post("/crm/api/wa-numbers", async (c) => {
 
 app.delete("/crm/api/wa-numbers/:id", async (c) => json(c, await deleteWaNumber(c.env.DB, c.req.param("id"))));
 
+// ── settings (admin-editable, currently just the revenue goal) ─────────
+app.get("/crm/api/settings/revenue-goal", async (c) => {
+  const row = await c.env.DB.prepare("SELECT value FROM crm_settings WHERE key = 'revenue_goal'").first();
+  return json(c, { revenueGoal: row ? Number(row.value) || 0 : 0 });
+});
+
+app.put("/crm/api/settings/revenue-goal", async (c) => {
+  if (!isCrmAdmin(c.get("user"))) return json(c, { error: "Apenas admins podem editar." }, 403);
+  const body = await c.req.json().catch(() => ({}));
+  const value = String(Number(body.revenueGoal) || 0);
+  await c.env.DB.prepare(
+    `INSERT INTO crm_settings (key, value, updated_by) VALUES ('revenue_goal', ?, ?)
+     ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now'), updated_by = excluded.updated_by`
+  )
+    .bind(value, c.get("user").email)
+    .run();
+  return json(c, { revenueGoal: Number(value) });
+});
+
+// Sale statuses that count as real revenue — pending_payment isn't money
+// yet, refunded no longer is.
+const PAID_SALE_STATUSES = ["paid", "onboarding", "completed"];
+
 // ── dashboard ────────────────────────────────────────────────────────────
 app.get("/crm/api/dashboard", async (c) => {
-  const [leads, sales] = await Promise.all([listLeads(c.env.DB), listSales(c.env.DB)]);
+  const db = c.env.DB;
+  const [leads, sales, goalRow] = await Promise.all([
+    listLeads(db),
+    listSales(db),
+    db.prepare("SELECT value FROM crm_settings WHERE key = 'revenue_goal'").first(),
+  ]);
+
   const byStatus = {};
   for (const s of VALID_STATUSES) byStatus[s] = 0;
   for (const l of leads) byStatus[l.status] = (byStatus[l.status] || 0) + 1;
   const byTier = { hot: 0, warm: 0, cold: 0 };
   for (const l of leads) if (l.tier && l.tier in byTier) byTier[l.tier]++;
   const totalSalesAmount = sales.reduce((sum, s) => sum + s.amount, 0);
+
+  // KPI strip — excludes 'incomplete' leads from totals, same convention
+  // the pipeline board uses (landing-page abandoners, not real pipeline).
+  const pipelineLeads = leads.filter((l) => l.status !== "incomplete");
+  const wonCount = pipelineLeads.filter((l) => l.status === "won").length;
+  const lostCount = pipelineLeads.filter((l) => l.status === "lost").length;
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const leadsLast30d = pipelineLeads.filter((l) => l.created_at >= thirtyDaysAgo).length;
+  const pendingCommissions = await db
+    .prepare("SELECT COALESCE(SUM(amount), 0) AS total FROM commissions WHERE status = 'pending'")
+    .first();
+
+  // Revenue — this calendar month, only sales past the payment stage.
+  const monthStr = new Date().toISOString().slice(0, 7);
+  const revenueThisMonth = sales
+    .filter((s) => PAID_SALE_STATUSES.includes(s.status) && String(s.created_at || "").slice(0, 7) === monthStr)
+    .reduce((sum, s) => sum + s.amount, 0);
+
+  // Leads by origin — top 8 sources, rest bucketed as "outros".
+  const sourceCounts = {};
+  for (const l of pipelineLeads) {
+    const src = l.utm_source || "Orgânico";
+    sourceCounts[src] = (sourceCounts[src] || 0) + 1;
+  }
+  const sortedSources = Object.entries(sourceCounts).sort((a, b) => b[1] - a[1]);
+  const bySource = sortedSources.slice(0, 8).map(([source, count]) => ({ source, count }));
+  const otherSourceCount = sortedSources.slice(8).reduce((sum, [, n]) => sum + n, 0);
+  if (otherSourceCount > 0) bySource.push({ source: "Outros", count: otherSourceCount });
+
+  // Leaderboard by closer — lead/won counts from the leads table, revenue
+  // from sales, merged by display name (falls back to email, then
+  // "Não atribuído" — same closer_name join listLeads() already does).
+  const closerStats = {};
+  const bump = (name) => (closerStats[name] ??= { closer: name, leads: 0, won: 0, revenue: 0 });
+  for (const l of pipelineLeads) {
+    const name = l.closer_name || l.assigned_closer_email || "Não atribuído";
+    const stat = bump(name);
+    stat.leads++;
+    if (l.status === "won") stat.won++;
+  }
+  const closerEmailToName = {};
+  for (const l of leads) {
+    if (l.assigned_closer_email) closerEmailToName[l.assigned_closer_email] = l.closer_name || l.assigned_closer_email;
+  }
+  for (const s of sales) {
+    if (!PAID_SALE_STATUSES.includes(s.status)) continue;
+    const name = closerEmailToName[s.closer_email] || s.closer_email || "Não atribuído";
+    bump(name).revenue += s.amount;
+  }
+  const byCloser = Object.values(closerStats).sort((a, b) => b.leads - a.leads).slice(0, 8);
+
   return json(c, {
+    month: monthStr,
+    revenue: { thisMonth: revenueThisMonth, goal: goalRow ? Number(goalRow.value) || 0 : 0 },
+    kpi: {
+      totalLeads: pipelineLeads.length,
+      won: wonCount,
+      lost: lostCount,
+      conversionPct: pipelineLeads.length ? Math.round((wonCount / pipelineLeads.length) * 1000) / 10 : 0,
+      winRatePct: wonCount + lostCount ? Math.round((wonCount / (wonCount + lostCount)) * 1000) / 10 : null,
+      leadsLast30d,
+      pendingCommissions: Number(pendingCommissions?.total || 0),
+    },
     leadsByStatus: byStatus,
     leadsByTier: byTier,
+    bySource,
+    byCloser,
     totalLeads: leads.length,
     totalSales: sales.length,
     totalSalesAmount,
+    // Lightweight — just enough for the temperature cards to expand into a
+    // lead list without a second round-trip.
+    leads: pipelineLeads.map((l) => ({ id: l.id, name: l.name, phone: l.phone, tier: l.tier, status: l.status })),
   });
 });
 
