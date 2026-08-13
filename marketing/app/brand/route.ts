@@ -163,7 +163,8 @@ const HTML = `<!doctype html>
   .sec-head p{max-width:520px;margin:16px auto 0;color:var(--ink-70);font-size:.98rem;}
 
   /* =================== 01 SYMBOL =================== */
-  .mark-grid{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-bottom:22px;}
+  .mark-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:22px;margin-bottom:22px;}
+  @media (max-width:900px){.mark-grid{grid-template-columns:1fr 1fr;}}
   @media (max-width:640px){.mark-grid{grid-template-columns:1fr;}}
   .mark-card{
     border:1px solid var(--ink-14);border-radius:18px;overflow:hidden;background:var(--paper);
@@ -174,6 +175,7 @@ const HTML = `<!doctype html>
   .mark-card .stage svg{width:96px;}
   .mark-card.on-clay .stage{background:var(--clay);}
   .mark-card.on-ink .stage{background:var(--ink);}
+  .mark-card.on-black .stage{background:#000;}
   .mark-card .cap{padding:16px 20px 20px;border-top:1px solid var(--ink-08);background:var(--sur3);}
   .mark-card .cap b{display:block;font-family:var(--f-mono);font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;color:var(--green);margin-bottom:3px;}
   .mark-card .cap span{font-size:.86rem;color:var(--ink-70);}
@@ -515,12 +517,16 @@ const HTML = `<!doctype html>
 
   <div class="mark-grid">
     <div class="mark-card on-clay">
-      <div class="stage"><svg viewBox="0 0 100 116"><rect x="15" y="18" width="70" height="22" fill="#C7B79C"/><rect x="18" y="21" width="64" height="16" fill="#141618"/><rect x="42" y="37" width="16" height="58" fill="#2E4A43"/><rect x="45" y="37" width="10" height="56" fill="#141618"/><rect x="49.2" y="41" width="1.6" height="46" fill="#C7B79C"/><rect x="38" y="95" width="24" height="5" fill="#C7B79C"/><rect x="33" y="100" width="34" height="4" fill="#141618"/><rect x="26" y="106.5" width="48" height="1.8" fill="#141618"/><rect x="21" y="110.5" width="58" height="1.2" fill="#C7B79C"/></svg></div>
+      <div class="stage"><svg viewBox="0 0 100 116"><rect x="15" y="18" width="70" height="22" fill="#C7B79C"/><rect x="18" y="21" width="64" height="16" fill="#141618"/><rect x="42" y="37" width="16" height="58" fill="#2E4A43"/><rect x="45.5" y="37" width="9" height="56" fill="#141618"/><rect x="49.2" y="41" width="1.6" height="46" fill="#C7B79C"/><rect x="34" y="95" width="32" height="5" fill="#C7B79C"/><rect x="30.5" y="100" width="39" height="4" fill="#141618"/><rect x="26" y="106.5" width="48" height="1.8" fill="#141618"/><rect x="21" y="110.5" width="58" height="1.2" fill="#C7B79C"/></svg></div>
       <div class="cap"><b>Versão principal</b><span>Sobre fundo claro — clay ou paper</span></div>
     </div>
     <div class="mark-card on-ink">
-      <div class="stage"><svg viewBox="0 0 100 116"><rect x="15" y="18" width="70" height="22" fill="#C7B79C"/><rect x="18" y="21" width="64" height="16" fill="#EFE8DC"/><rect x="42" y="37" width="16" height="58" fill="#7FA396"/><rect x="45" y="37" width="10" height="56" fill="#EFE8DC"/><rect x="49.2" y="41" width="1.6" height="46" fill="#C7B79C"/><rect x="38" y="95" width="24" height="5" fill="#C7B79C"/><rect x="33" y="100" width="34" height="4" fill="#EFE8DC"/><rect x="26" y="106.5" width="48" height="1.8" fill="#EFE8DC"/><rect x="21" y="110.5" width="58" height="1.2" fill="#C7B79C"/></svg></div>
+      <div class="stage"><svg viewBox="0 0 100 116"><rect x="15" y="18" width="70" height="22" fill="#C7B79C"/><rect x="18" y="21" width="64" height="16" fill="#141618"/><rect x="42" y="37" width="16" height="58" fill="#2E4A43"/><rect x="45.5" y="37" width="9" height="56" fill="#141618"/><rect x="49.2" y="41" width="1.6" height="46" fill="#C7B79C"/><rect x="34" y="95" width="32" height="5" fill="#C7B79C"/><rect x="30.5" y="100" width="39" height="4" fill="#141618"/><rect x="26" y="106.5" width="48" height="1.8" fill="#141618"/><rect x="21" y="110.5" width="58" height="1.2" fill="#C7B79C"/></svg></div>
       <div class="cap"><b>Versão invertida</b><span>Sobre ink — modais, toasts, apresentações</span></div>
+    </div>
+    <div class="mark-card on-black">
+      <div class="stage"><svg viewBox="0 0 100 116"><rect x="15" y="18" width="70" height="22" fill="#C7B79C"/><rect x="18" y="21" width="64" height="16" fill="#6B5D45"/><rect x="42" y="37" width="16" height="58" fill="#2E4A43"/><rect x="45.5" y="37" width="9" height="56" fill="#6B5D45"/><rect x="49.2" y="41" width="1.6" height="46" fill="#C7B79C"/><rect x="34" y="95" width="32" height="5" fill="#C7B79C"/><rect x="30.5" y="100" width="39" height="4" fill="#6B5D45"/><rect x="26" y="106.5" width="48" height="1.8" fill="#6B5D45"/><rect x="21" y="110.5" width="58" height="1.2" fill="#C7B79C"/></svg></div>
+      <div class="cap"><b>Selo · sobre preto puro</b><span>Cartão, carimbo, papelaria fundadora — areia escura substitui o núcleo ink para manter a leitura em três camadas mesmo sem preto</span></div>
     </div>
   </div>
 
