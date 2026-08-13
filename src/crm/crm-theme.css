@@ -10,6 +10,19 @@
    Palette derived from the brand mineral tones (black, green, sand,
    ivory clay), rebalanced for dark, not the accent used elsewhere. */
 
+/* This stylesheet is only ever loaded by crm-main.jsx (never the Hub's or
+   Portal's own bundle), so html/body can go dark unconditionally here —
+   otherwise body keeps index.css's light --color-clay background (only the
+   .crm-dark-scoped div inside it goes dark), which bleeds through as a
+   flash on load and in any overscroll/rubber-band area, breaking the
+   "matches the rest of the dark CRM" expectation everywhere else already
+   meets. */
+html,
+body {
+  background: #0c0d0e;
+  color-scheme: dark;
+}
+
 .crm-dark {
   color-scheme: dark;
 
