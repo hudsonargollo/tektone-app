@@ -508,8 +508,8 @@ export default function App() {
           >
             <Menu size={20} />
           </button>
-          <LogoMark className="h-7 w-auto" />
-          <span className="text-sm font-semibold tracking-[0.28em] text-ink sm:tracking-[0.3em]">
+          <LogoMark className="h-8 w-auto sm:h-7" />
+          <span className="hidden text-sm font-semibold tracking-[0.28em] text-ink sm:inline sm:tracking-[0.3em]">
             TEKTONE
           </span>
           <span className="serif hidden text-[13px] text-stone-500 md:inline">
