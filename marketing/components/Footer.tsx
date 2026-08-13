@@ -1,6 +1,37 @@
-import { ArrowRight, AtSign, Link as LinkIcon, Mail } from "lucide-react";
+import { ArrowRight, Mail } from "lucide-react";
 import Link from "next/link";
 import Logo from "@/components/Logo";
+
+// lucide-react dropped brand/logo glyphs a while back, so these two are
+// drawn by hand — plain currentColor strokes to stay monochrome and match
+// the other footer icons' weight (h-3.5 w-3.5, stroke-width ~2).
+function InstagramIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+      <rect x="3" y="3" width="18" height="18" rx="5" stroke="currentColor" strokeWidth="2" />
+      <circle cx="12" cy="12" r="4.2" stroke="currentColor" strokeWidth="2" />
+      <circle cx="17.2" cy="6.8" r="1.1" fill="currentColor" />
+    </svg>
+  );
+}
+
+function LinkedinIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+      <rect x="3" y="3" width="18" height="18" rx="3" stroke="currentColor" strokeWidth="2" />
+      <circle cx="7.5" cy="7.8" r="1.15" fill="currentColor" />
+      <path d="M7.5 11v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <path
+        d="M11.5 17v-3.6c0-1.3.9-2.2 2.1-2.2s2.1.9 2.1 2.2V17"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path d="M11.5 11v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
 
 export default function Footer() {
   return (
@@ -50,15 +81,15 @@ export default function Footer() {
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 transition-colors hover:text-green-mist"
             >
-              <AtSign className="h-3.5 w-3.5" /> @Tektone.co
+              <InstagramIcon className="h-3.5 w-3.5" /> @Tektone.co
             </a>
             <a
-              href="https://www.linkedin.com/company/tektone"
+              href="https://www.linkedin.com/company/tektoneco"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 transition-colors hover:text-green-mist"
             >
-              <LinkIcon className="h-3.5 w-3.5" /> Tektone
+              <LinkedinIcon className="h-3.5 w-3.5" /> Tektone
             </a>
             <a
               href="mailto:Matrix@tektone.com.br"

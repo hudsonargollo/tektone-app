@@ -5,11 +5,8 @@ import { useEffect, useRef, useState } from "react";
 import { Check, ArrowRight, ArrowLeft, ShieldCheck, X } from "lucide-react";
 import SectionBlob from "@/components/SectionBlob";
 
-// TODO(Hudson): confirm the real WhatsApp number for qualified-lead
-// handoff — no number exists anywhere in the codebase yet, this is a
-// placeholder so the CTA doesn't dead-link.
 const WHATSAPP_URL =
-  "https://wa.me/5565000000000?text=" +
+  "https://wa.me/5547989110551?text=" +
   encodeURIComponent("Fui aprovado na qualificação da Tektone e quero agendar minha call de diagnóstico.");
 
 type Option = { value: string; label: string };
@@ -171,7 +168,7 @@ function ChoiceList({
             key={o.value}
             type="button"
             onClick={() => onChange(o.value)}
-            className={`rounded-lg border px-4 py-3 text-left text-sm leading-snug transition-all duration-150 ${
+            className={`rounded-lg border px-4 py-3 text-left text-[15px] leading-snug transition-all duration-150 ${
               active
                 ? "border-green bg-green-subtle text-ink"
                 : "border-sand-dark/25 bg-paper text-ink/60 hover:border-sand-dark/50"
@@ -188,7 +185,7 @@ function ChoiceList({
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="mb-2 block font-mono text-[11px] tracking-[0.18em] uppercase text-ink/40">
+      <span className="mb-2.5 block text-base font-semibold leading-snug text-ink sm:text-lg">
         {label}
       </span>
       {children}
@@ -633,7 +630,7 @@ export default function QualificacaoSection() {
                               key={g}
                               type="button"
                               onClick={() => toggleGoal(g)}
-                              className={`flex items-start gap-2.5 rounded-lg border px-4 py-3 text-left text-sm leading-snug transition-all duration-150 ${
+                              className={`flex items-start gap-2.5 rounded-lg border px-4 py-3 text-left text-[15px] leading-snug transition-all duration-150 ${
                                 active
                                   ? "border-green bg-green-subtle text-ink"
                                   : "border-sand-dark/25 bg-paper text-ink/60 hover:border-sand-dark/50"

@@ -22,7 +22,9 @@ export default function AutoridadeSection() {
       <div className="absolute inset-0 grain-light mask-fade" aria-hidden />
       <SectionBlob tone="ochre" className="-left-24 top-10 h-[26rem] w-[26rem]" />
       <div className="relative mx-auto max-w-6xl px-6">
-        <p className="label-tech mb-4">Quem lidera a Tektone</p>
+        <h2 className="mb-4 text-3xl font-bold leading-tight tracking-display text-ink sm:text-4xl">
+          Quem lidera a Tektone
+        </h2>
 
         <div className="grid gap-12 lg:grid-cols-[0.8fr_1.2fr] lg:gap-16 items-start">
           {/* Portrait — video instead of a static photo. Same passe-partout
@@ -83,7 +85,7 @@ export default function AutoridadeSection() {
               transition={{ duration: 0.6, delay: 0.1, ease: EASE }}
               className="space-y-5 text-pretty text-lg leading-relaxed text-ink/70"
             >
-              <p>Prazer, Pedro Silvestrini.</p>
+              <p>Conheça o Pedro Silvestrini.</p>
               <p>
                 Aos 24 anos, Pedro já construiu uma trajetória um pouquinho
                 acima da média.

@@ -123,8 +123,8 @@ export default function Navbar({
             href="/login"
             className={
               isLight
-                ? "inline-flex items-center gap-1.5 rounded-md border border-ink/25 px-2.5 sm:px-4 py-2 text-[11px] sm:text-[13px] font-semibold text-ink transition-all duration-200 hover:border-ink/50 hover:bg-ink/5"
-                : "inline-flex items-center gap-1.5 rounded-md border border-ivory/30 px-2.5 sm:px-4 py-2 text-[11px] sm:text-[13px] font-semibold text-ivory transition-all duration-200 hover:border-ivory/60 hover:bg-ivory/10"
+                ? "inline-flex items-center gap-1.5 rounded-md border border-ink/25 px-2.5 sm:px-4 py-2 text-[11px] sm:text-[13px] font-semibold uppercase tracking-wide text-ink transition-all duration-200 hover:border-ink/50 hover:bg-ink/5"
+                : "inline-flex items-center gap-1.5 rounded-md border border-ivory/30 px-2.5 sm:px-4 py-2 text-[11px] sm:text-[13px] font-semibold uppercase tracking-wide text-ivory transition-all duration-200 hover:border-ivory/60 hover:bg-ivory/10"
             }
           >
             ACESSAR HUB
@@ -133,8 +133,8 @@ export default function Navbar({
             href={isLight ? "/#qualificacao" : "#qualificacao"}
             className={
               isLight
-                ? "group inline-flex items-center gap-1.5 rounded-md bg-green px-2.5 sm:px-4 py-2 text-[11px] sm:text-[13px] font-semibold text-ivory transition-all duration-200 hover:bg-green-hover"
-                : "group inline-flex items-center gap-1.5 rounded-md bg-ivory px-2.5 sm:px-4 py-2 text-[11px] sm:text-[13px] font-semibold text-ink transition-all duration-200 hover:bg-sand"
+                ? "group inline-flex items-center gap-1.5 rounded-md bg-green px-2.5 sm:px-4 py-2 text-[11px] sm:text-[13px] font-semibold uppercase tracking-wide text-ivory transition-all duration-200 hover:bg-green-hover"
+                : "group inline-flex items-center gap-1.5 rounded-md bg-ivory px-2.5 sm:px-4 py-2 text-[11px] sm:text-[13px] font-semibold uppercase tracking-wide text-ink transition-all duration-200 hover:bg-sand"
             }
           >
             Agendar call
