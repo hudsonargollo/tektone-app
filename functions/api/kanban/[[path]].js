@@ -455,6 +455,25 @@ export async function onRequest(context) {
   const [resource, id] = seg;
 
   try {
+    // ── MEDIA (card resource / comment images, streamed from R2) ──────────
+    // Session-gated (unlike /api/blog/media, which is public) — these are
+    // internal task attachments, never embedded in outbound emails, so
+    // there's no need for an unauthenticated route.
+    if (resource === "media" && seg.length > 1 && method === "GET") {
+      const email = await getSessionEmail(request, env);
+      if (!email) return json({ error: "unauthorized" }, 401);
+      if (!env.BLOG_MEDIA) return json({ error: "R2 (BLOG_MEDIA) não vinculado." }, 500);
+      const key = seg.slice(1).join("/");
+      const obj = await env.BLOG_MEDIA.get(key);
+      if (!obj) return json({ error: "not found" }, 404);
+      return new Response(obj.body, {
+        headers: {
+          "Content-Type": obj.httpMetadata?.contentType || "image/jpeg",
+          "Cache-Control": "private, max-age=86400",
+        },
+      });
+    }
+
     // ── CLIENTS ──────────────────────────────────────────────────────────
     if (resource === "clients") {
       if (!id) {
@@ -511,7 +530,15 @@ export async function onRequest(context) {
         if (!commentId && method === "POST") {
           const body = await request.json().catch(() => ({}));
           const text = String(body.text || "").trim();
-          if (!text) return json({ error: "Comentário vazio." }, 400);
+          // Only accept image descriptors this card's own /images upload
+          // route just handed back (key must live under this card's R2
+          // prefix) — never trust arbitrary keys from the client.
+          const keyPattern = new RegExp(`^cards/${id}/[a-z0-9]+\\.(png|jpe?g|webp|gif)$`, "i");
+          const images = (Array.isArray(body.images) ? body.images : [])
+            .filter((img) => img && typeof img.key === "string" && keyPattern.test(img.key))
+            .slice(0, 6)
+            .map((img) => ({ id: img.id || uid(), key: img.key, name: String(img.name || "").slice(0, 120) }));
+          if (!text && !images.length) return json({ error: "Comentário vazio." }, 400);
           // include the author too, so you can @mention yourself (e.g. to test)
           const mentioned = parseMentions(text, members)
             .map((m) => String(m.email || "").toLowerCase())
@@ -520,6 +547,7 @@ export async function onRequest(context) {
             id: uid(),
             text,
             kind: body.kind === "request" ? "request" : "comment",
+            images,
             author: email,
             authorName,
             mentions: [...new Set(mentioned)],
@@ -693,6 +721,46 @@ export async function onRequest(context) {
           return json({ card });
         }
         return json({ error: "Not found" }, 404);
+      }
+
+      // /cards/:id/images — upload a resource or comment image to R2, under
+      // cards/<cardId>/<uid>.<ext>. Returns a descriptor only; it's the
+      // caller's job to attach it — either onto card.images (PUT /cards/:id)
+      // for a resource, or into a comment's `images` (POST .../comments) —
+      // so this one route serves both surfaces without knowing which.
+      if (id && seg[2] === "images" && !seg[3] && method === "POST") {
+        const email = await getSessionEmail(request, env);
+        if (!email) return json({ error: "unauthorized" }, 401);
+        if (!env.BLOG_MEDIA) return json({ error: "R2 (BLOG_MEDIA) não vinculado." }, 500);
+        const cards = await loadCards(env);
+        const card = cards.find((c) => c.id === id);
+        if (!card) return json({ error: "Card not found" }, 404);
+
+        const body = await request.json().catch(() => ({}));
+        const m = /^data:(image\/(png|jpe?g|webp|gif));base64,([a-z0-9+/=]+)$/i.exec(
+          String(body.dataUrl || "")
+        );
+        if (!m) return json({ error: "Imagem inválida." }, 400);
+        const [, contentType, , b64] = m;
+        let bytes;
+        try {
+          bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+        } catch {
+          return json({ error: "Imagem inválida." }, 400);
+        }
+        if (bytes.length > 8 * 1024 * 1024) return json({ error: "Imagem muito grande (máx. 8MB)." }, 400);
+
+        const ext = contentType.split("/")[1].replace("jpeg", "jpg");
+        const key = `cards/${id}/${uid()}.${ext}`;
+        await env.BLOG_MEDIA.put(key, bytes, { httpMetadata: { contentType } });
+        const image = {
+          id: uid(),
+          key,
+          name: String(body.name || "").slice(0, 120),
+          addedBy: email,
+          addedAt: new Date().toISOString(),
+        };
+        return json({ image }, 201);
       }
 
       // /cards/:id/review — mark reviewed, move to Done, notify + broadcast
@@ -993,6 +1061,13 @@ export async function onRequest(context) {
         }
         if (method === "DELETE") {
           await saveCards(env,cards.filter((c) => c.id !== id));
+          // Best-effort: sweep every R2 object under this card's prefix
+          // (resource images + comment images alike) so deleting a card
+          // doesn't leave orphaned blobs behind.
+          if (env.BLOG_MEDIA) {
+            const { objects } = await env.BLOG_MEDIA.list({ prefix: `cards/${id}/` });
+            await Promise.all(objects.map((o) => env.BLOG_MEDIA.delete(o.key).catch(() => {})));
+          }
           return json({ ok: true });
         }
       }

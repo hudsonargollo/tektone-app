@@ -93,12 +93,17 @@ export const api = {
   reviewCardsBulk: (ids) => req("/kanban/cards/review-bulk", { method: "POST", body: { ids } }),
 
   // comments / material requests
-  addComment: (cardId, text, kind) =>
-    req(`/kanban/cards/${cardId}/comments`, { method: "POST", body: { text, kind } }),
+  addComment: (cardId, text, kind, images) =>
+    req(`/kanban/cards/${cardId}/comments`, { method: "POST", body: { text, kind, images } }),
   resolveComment: (cardId, commentId) =>
     req(`/kanban/cards/${cardId}/comments/${commentId}/resolve`, { method: "POST" }),
   deleteComment: (cardId, commentId) =>
     req(`/kanban/cards/${cardId}/comments/${commentId}`, { method: "DELETE" }),
+
+  // card images — resource gallery + comment attachments, both upload
+  // through this one route (see functions/api/kanban/[[path]].js)
+  uploadCardImage: (cardId, dataUrl, name) =>
+    req(`/kanban/cards/${cardId}/images`, { method: "POST", body: { dataUrl, name } }),
 
   // meeting intelligence (interactive Claude analysis)
   analyzeMeeting: (body) => req("/analyze/meeting", { method: "POST", body }),

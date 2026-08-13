@@ -27,6 +27,8 @@ import {
   Route,
   Trophy,
   UserPlus,
+  ImagePlus,
+  Paperclip,
 } from "lucide-react";
 import { COLUMNS, PRIORITY, LABEL_COLORS } from "@/lib/constants";
 import { Avatar, Spinner, useIsMobile } from "@/components/ui";
@@ -36,6 +38,38 @@ const labelCls =
   "mb-1.5 block font-mono text-[11px] font-medium uppercase tracking-[0.16em] text-stone-500";
 const inputCls =
   "w-full rounded-lg border border-ink/15 bg-ink/[0.03] px-3 py-2.5 text-sm text-ink outline-none transition-colors placeholder:text-stone-400 focus:border-action";
+
+// ── Card/comment image uploads ────────────────────────────────────────────
+// Same route serves both surfaces (functions/api/kanban/[[path]].js) — it
+// only uploads to R2 and hands back a descriptor; attaching it to a card's
+// resource gallery vs. a comment is the caller's decision.
+const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+const mediaUrl = (key) => `${API_BASE}/api/kanban/media/${key}`;
+
+// Downscales to a max side before upload — keeps R2/D1 payloads small
+// without a server-side image pipeline. Skips re-encoding a JPEG that's
+// already small enough.
+async function fileToImageDataUrl(file, maxSide = 1600) {
+  const dataUrl = await new Promise((res, rej) => {
+    const fr = new FileReader();
+    fr.onload = () => res(fr.result);
+    fr.onerror = rej;
+    fr.readAsDataURL(file);
+  });
+  const img = await new Promise((res, rej) => {
+    const im = new Image();
+    im.onload = () => res(im);
+    im.onerror = rej;
+    im.src = dataUrl;
+  });
+  const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+  if (scale === 1 && file.type === "image/jpeg") return dataUrl;
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(img.width * scale);
+  canvas.height = Math.round(img.height * scale);
+  canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL("image/jpeg", 0.85);
+}
 
 // ── Field wrapper ─────────────────────────────────────────────────────────────
 function Field({ label, children }) {
@@ -905,6 +939,90 @@ function Links({ items, onChange }) {
   );
 }
 
+// ── Image resources ────────────────────────────────────────────────────────
+function ImageThumb({ item, onRemove }) {
+  return (
+    <div className="group/img relative aspect-square overflow-hidden rounded-lg border border-ink/10 bg-ink/[0.03]">
+      <a href={mediaUrl(item.key)} target="_blank" rel="noopener noreferrer">
+        <img src={mediaUrl(item.key)} alt={item.name || ""} className="h-full w-full object-cover" />
+      </a>
+      {onRemove && (
+        <button
+          type="button"
+          onClick={() => onRemove(item.id)}
+          className="absolute right-1 top-1 rounded-full bg-ink/70 p-1 text-clay opacity-0 transition-opacity hover:bg-danger group-hover/img:opacity-100"
+          title="Remover imagem"
+        >
+          <X size={11} />
+        </button>
+      )}
+    </div>
+  );
+}
+
+function Images({ cardId, items, onChange }) {
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState("");
+  const inputRef = useRef(null);
+  const list = items ?? [];
+
+  const upload = async (files) => {
+    setUploading(true);
+    setError("");
+    try {
+      const added = [];
+      for (const file of files) {
+        if (!file.type.startsWith("image/")) continue;
+        const dataUrl = await fileToImageDataUrl(file);
+        const { image } = await api.uploadCardImage(cardId, dataUrl, file.name);
+        added.push(image);
+      }
+      if (added.length) onChange([...list, ...added]);
+    } catch (e) {
+      setError(e.body?.error || "Falha ao enviar imagem.");
+    } finally {
+      setUploading(false);
+    }
+  };
+  const remove = (id) => onChange(list.filter((i) => i.id !== id));
+
+  return (
+    <div>
+      <label className={labelCls}>Imagens</label>
+
+      {list.length > 0 && (
+        <div className="mb-2 grid grid-cols-4 gap-2">
+          {list.map((i) => (
+            <ImageThumb key={i.id} item={i} onRemove={remove} />
+          ))}
+        </div>
+      )}
+
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        className="hidden"
+        onChange={(e) => {
+          const files = Array.from(e.target.files || []);
+          e.target.value = "";
+          if (files.length) upload(files);
+        }}
+      />
+      <button
+        type="button"
+        onClick={() => inputRef.current?.click()}
+        disabled={uploading}
+        className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-ink/20 px-3 py-2 text-xs font-semibold text-stone-500 transition-colors hover:border-action/40 hover:text-action disabled:opacity-50"
+      >
+        {uploading ? <Spinner /> : <ImagePlus size={14} />} {uploading ? "Enviando…" : "Adicionar imagem"}
+      </button>
+      {error && <p className="mt-1 font-mono text-[10px] text-danger">{error}</p>}
+    </div>
+  );
+}
+
 // ── Multiple assignees ────────────────────────────────────────────────────────
 export function MultiAssignee({ members, value, onChange, avatarByName }) {
   const [open, setOpen] = useState(false);
@@ -1116,8 +1234,25 @@ function Comments({ cardId, comments, members = [], assignees = [], currentUser,
   const [kind, setKind] = useState("comment");
   const [busy, setBusy] = useState(false);
   const [mentionList, setMentionList] = useState([]);
+  const [pendingImages, setPendingImages] = useState([]);
+  const [uploadingImg, setUploadingImg] = useState(false);
+  const imgInputRef = useRef(null);
   const list = comments ?? [];
   const firstNames = new Set(members.map((m) => m.name.split(/\s+/)[0].toLowerCase()));
+
+  const attachImages = async (files) => {
+    setUploadingImg(true);
+    try {
+      for (const file of files) {
+        if (!file.type.startsWith("image/")) continue;
+        const dataUrl = await fileToImageDataUrl(file);
+        const { image } = await api.uploadCardImage(cardId, dataUrl, file.name);
+        setPendingImages((p) => [...p, image]);
+      }
+    } finally {
+      setUploadingImg(false);
+    }
+  };
 
   const onText = (val) => {
     setText(val);
@@ -1141,14 +1276,15 @@ function Comments({ cardId, comments, members = [], assignees = [], currentUser,
 
   const submit = async () => {
     const t = text.trim();
-    if (!t || busy) return;
+    if ((!t && !pendingImages.length) || busy) return;
     setBusy(true);
     try {
-      const { card } = await api.addComment(cardId, t, kind);
+      const { card } = await api.addComment(cardId, t, kind, pendingImages);
       onUpdate(card);
       setText("");
       setKind("comment");
       setMentionList([]);
+      setPendingImages([]);
     } finally {
       setBusy(false);
     }
@@ -1241,9 +1377,26 @@ function Comments({ cardId, comments, members = [], assignees = [], currentUser,
                     </button>
                   )}
                 </div>
-                <p className={`whitespace-pre-wrap text-sm ${done ? "text-stone-400 line-through" : "text-stone-700"}`}>
-                  {renderWithMentions(c.text, firstNames)}
-                </p>
+                {c.text && (
+                  <p className={`whitespace-pre-wrap text-sm ${done ? "text-stone-400 line-through" : "text-stone-700"}`}>
+                    {renderWithMentions(c.text, firstNames)}
+                  </p>
+                )}
+                {c.images?.length > 0 && (
+                  <div className="mt-1.5 flex flex-wrap gap-1.5">
+                    {c.images.map((img) => (
+                      <a
+                        key={img.id}
+                        href={mediaUrl(img.key)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block h-16 w-16 overflow-hidden rounded-md border border-ink/10"
+                      >
+                        <img src={mediaUrl(img.key)} alt={img.name || ""} className="h-full w-full object-cover" />
+                      </a>
+                    ))}
+                  </div>
+                )}
                 {isReq && (
                   <button
                     onClick={() => resolve(c.id)}
@@ -1279,6 +1432,23 @@ function Comments({ cardId, comments, members = [], assignees = [], currentUser,
             ))}
           </ul>
         )}
+        {pendingImages.length > 0 && (
+          <div className="mb-1.5 flex flex-wrap gap-1.5">
+            {pendingImages.map((img) => (
+              <div key={img.id} className="group/pimg relative h-12 w-12 shrink-0 overflow-hidden rounded-md border border-ink/10">
+                <img src={mediaUrl(img.key)} alt={img.name || ""} className="h-full w-full object-cover" />
+                <button
+                  type="button"
+                  onClick={() => setPendingImages((p) => p.filter((x) => x.id !== img.id))}
+                  className="absolute inset-0 flex items-center justify-center bg-ink/60 text-clay opacity-0 transition-opacity hover:opacity-100 group-hover/pimg:opacity-100"
+                  title="Remover"
+                >
+                  <X size={13} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
         <textarea
           rows={2}
           value={text}
@@ -1300,22 +1470,45 @@ function Comments({ cardId, comments, members = [], assignees = [], currentUser,
           className="w-full resize-none bg-transparent text-sm text-ink outline-none placeholder:text-stone-400"
         />
         <div className="mt-1.5 flex items-center justify-between gap-2">
-          <button
-            type="button"
-            onClick={() => setKind((k) => (k === "request" ? "comment" : "request"))}
-            className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-semibold transition-colors ${
-              kind === "request"
-                ? "border-warning/40 bg-warning/10 text-warning"
-                : "border-ink/15 text-stone-500 hover:text-ink"
-            }`}
-            title="Transformar em solicitação"
-          >
-            <Package size={12} /> {kind === "request" ? "Solicitação" : "Fazer solicitação"}
-          </button>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setKind((k) => (k === "request" ? "comment" : "request"))}
+              className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-semibold transition-colors ${
+                kind === "request"
+                  ? "border-warning/40 bg-warning/10 text-warning"
+                  : "border-ink/15 text-stone-500 hover:text-ink"
+              }`}
+              title="Transformar em solicitação"
+            >
+              <Package size={12} /> {kind === "request" ? "Solicitação" : "Fazer solicitação"}
+            </button>
+            <input
+              ref={imgInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={(e) => {
+                const files = Array.from(e.target.files || []);
+                e.target.value = "";
+                if (files.length) attachImages(files);
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => imgInputRef.current?.click()}
+              disabled={uploadingImg}
+              title="Anexar imagem"
+              className="inline-flex items-center gap-1 rounded-md border border-ink/15 px-2 py-1 text-[11px] font-semibold text-stone-500 transition-colors hover:text-ink disabled:opacity-50"
+            >
+              {uploadingImg ? <Spinner /> : <Paperclip size={12} />}
+            </button>
+          </div>
           <button
             type="button"
             onClick={submit}
-            disabled={busy || !text.trim()}
+            disabled={busy || (!text.trim() && !pendingImages.length)}
             className="inline-flex items-center gap-1.5 rounded-md bg-action px-3 py-1.5 text-[12px] font-bold text-clay transition-all hover:brightness-110 disabled:opacity-40"
           >
             <Send size={12} /> Enviar
@@ -1384,6 +1577,19 @@ export default function CardModal({
     setD((p) => ({ ...p, checklist: next }));
     try {
       const { card: serverCard } = await api.updateCard(card.id, { checklist: next });
+      onCardUpdated?.(serverCard);
+    } catch {
+      /* keep the optimistic local state; the global Salvar will retry the write */
+    }
+  };
+
+  // Same autosave pattern as Links/Checklist — the image itself is already
+  // durably in R2 the moment it's uploaded, but the gallery order/membership
+  // on the card needs to persist immediately too.
+  const saveImages = async (next) => {
+    setD((p) => ({ ...p, images: next }));
+    try {
+      const { card: serverCard } = await api.updateCard(card.id, { images: next });
       onCardUpdated?.(serverCard);
     } catch {
       /* keep the optimistic local state; the global Salvar will retry the write */
@@ -1597,6 +1803,7 @@ export default function CardModal({
                 </div>
               </Field>
               <Links items={d.links} onChange={saveLinks} />
+              <Images cardId={card.id} items={d.images} onChange={saveImages} />
             </div>
           </div>
 
