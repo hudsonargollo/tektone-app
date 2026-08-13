@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { LayoutGrid, Wallet, Briefcase, Newspaper, Sparkles, ShieldCheck, ListChecks, TrendingUp, ChevronsLeft, ChevronsRight, Award, Instagram } from "lucide-react";
 
 // Persistent, collapsible desktop-only app-level navigation — distinct from
@@ -22,51 +23,65 @@ const NAV_ITEMS = [
 
 export default function AppSidebar({ view, onNavigate, collapsed, onToggleCollapse, isAdmin, financeAccess, crmRole }) {
   const perms = { isAdmin, financeAccess, crmRole };
+  const [hovered, setHovered] = useState(false);
+  // "Peeking": pinned collapsed but temporarily shown wide via hover —
+  // doesn't touch the persisted `collapsed` preference, just floats a wider
+  // copy over the content on the right (aside is absolutely positioned
+  // inside a wrapper that keeps reserving the narrow w-14 in normal flow,
+  // so hovering never reflows the board underneath).
+  const peeking = collapsed && hovered;
+  const expanded = !collapsed || peeking;
 
   return (
-    <aside
-      className={`hidden shrink-0 flex-col border-r border-ink/10 bg-clay/60 py-3 transition-[width] duration-200 lg:flex ${
-        collapsed ? "w-14" : "w-52"
-      }`}
+    <div
+      className={`relative hidden shrink-0 transition-[width] duration-200 lg:block ${collapsed ? "w-14" : "w-52"}`}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
     >
-      <nav className="flex flex-1 flex-col gap-1 px-2">
-        {NAV_ITEMS.filter((item) => item.show(perms)).map((item) => {
-          const Icon = item.icon;
-          const active = view === item.key;
-          return (
-            <button
-              key={item.key}
-              onClick={() => onNavigate(item.key)}
-              title={collapsed ? item.label : undefined}
-              className={`flex items-center gap-3 rounded-lg px-2.5 py-2.5 text-left transition-colors ${
-                active ? "bg-action/10 text-action" : "text-stone-500 hover:bg-ink/[0.05] hover:text-ink"
-              }`}
-            >
-              <Icon size={17} className="shrink-0" />
-              {!collapsed && <span className="truncate font-mono text-[11px] tracking-wide">{item.label}</span>}
-            </button>
-          );
-        })}
-        {crmRole && (
-          <a
-            href="/crm"
-            title={collapsed ? "CRM" : undefined}
-            className="flex items-center gap-3 rounded-lg px-2.5 py-2.5 text-left text-stone-500 transition-colors hover:bg-ink/[0.05] hover:text-ink"
-          >
-            <TrendingUp size={17} className="shrink-0" />
-            {!collapsed && <span className="truncate font-mono text-[11px] tracking-wide">CRM</span>}
-          </a>
-        )}
-      </nav>
-
-      <button
-        onClick={onToggleCollapse}
-        title={collapsed ? "Expandir menu" : "Recolher menu"}
-        className="mx-2 flex items-center gap-3 rounded-lg px-2.5 py-2.5 text-stone-400 transition-colors hover:bg-ink/[0.05] hover:text-ink"
+      <aside
+        className={`absolute inset-y-0 left-0 z-30 flex flex-col border-r border-ink/10 py-3 transition-[width] duration-150 ${
+          expanded ? "w-52" : "w-14"
+        } ${peeking ? "bg-clay shadow-2xl" : "bg-clay/60"}`}
       >
-        {collapsed ? <ChevronsRight size={17} /> : <ChevronsLeft size={17} />}
-        {!collapsed && <span className="font-mono text-[11px] tracking-wide">recolher</span>}
-      </button>
-    </aside>
+        <nav className="flex flex-1 flex-col gap-1 px-2">
+          {NAV_ITEMS.filter((item) => item.show(perms)).map((item) => {
+            const Icon = item.icon;
+            const active = view === item.key;
+            return (
+              <button
+                key={item.key}
+                onClick={() => onNavigate(item.key)}
+                title={expanded ? undefined : item.label}
+                className={`flex items-center gap-3 rounded-lg px-2.5 py-2.5 text-left transition-colors ${
+                  active ? "bg-action/10 text-action" : "text-stone-500 hover:bg-ink/[0.05] hover:text-ink"
+                }`}
+              >
+                <Icon size={17} className="shrink-0" />
+                {expanded && <span className="truncate font-mono text-[11px] tracking-wide">{item.label}</span>}
+              </button>
+            );
+          })}
+          {crmRole && (
+            <a
+              href="/crm"
+              title={expanded ? undefined : "CRM"}
+              className="flex items-center gap-3 rounded-lg px-2.5 py-2.5 text-left text-stone-500 transition-colors hover:bg-ink/[0.05] hover:text-ink"
+            >
+              <TrendingUp size={17} className="shrink-0" />
+              {expanded && <span className="truncate font-mono text-[11px] tracking-wide">CRM</span>}
+            </a>
+          )}
+        </nav>
+
+        <button
+          onClick={onToggleCollapse}
+          title={expanded ? undefined : collapsed ? "Expandir menu" : "Recolher menu"}
+          className="mx-2 flex items-center gap-3 rounded-lg px-2.5 py-2.5 text-stone-400 transition-colors hover:bg-ink/[0.05] hover:text-ink"
+        >
+          {collapsed ? <ChevronsRight size={17} /> : <ChevronsLeft size={17} />}
+          {expanded && <span className="font-mono text-[11px] tracking-wide">recolher</span>}
+        </button>
+      </aside>
+    </div>
   );
 }
