@@ -9,6 +9,13 @@ import CrmLeads from "@/crm/CrmLeads";
 import CrmLeadDetail from "@/crm/CrmLeadDetail";
 import CrmSales from "@/crm/CrmSales";
 
+// Phase D (WhatsApp/URL link manager) adds a "links" entry + CrmWaLinks import here.
+const NAV_ITEMS = [
+  { key: "dashboard", label: "Dashboard", icon: LayoutGrid },
+  { key: "leads", label: "Pipeline", icon: Users },
+  { key: "sales", label: "Vendas", icon: DollarSign },
+];
+
 // Root of the CRM (tektone.com.br/crm) — same auth-gate shape as
 // PortalApp.jsx, but gated on crm_role (migration 0009_hub_crm.sql)
 // instead of access_role. A STAFF/ADMIN account with no crm_role set
@@ -46,17 +53,23 @@ export default function CrmApp() {
 
   if (authed === null) {
     return (
-      <div className="flex h-screen items-center justify-center bg-clay">
+      <div className="crm-dark flex h-screen items-center justify-center bg-clay">
         <Spinner />
       </div>
     );
   }
 
-  if (!authed) return <Login onAuthed={refreshMe} />;
+  if (!authed) {
+    return (
+      <div className="crm-dark bg-clay">
+        <Login onAuthed={refreshMe} />
+      </div>
+    );
+  }
 
   if (!crmRole) {
     return (
-      <div className="flex h-screen flex-col items-center justify-center gap-4 bg-clay px-6 text-center">
+      <div className="crm-dark flex h-screen flex-col items-center justify-center gap-4 bg-clay px-6 text-center">
         <LogoMark className="h-10 w-auto" />
         <p className="text-sm text-stone-500">
           Sua conta ({userEmail}) não tem acesso ao CRM. Peça a um admin para conceder
@@ -73,65 +86,89 @@ export default function CrmApp() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-clay">
-      <header className="flex h-14 shrink-0 items-center justify-between border-b border-ink/10 bg-clay/80 px-4 backdrop-blur-xl sm:px-6">
-        <div className="flex items-center gap-2">
-          <LogoMark className="h-7 w-auto" />
-          <span className="text-sm font-semibold tracking-[0.28em] text-ink">TEKTONE CRM</span>
+    <div className="crm-dark flex h-screen flex-col bg-clay lg:flex-row">
+      {/* Desktop left sidebar — mirrors the Hub's own AppSidebar pattern
+          (icon+label nav rail), dark-themed here instead of collapsible,
+          since the CRM only ever has a handful of top-level views. */}
+      <aside className="hidden w-52 shrink-0 flex-col border-r border-ink/10 bg-clay lg:flex">
+        <div className="flex items-center gap-2 px-4 py-4">
+          <LogoMark className="h-6 w-auto" />
+          <span className="font-mono text-[11px] font-semibold tracking-[0.24em] text-ink">CRM</span>
         </div>
-        <div className="flex items-center gap-3">
-          <span className="hidden items-center gap-2 sm:flex">
+        <nav className="flex flex-1 flex-col gap-1 px-2">
+          {NAV_ITEMS.map((item) => {
+            const Icon = item.icon;
+            const active = view.tab === item.key || (item.key === "leads" && view.tab === "lead");
+            return (
+              <button
+                key={item.key}
+                onClick={() => setView({ tab: item.key })}
+                className={`flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-left font-mono text-[11px] tracking-wide transition-colors ${
+                  active ? "bg-action text-clay" : "text-stone-500 hover:bg-ink/[0.05] hover:text-ink"
+                }`}
+              >
+                <Icon size={15} className="shrink-0" /> {item.label}
+              </button>
+            );
+          })}
+        </nav>
+        <div className="border-t border-ink/10 p-3">
+          <div className="mb-2 flex items-center gap-2 px-1">
             <Avatar name={userName || userEmail} src={userAvatar} />
-            <span className="font-mono text-[11px] text-stone-500">{userName || userEmail}</span>
-          </span>
+            <span className="truncate font-mono text-[11px] text-stone-500">{userName || userEmail}</span>
+          </div>
           <a
             href="/hub"
-            className="rounded-lg border border-ink/15 px-2.5 py-1.5 font-mono text-[11px] text-stone-500 hover:border-action/40"
+            className="mb-1.5 flex items-center rounded-lg border border-ink/15 px-2.5 py-1.5 font-mono text-[11px] text-stone-500 hover:border-action/40"
           >
-            hub
+            ← hub
           </a>
           <button
             onClick={logout}
-            className="flex items-center gap-1.5 rounded-lg border border-ink/15 px-2.5 py-1.5 font-mono text-[11px] text-stone-500 hover:border-danger/40 hover:text-danger"
+            className="flex w-full items-center gap-1.5 rounded-lg border border-ink/15 px-2.5 py-1.5 font-mono text-[11px] text-stone-500 hover:border-danger/40 hover:text-danger"
           >
             <LogOut size={12} /> sair
           </button>
         </div>
+      </aside>
+
+      {/* Mobile top bar — the sidebar's nav collapses to a horizontal pill
+          row here instead (small-screen fallback, same as the rest of the
+          Hub distinguishes desktop-rail vs. mobile-bar navigation). */}
+      <header className="flex shrink-0 items-center justify-between border-b border-ink/10 bg-clay/80 px-4 py-3 backdrop-blur-xl lg:hidden">
+        <div className="flex items-center gap-2">
+          <LogoMark className="h-6 w-auto" />
+          <span className="font-mono text-[11px] font-semibold tracking-[0.24em] text-ink">CRM</span>
+        </div>
+        <button
+          onClick={logout}
+          className="rounded-lg border border-ink/15 p-1.5 text-stone-500 hover:border-danger/40 hover:text-danger"
+        >
+          <LogOut size={13} />
+        </button>
       </header>
+      {view.tab !== "lead" && (
+        <div className="flex shrink-0 gap-1 overflow-x-auto border-b border-ink/10 bg-clay px-3 py-2 lg:hidden">
+          {NAV_ITEMS.map((item) => (
+            <button
+              key={item.key}
+              onClick={() => setView({ tab: item.key })}
+              className={`shrink-0 rounded-lg px-3 py-1.5 font-mono text-[11px] transition-colors ${
+                view.tab === item.key ? "bg-action text-clay" : "text-stone-500"
+              }`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+      )}
 
-      <div className="mx-auto w-full max-w-3xl flex-1 px-4 py-8 sm:px-6">
-        {view.tab !== "lead" && (
-          <div className="mb-6 flex gap-1 rounded-lg surface-3 p-1">
-            <NavBtn active={view.tab === "dashboard"} onClick={() => setView({ tab: "dashboard" })}>
-              <LayoutGrid size={13} /> dashboard
-            </NavBtn>
-            <NavBtn active={view.tab === "leads"} onClick={() => setView({ tab: "leads" })}>
-              <Users size={13} /> leads
-            </NavBtn>
-            <NavBtn active={view.tab === "sales"} onClick={() => setView({ tab: "sales" })}>
-              <DollarSign size={13} /> vendas
-            </NavBtn>
-          </div>
-        )}
-
+      <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
         {view.tab === "dashboard" && <CrmDashboard />}
         {view.tab === "leads" && <CrmLeads onOpenLead={(id) => setView({ tab: "lead", leadId: id })} />}
         {view.tab === "lead" && <CrmLeadDetail leadId={view.leadId} onBack={() => setView({ tab: "leads" })} />}
         {view.tab === "sales" && <CrmSales />}
       </div>
     </div>
-  );
-}
-
-function NavBtn({ active, onClick, children }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`flex flex-1 items-center justify-center gap-1.5 rounded-md py-2 font-mono text-[11px] transition-colors ${
-        active ? "bg-clay text-ink shadow-sm" : "text-stone-500"
-      }`}
-    >
-      {children}
-    </button>
   );
 }

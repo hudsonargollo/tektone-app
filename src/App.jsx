@@ -692,7 +692,7 @@ export default function App() {
           >
             <LayoutGrid size={20} />
           </span>
-          Quadro
+          Projetos
         </button>
         <button
           onClick={() => {

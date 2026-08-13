@@ -357,38 +357,40 @@ export default function SocialPostGenerator({ onClose }) {
             </div>
 
             <div className="flex flex-col gap-4">
-              <div>
-                <label className="mb-1.5 block font-mono text-[10px] uppercase tracking-wide text-stone-500">
-                  Objetivo
-                </label>
-                <select
-                  value={objective}
-                  onChange={(e) => setObjective(e.target.value)}
-                  className="w-full max-w-sm rounded-lg border border-ink/15 bg-clay px-3 py-2 text-sm text-ink outline-none focus:border-action"
-                >
-                  {OBJECTIVES.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <div className="flex flex-col gap-4 sm:flex-row">
+                <div className="flex-1">
+                  <label className="mb-1.5 block font-mono text-[10px] uppercase tracking-wide text-stone-500">
+                    Objetivo
+                  </label>
+                  <select
+                    value={objective}
+                    onChange={(e) => setObjective(e.target.value)}
+                    className="w-full rounded-lg border border-ink/15 bg-clay px-3 py-2 text-sm text-ink outline-none focus:border-action"
+                  >
+                    {OBJECTIVES.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-              <div>
-                <label className="mb-1.5 block font-mono text-[10px] uppercase tracking-wide text-stone-500">
-                  Tom visual
-                </label>
-                <select
-                  value={visualTone}
-                  onChange={(e) => setVisualTone(e.target.value)}
-                  className="w-full max-w-sm rounded-lg border border-ink/15 bg-clay px-3 py-2 text-sm text-ink outline-none focus:border-action"
-                >
-                  {VISUAL_TONES.map((t) => (
-                    <option key={t} value={t}>
-                      {t}
-                    </option>
-                  ))}
-                </select>
+                <div className="flex-1">
+                  <label className="mb-1.5 block font-mono text-[10px] uppercase tracking-wide text-stone-500">
+                    Tom visual
+                  </label>
+                  <select
+                    value={visualTone}
+                    onChange={(e) => setVisualTone(e.target.value)}
+                    className="w-full rounded-lg border border-ink/15 bg-clay px-3 py-2 text-sm text-ink outline-none focus:border-action"
+                  >
+                    {VISUAL_TONES.map((t) => (
+                      <option key={t} value={t}>
+                        {t}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               {postFormat !== "carousel" && (

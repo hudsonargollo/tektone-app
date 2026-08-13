@@ -10,7 +10,7 @@ import { LayoutGrid, Wallet, Briefcase, Newspaper, Sparkles, ShieldCheck, ListCh
 // becomes "board", overriding whatever the user had set elsewhere, but
 // stays independently toggleable while there).
 const NAV_ITEMS = [
-  { key: "board", label: "Quadro", icon: LayoutGrid, show: () => true },
+  { key: "board", label: "Projetos", icon: LayoutGrid, show: () => true },
   { key: "todos", label: "Minhas tarefas", icon: ListChecks, show: () => true },
   { key: "journey", label: "Jornada", icon: Award, show: () => true },
   { key: "meetings", label: "Reuniões", icon: Sparkles, show: () => true },
