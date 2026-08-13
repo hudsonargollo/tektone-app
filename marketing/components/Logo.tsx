@@ -4,25 +4,25 @@
  * variants, never stretch off the 100×116 viewBox.
  */
 
-// "ink" and "ivory" both render the same true brand-guide colors (Mineral
-// Black core, Mineral Green pillar, Sand frame — matches src/components/
-// LogoMark.jsx, the Hub's own logo, which never had a separate "light
-// background" palette). The sand frame is what silhouettes the mark
-// against a dark background — it doesn't need a brightened core to read;
-// a brightened core just collapses the panel/frame contrast that makes
-// the three materials legible in the first place. Kept as two distinct
-// keys so call sites can still express intent even though they resolve
-// identically today.
+// "ink" renders the true brand-guide colors (Mineral Black core, Mineral
+// Green pillar, Sand frame — matches src/components/LogoMark.jsx, the
+// Hub's own logo) for LIGHT/flat backgrounds, where the sand frame alone
+// gives the core plenty of contrast to read against.
 //
-// "onBlack" is different on purpose: against TRUE black (#000, not the
-// --ink #141618 the other two read fine against), even the sand frame's
-// contrast advantage isn't enough on its own to be worth a second color —
-// so the core swaps to a dark beige (same hue family as the sand frame,
-// just lower lightness) instead of black, preserving the three-layer
-// read (light frame / dark-beige core / green pillar) purely through
-// value contrast within one warm palette. For business cards, wax-seal
-// style stamps, papelaria fundadora — see app/brand/route.ts's "Selo ·
-// sobre preto puro" swatch.
+// "ivory" and "onBlack" both use a dark-beige core instead of true black
+// — same hue family as the sand frame, just lower lightness — for any
+// DARK or busy/photographic background. A flat dark swatch (like the
+// brand guide's own reference renders) is forgiving enough that a black
+// core still reads fine against it purely via the sand frame's outline,
+// which is what an earlier pass here assumed applied everywhere. It
+// doesn't: against the homepage hero's dark photographic backdrop
+// (Navbar's scrolled state, HeroSection, Footer, HubTektoneSection —
+// everywhere "ivory" is used), a true-black core has nowhere near enough
+// value separation from the busy dark photo behind it and the mark reads
+// as a flat, nearly hollow outline instead of a dimensional, layered
+// mark. Dark beige guarantees contrast against ANY dark surface,
+// flat or busy, the same way it does for the "onBlack" business-card
+// swatch (app/brand/route.ts's "Selo · sobre preto puro").
 const VARIANTS = {
   ink: {
     sand: "#C7B79C",
@@ -31,7 +31,7 @@ const VARIANTS = {
   },
   ivory: {
     sand: "#C7B79C",
-    panel: "#141618",
+    panel: "#6B5D45",
     shaft: "#2E4A43",
   },
   onBlack: {
