@@ -56,7 +56,7 @@ export default function CrmApp() {
 
   if (authed === null) {
     return (
-      <div className="crm-dark flex h-screen items-center justify-center bg-clay">
+      <div className="flex h-screen items-center justify-center bg-clay">
         <Spinner />
       </div>
     );
@@ -64,7 +64,7 @@ export default function CrmApp() {
 
   if (!authed) {
     return (
-      <div className="crm-dark bg-clay">
+      <div className="bg-clay">
         <Login onAuthed={refreshMe} />
       </div>
     );
@@ -72,7 +72,7 @@ export default function CrmApp() {
 
   if (!crmRole) {
     return (
-      <div className="crm-dark flex h-screen flex-col items-center justify-center gap-4 bg-clay px-6 text-center">
+      <div className="flex h-screen flex-col items-center justify-center gap-4 bg-clay px-6 text-center">
         <LogoMark className="h-10 w-auto" />
         <p className="text-sm text-stone-500">
           Sua conta ({userEmail}) não tem acesso ao CRM. Peça a um admin para conceder
@@ -89,7 +89,7 @@ export default function CrmApp() {
   }
 
   return (
-    <div className="crm-dark flex h-screen flex-col bg-clay lg:flex-row">
+    <div className="flex h-screen flex-col bg-clay lg:flex-row">
       {/* Desktop left sidebar — mirrors the Hub's own AppSidebar pattern
           (icon+label nav rail), dark-themed here instead of collapsible,
           since the CRM only ever has a handful of top-level views. */}

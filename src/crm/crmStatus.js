@@ -1,10 +1,9 @@
 // Shared status metadata + small helpers for the pipeline board and
 // dashboard. Stage/tier colors reference the SAME design tokens
-// crm-theme.css defines (sand/action/success/danger/warning) instead of
-// hardcoded hex or borrowed hues from Código Internacional's own board —
-// every color here is one already in Tektone's brand system, so the board
-// always stays bound to Tektone's own palette (and stays correct if the
-// dark-theme values in crm-theme.css ever get retuned).
+// index.css's @theme block defines (sand/action/success/danger/warning)
+// instead of hardcoded hex or borrowed hues from Código Internacional's
+// own board — every color here is one already in Tektone's brand system,
+// so the board always stays bound to Tektone's own palette.
 export const LEAD_STATUSES = [
   { key: "new", label: "Novo", color: "var(--color-sand)" },
   { key: "contacted", label: "Contatado", color: "var(--color-warning)" },
