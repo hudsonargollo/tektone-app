@@ -42,16 +42,31 @@ export default function Logo({
       aria-label="Tektone"
       className={className}
     >
-      {/* Architrave — 7:9 inner:outer height ratio per spec */}
+      {/* Architrave — inner:outer width ratio 0.914 (64/70), height ratio
+          0.773 (17/22). Verified by pixel-measuring the brand guide's
+          reference render directly (nearest-color classification across
+          many rows of a clean high-res crop): measured ratio 0.920 — a
+          near-exact match, confirming these original values were already
+          correct. (An earlier pass here briefly widened this to 68 off a
+          noisier measurement that turned out to be contaminated by the
+          reference page's caption text; reverted.) */}
       <rect x="15" y="18" width="70" height="22" fill={c.sand} />
       <rect x="18" y="20.5" width="64" height="17" fill={c.panel} />
-      {/* Pillar — 32:18:2 pillar:core:flute width ratio per spec */}
+      {/* Pillar — core:pillar width ratio 0.5625 (9/16). Same verified
+          pixel measurement gave 0.572 — again a near-exact match. (Also
+          briefly widened to 13 off the same bad measurement; reverted.) */}
       <rect x="42" y="37" width="16" height="58" fill={c.shaft} />
       <rect x="45.5" y="37" width="9" height="56" fill={c.panel} />
       <rect x="49.5" y="41" width="1" height="46" fill={c.sand} />
-      {/* Foundation — four descending strata: sand, stone, horizon, echo */}
-      <rect x="38" y="95" width="24" height="5" fill={c.sand} />
-      <rect x="33" y="100" width="34" height="4" fill={c.panel} />
+      {/* Foundation — four descending strata: sand, stone, horizon, echo.
+          Strata 1-2 widened based on the same pixel measurement (their
+          width relative to the architrave's inner black band measured
+          noticeably wider than originally coded — 0.50 and 0.61 vs the
+          previous 0.375 and 0.531). Strata 3-4 measurements were too
+          noisy (contaminated by the reference page's center-axis
+          guideline) to trust, so left as-is. */}
+      <rect x="34" y="95" width="32" height="5" fill={c.sand} />
+      <rect x="30.5" y="100" width="39" height="4" fill={c.panel} />
       <rect x="26" y="106.5" width="48" height="1.8" fill={c.panel} />
       <rect x="21" y="110.5" width="58" height="1.2" fill={c.sand} />
     </svg>
