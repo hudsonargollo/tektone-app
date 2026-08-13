@@ -11,12 +11,13 @@
 //   PATCH /api/blog/admin/posts/:id            — admin, edit before publish
 //   POST /api/blog/admin/posts/:id/approve     — admin, publish
 //   POST /api/blog/admin/posts/:id/reject      — admin, { reviewerNotes }
+//   POST /api/blog/admin/posts/:id/images       — admin, { prompt } → AI-generate an inline image, returns { key }
 //   POST /api/blog/admin/generate               — admin, manual draft trigger (all pillars)
 //   GET/POST/PATCH /api/blog/admin/pillars      — admin, pillar management
 import { getSessionEmail } from "../../_lib/session.js";
 import { getUserByEmail } from "../../_lib/db.js";
 import { isAdmin } from "../../_lib/rbac.js";
-import { generateDraft, generateWeeklyDrafts } from "../../../worker/lib/blogService.js";
+import { generateDraft, generateWeeklyDrafts, generateInlineImage } from "../../../worker/lib/blogService.js";
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), { status, headers: { "Content-Type": "application/json" } });
@@ -98,6 +99,14 @@ export async function onRequest(context) {
           .bind(user.email, seg[2])
           .run();
         return json({ ok: true });
+      }
+
+      if (seg[1] === "posts" && seg[2] && seg[3] === "images" && method === "POST") {
+        if (!env.BLOG_MEDIA) return json({ error: "R2 (BLOG_MEDIA) não vinculado." }, 500);
+        const body = await request.json().catch(() => ({}));
+        if (!body.prompt) return json({ error: "prompt obrigatório" }, 400);
+        const { key } = await generateInlineImage(env, { postId: seg[2], prompt: body.prompt });
+        return json({ key }, 201);
       }
 
       if (seg[1] === "posts" && seg[2] && seg[3] === "reject" && method === "POST") {

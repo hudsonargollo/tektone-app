@@ -64,7 +64,7 @@ function slugify(title) {
     .slice(0, 80);
 }
 
-async function generateIllustration(env, subjectPrompt) {
+export async function generateIllustration(env, subjectPrompt) {
   const result = await env.AI.run("@cf/black-forest-labs/flux-1-schnell", {
     prompt: `${subjectPrompt} ${ILLUSTRATION_STYLE}`,
     steps: 8,
@@ -72,6 +72,23 @@ async function generateIllustration(env, subjectPrompt) {
   // flux-1-schnell returns { image: base64String }
   const bytes = Uint8Array.from(atob(result.image), (c) => c.charCodeAt(0));
   return bytes;
+}
+
+/**
+ * On-demand inline image for the editor's "gerar imagem" control (see
+ * functions/api/blog/[[path]].js's POST .../images route and
+ * src/components/BlogPanel.jsx) — same generateIllustration() call the
+ * auto-cover uses, just keyed under the post instead of the pillar and
+ * with an editor-supplied prompt instead of the AI-drafted
+ * illustration_subject. Doesn't touch blog_posts at all: the caller
+ * inserts `![](media/<key>)` into the draft content itself and saves it
+ * through the normal PATCH .../posts/:id route.
+ */
+export async function generateInlineImage(env, { postId, prompt }) {
+  const imageBytes = await generateIllustration(env, prompt);
+  const key = `posts/${postId}/${uid()}.png`;
+  await env.BLOG_MEDIA.put(key, imageBytes, { httpMetadata: { contentType: "image/png" } });
+  return { key };
 }
 
 /**

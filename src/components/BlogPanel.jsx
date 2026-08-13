@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react";
-import { ArrowLeft, Newspaper, Check, Ban, Sparkles, Pencil } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { ArrowLeft, Newspaper, Check, Ban, Sparkles, Pencil, ImagePlus } from "lucide-react";
 import { api } from "@/lib/api";
 import { Spinner } from "@/components/ui";
+import MilkdownEditor from "@/components/MilkdownEditor";
+import MarkdownBody from "@/components/MarkdownBody";
 
 const STATUS_LABEL = {
   pending_review: "aguardando revisão",
@@ -14,6 +16,10 @@ export default function BlogPanel({ onClose }) {
   const [posts, setPosts] = useState(null);
   const [editing, setEditing] = useState(null); // post being edited, or null
   const [draft, setDraft] = useState({ title: "", excerpt: "", content: "" });
+  const [editorTab, setEditorTab] = useState("editar"); // "editar" | "preview"
+  const [imgPrompt, setImgPrompt] = useState("");
+  const [imgBusy, setImgBusy] = useState(false);
+  const milkdownRef = useRef(null);
   const [busy, setBusy] = useState(null);
   const [error, setError] = useState("");
   const [generating, setGenerating] = useState(false);
@@ -26,6 +32,24 @@ export default function BlogPanel({ onClose }) {
   function startEdit(post) {
     setEditing(post.id);
     setDraft({ title: post.title, excerpt: post.excerpt || "", content: post.content });
+    setEditorTab("editar");
+    setImgPrompt("");
+  }
+
+  async function insertGeneratedImage(postId) {
+    const prompt = imgPrompt.trim();
+    if (!prompt) return;
+    setImgBusy(true);
+    setError("");
+    try {
+      const { key } = await api.generateBlogImage(postId, prompt);
+      milkdownRef.current?.insertImage(key, "");
+      setImgPrompt("");
+    } catch (e) {
+      setError(e.body?.error || "Falha ao gerar imagem.");
+    } finally {
+      setImgBusy(false);
+    }
   }
 
   async function saveEdit(id) {
@@ -145,12 +169,68 @@ export default function BlogPanel({ onClose }) {
                         placeholder="Resumo"
                         className="w-full rounded-lg border border-ink/15 bg-transparent px-3 py-2 text-sm text-ink"
                       />
-                      <textarea
-                        value={draft.content}
-                        onChange={(e) => setDraft({ ...draft, content: e.target.value })}
-                        rows={10}
-                        className="w-full rounded-lg border border-ink/15 bg-transparent px-3 py-2 font-mono text-xs text-ink"
-                      />
+
+                      <div className="flex gap-1">
+                        {["editar", "preview"].map((key) => (
+                          <button
+                            key={key}
+                            type="button"
+                            onClick={() => setEditorTab(key)}
+                            className={`rounded-t-lg px-3 py-1.5 font-mono text-[11px] transition-colors ${
+                              editorTab === key ? "border-b-2 border-action text-action" : "text-stone-500"
+                            }`}
+                          >
+                            {key}
+                          </button>
+                        ))}
+                      </div>
+
+                      <div className={editorTab === "editar" ? "space-y-2" : "hidden"}>
+                        <div className="milkdown-shell rounded-lg border border-ink/15 bg-transparent px-2">
+                          <MilkdownEditor
+                            ref={milkdownRef}
+                            defaultValue={draft.content}
+                            onChange={(markdown) => setDraft((d) => ({ ...d, content: markdown }))}
+                          />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <input
+                            value={imgPrompt}
+                            onChange={(e) => setImgPrompt(e.target.value)}
+                            placeholder="descreva a imagem para gerar…"
+                            className="flex-1 rounded-lg border border-ink/15 bg-transparent px-3 py-1.5 text-xs text-ink"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => insertGeneratedImage(p.id)}
+                            disabled={imgBusy || !imgPrompt.trim()}
+                            className="flex shrink-0 items-center gap-1.5 rounded-lg surface-2 px-2.5 py-1.5 font-mono text-[11px] text-stone-600 disabled:opacity-50"
+                          >
+                            {imgBusy ? <Spinner /> : <ImagePlus size={12} />} gerar imagem
+                          </button>
+                        </div>
+                      </div>
+
+                      {editorTab === "preview" && (
+                        <div className="max-h-[440px] overflow-y-auto rounded-lg border border-ink/15 surface-3 p-4">
+                          <p className="font-mono text-[10px] uppercase tracking-wider text-stone-400">
+                            {p.pillar_name}
+                          </p>
+                          <p className="mt-1 text-lg font-bold text-ink">{draft.title || "(sem título)"}</p>
+                          {draft.excerpt && <p className="mt-2 text-sm text-stone-600">{draft.excerpt}</p>}
+                          {p.cover_illustration && (
+                            <img
+                              src={`${import.meta.env.BASE_URL.replace(/\/$/, "")}/api/blog/media/${p.cover_illustration}`}
+                              alt=""
+                              className="mt-4 aspect-[4/3] w-full rounded-xl object-cover"
+                            />
+                          )}
+                          <div className="mt-4">
+                            <MarkdownBody content={draft.content} />
+                          </div>
+                        </div>
+                      )}
+
                       <div className="flex gap-2">
                         <button
                           onClick={() => saveEdit(p.id)}

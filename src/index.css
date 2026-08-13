@@ -163,3 +163,38 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   opacity: 0.55;
   cursor: pointer;
 }
+
+/* ── Milkdown/Crepe editor (BlogPanel.jsx, src/components/MilkdownEditor.jsx) ──
+   Re-maps Crepe's "frame" theme CSS variables onto this app's mineral
+   palette instead of its stock black/white theme, so the editor reads as
+   part of the hub rather than a foreign embed. Selector is scoped through
+   the `.milkdown-shell` wrapper (not bare `.milkdown`) so its two-class
+   specificity beats Crepe's own theme CSS regardless of which stylesheet
+   the bundler happens to emit last — @milkdown/crepe/theme/frame.css is
+   imported from MilkdownEditor.jsx, downstream of this file in the module
+   graph, so on bare-`.milkdown` specificity its later source order would
+   otherwise win and silently clobber every var below. */
+.milkdown-shell .milkdown {
+  --crepe-color-background: transparent;
+  --crepe-color-on-background: var(--color-ink);
+  --crepe-color-surface: #fcf9f2; /* matches .surface-3 */
+  --crepe-color-surface-low: #f8f3ea; /* matches .surface-2 */
+  --crepe-color-on-surface: var(--color-ink);
+  --crepe-color-on-surface-variant: #57534e;
+  --crepe-color-outline: rgba(20, 22, 24, 0.15);
+  --crepe-color-primary: var(--color-action);
+  --crepe-color-secondary: var(--color-clay);
+  --crepe-color-on-secondary: var(--color-ink);
+  --crepe-color-inverse: var(--color-ink);
+  --crepe-color-on-inverse: var(--color-clay);
+  --crepe-color-hover: rgba(20, 22, 24, 0.05);
+  --crepe-color-selected: rgba(46, 74, 67, 0.14);
+  --crepe-color-inline-area: rgba(20, 22, 24, 0.08);
+  --crepe-font-title: var(--font-sans);
+  --crepe-font-default: var(--font-sans);
+  --crepe-font-code: var(--font-mono);
+}
+.milkdown-shell .milkdown .ProseMirror {
+  min-height: 220px;
+  padding: 0.75rem 0.25rem;
+}
