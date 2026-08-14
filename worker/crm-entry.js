@@ -483,10 +483,21 @@ app.get("/crm/api/dashboard", async (c) => {
   });
 });
 
-// ── everything else (auth, static assets, SPA shell) — same compiled
+// ── everything else (auth API, static assets, SPA shell) — same compiled
 // backend as tektone-hub/tektone-portal, prefix stripped the same way.
+//
+// The CRM no longer has its own full-page frontend — Dashboard/Pipeline/
+// Vendas live inside the Hub as CrmPanel, and Links as its own Hub panel
+// (see src/App.jsx). This Worker + all the /crm/api/* routes above stay
+// alive since those panels still call crmApi.js, which is hardcoded to hit
+// /crm/api/*. A direct page visit to /crm (or any of its old sub-routes)
+// now just bounces to /hub instead of serving the retired standalone SPA.
 app.all("*", (c) => {
   const url = new URL(c.req.url);
+  const isApi = url.pathname === "/crm/api" || url.pathname.startsWith("/crm/api/");
+  if (!isApi && c.req.method === "GET") {
+    return Response.redirect(new URL("/hub", url).toString(), 302);
+  }
   if (url.pathname === "/crm" || url.pathname.startsWith("/crm/")) {
     url.pathname = url.pathname.slice("/crm".length) || "/";
   }

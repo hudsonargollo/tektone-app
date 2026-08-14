@@ -1,7 +1,14 @@
 // REST client for the CRM Worker — same shape as src/lib/api.js (shared
 // auth routes under /api, CRM-specific routes also under /api since
 // worker/crm-entry.js mounts everything at /crm/api/*).
-const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+//
+// Hardcoded (not derived from import.meta.env.BASE_URL like src/lib/api.js
+// does) because this module is now imported from two different bundles —
+// the standalone CRM app (base "/crm/") AND the Hub app's CrmPanel/CrmWaLinks
+// (base "/hub/") — but the CRM's Hono routes only ever exist at /crm/api/*
+// on the tektone-crm Worker, same origin either way, so the request path
+// must stay pinned to /crm regardless of which page issued it.
+const API_BASE = "/crm";
 
 async function req(path, opts = {}) {
   const res = await fetch(`${API_BASE}/api${path}`, {

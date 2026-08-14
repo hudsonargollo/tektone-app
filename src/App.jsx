@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { AlertCircle, LogOut, ShieldCheck, Menu, X, Sparkles, Package, LayoutGrid, ListChecks, Wallet, Briefcase, Newspaper } from "lucide-react";
+import { AlertCircle, LogOut, ShieldCheck, Menu, X, Sparkles, Package, LayoutGrid, ListChecks, Wallet, Briefcase, Newspaper, Link2 } from "lucide-react";
 import { api } from "@/lib/api";
 import { today } from "@/lib/constants";
 import { useRealtime } from "@/lib/useRealtime";
@@ -27,6 +27,8 @@ import ReviewPopup from "@/components/ReviewPopup";
 import MeetingsPage from "@/components/MeetingsPage";
 import NotificationsBell from "@/components/NotificationsBell";
 import LogoMark from "@/components/LogoMark";
+import CrmPanel from "@/crm/CrmPanel";
+import CrmWaLinks from "@/crm/CrmWaLinks";
 
 export default function App() {
   const [clients, setClients] = useState([]);
@@ -50,6 +52,7 @@ export default function App() {
   const [financeAccess, setFinanceAccess] = useState(false);
   const [accessRole, setAccessRole] = useState(null);
   const [crmRole, setCrmRole] = useState(null);
+  const [userTimezone, setUserTimezone] = useState(null);
   // Full-screen views (board/admin/finance/commercial/blog) switched via the
   // app-level AppSidebar — replaces the old showAdmin/showFinance/... modal
   // booleans. `sidebarPref` is the user's persisted collapse choice, used
@@ -101,7 +104,7 @@ export default function App() {
   const refreshMe = useCallback(() => {
     api
       .me()
-      .then(({ authed, email, admin, accessRole, financeAccess, crmRole, name, avatar }) => {
+      .then(({ authed, email, admin, accessRole, financeAccess, crmRole, name, avatar, timezone }) => {
         setAuthed(Boolean(authed));
         setUserEmail(email);
         setIsAdmin(Boolean(admin));
@@ -110,6 +113,7 @@ export default function App() {
         setCrmRole(crmRole);
         setUserName(name);
         setUserAvatar(avatar);
+        setUserTimezone(timezone);
       })
       .catch(() => setAuthed(false));
   }, []);
@@ -602,6 +606,10 @@ export default function App() {
               <CommercialPanel clients={clients} isAdmin={isAdmin} onClose={() => navigateTo("board")} />
             )}
             {view === "blog" && <BlogPanel onClose={() => navigateTo("board")} />}
+            {view === "crm" && (
+              <CrmPanel crmRole={crmRole} timezone={userTimezone} onClose={() => navigateTo("board")} />
+            )}
+            {view === "links" && <CrmWaLinks onClose={() => navigateTo("board")} />}
             {view === "todos" && <PersonalTodoPanel />}
             {view === "journey" && <BuilderProfilePanel onClose={() => navigateTo("board")} />}
             {view === "social" && <SocialPostGenerator onClose={() => navigateTo("board")} />}
@@ -807,12 +815,26 @@ export default function App() {
                 <Briefcase size={16} className="text-action" /> Comercial
               </button>
               {crmRole && (
-                <a
-                  href="/crm"
+                <button
+                  onClick={() => {
+                    navigateTo("crm");
+                    setMenuOpen(false);
+                  }}
                   className="flex w-full items-center gap-3 border-t border-ink/10 px-5 py-3.5 text-left text-sm text-stone-700 transition-colors active:bg-ink/[0.04]"
                 >
                   <Sparkles size={16} className="text-action" /> CRM
-                </a>
+                </button>
+              )}
+              {crmRole && (
+                <button
+                  onClick={() => {
+                    navigateTo("links");
+                    setMenuOpen(false);
+                  }}
+                  className="flex w-full items-center gap-3 px-5 py-3.5 text-left text-sm text-stone-700 transition-colors active:bg-ink/[0.04]"
+                >
+                  <Link2 size={16} className="text-action" /> Links
+                </button>
               )}
               {isAdmin && (
                 <button

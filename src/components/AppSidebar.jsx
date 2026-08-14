@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { LayoutGrid, Wallet, Briefcase, Newspaper, Sparkles, ShieldCheck, ListChecks, TrendingUp, ChevronsLeft, ChevronsRight, Award, Instagram } from "lucide-react";
+import { LayoutGrid, Wallet, Briefcase, Newspaper, Sparkles, ShieldCheck, ListChecks, TrendingUp, ChevronsLeft, ChevronsRight, Award, Instagram, Link2 } from "lucide-react";
 
 // Persistent, collapsible desktop-only app-level navigation — distinct from
 // the project-filter <Sidebar/> shown inside the board view. Replaces the
@@ -16,6 +16,8 @@ const NAV_ITEMS = [
   { key: "meetings", label: "Reuniões", icon: Sparkles, show: () => true },
   { key: "finance", label: "Financeiro", icon: Wallet, show: (p) => p.financeAccess },
   { key: "commercial", label: "Comercial", icon: Briefcase, show: () => true },
+  { key: "crm", label: "CRM", icon: TrendingUp, show: (p) => p.crmRole },
+  { key: "links", label: "Links", icon: Link2, show: (p) => p.crmRole },
   { key: "blog", label: "Blog", icon: Newspaper, show: (p) => p.isAdmin },
   { key: "social", label: "Posts", icon: Instagram, show: () => true },
   { key: "admin", label: "Admin", icon: ShieldCheck, show: (p) => p.isAdmin },
@@ -61,16 +63,6 @@ export default function AppSidebar({ view, onNavigate, collapsed, onToggleCollap
               </button>
             );
           })}
-          {crmRole && (
-            <a
-              href="/crm"
-              title={expanded ? undefined : "CRM"}
-              className="flex items-center gap-3 rounded-lg px-2.5 py-2.5 text-left text-stone-500 transition-colors hover:bg-ink/[0.05] hover:text-ink"
-            >
-              <TrendingUp size={17} className="shrink-0" />
-              {expanded && <span className="truncate font-mono text-[11px] tracking-wide">CRM</span>}
-            </a>
-          )}
         </nav>
 
         <button
