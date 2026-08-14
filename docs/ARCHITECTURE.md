@@ -114,13 +114,42 @@ One database, `migrations/` in numbered order. Grouped by when each module shipp
 | `kb_documents`, `lead_questions` | **CRM knowledge base** — the Business Specialist Copilot's grounding material + interaction log |
 | `blog_pillars`, `blog_posts` | **Blog** — AI-drafted (Claude for copy, Workers AI `flux-1-schnell` for the cover), admin-curated before anything publishes. `POST /api/blog/admin/generate` runs every active pillar and only fails loudly (502) if *all* of them error — one bad pillar no longer silently looks like success. |
 
-## The CRM (`/crm`)
+## The CRM
 
 Modeled on a legal-consultancy CRM built for a sister product (`codigo-internacional`),
-re-personaed for Tektone's own business.
+re-personaed for Tektone's own business. The `tektone-crm` Worker (`worker/crm-entry.js`)
+still owns every `/crm/api/*` route, but there's no standalone `/crm` frontend anymore — a
+direct page visit 302s to `/hub`. Dashboard/Pipeline/Vendas live inside the Hub app as
+`CrmPanel` (`src/crm/CrmPanel.jsx`), and the WhatsApp/URL link manager as its own top-level
+Hub panel, `CrmWaLinks` — both wired into `src/App.jsx`'s `view` switch and
+`src/components/AppSidebar.jsx`'s `NAV_ITEMS`, gated on `crmRole` (see "Full-screen views,
+not modal popups" below). `src/crm/crmApi.js`'s request base is hardcoded to `/crm` (not
+derived from `import.meta.env.BASE_URL` like `src/lib/api.js`) precisely because it's now
+imported from the Hub bundle (`base: "/hub/"`) as well as the CRM Worker's own API — the
+Hono routes only ever exist at `/crm/api/*` regardless of which page issued the fetch.
+
+Visually, the CRM uses the exact same light Ivory Clay/Mineral Black design system as the
+rest of the app — an earlier pass gave it its own dark "Mineral" theme
+(`src/crm/crm-theme.css`, since deleted) modeled on `codigo-internacional`'s own CRM, but
+that was a deviation from the rest of Tektone's product surface (Hub/Portal/marketing are
+all light-themed, `#EFE8DC` theme-color), not something to bind to — removed entirely rather
+than kept as an option.
 
 **Pipeline**: `leads.status` moves `new → contacted → qualified → won/lost` (`incomplete`
-covers abandoned captures). Every mutation logs a `lead_events` row.
+covers abandoned captures) via a Kanban board (`src/crm/CrmLeads.jsx` — 5 lanes, native HTML5
+drag-and-drop, search/filter panel, quick-add modal). Every mutation logs a `lead_events` row.
+
+**Analytics dashboard** (`src/crm/CrmDashboard.jsx`, `GET /crm/api/dashboard`) — revenue vs.
+an admin-editable monthly goal (`crm_settings` table, `PUT /crm/api/settings/revenue-goal`,
+admin-only), a KPI strip (conversion %, win rate, leads/30d, pending commissions), a
+funnel-by-stage bar chart, a leads-by-source donut, a closer leaderboard, and an expandable
+temperature (hot/warm/cold) board — all hand-rolled SVG, no chart-library dependency,
+consistent with the rest of this codebase's from-scratch chart components.
+
+**WhatsApp/URL link manager** (`src/crm/CrmWaLinks.jsx`, `wa_links`/`wa_numbers` tables,
+`worker/lib/waLinksService.js`) — short links redirect through a small dedicated Worker
+(`worker-links/`, `go.tektone.com.br`) that reads `hub-tektone` D1 directly and increments a
+click counter on every hit.
 
 **Won-lead automation** (`worker/lib/wonAutomation.js`) — fires once, on the transition
 *into* `won`:
@@ -163,17 +192,40 @@ otherwise be trivial. An elimination answer (`hasCompany: false`) short-circuits
 lead is created; everything else always creates a lead, `status` set to `qualified` (warm/hot)
 or `incomplete` (cold) so closers can still triage a cold lead without it disappearing.
 
+The approved (hot/warm) result screen's WhatsApp hand-off CTA
+(`marketing/components/QualificacaoSection.tsx`'s `WHATSAPP_URL`) now points at Pedro
+Silvestrini's real number — it shipped for a while as a placeholder (`5565000000000`)
+because no real number existed anywhere in the codebase yet.
+
+## Per-user timezone preference
+
+`users.timezone` (migration `0019`, nullable) overrides the org default
+(`America/Sao_Paulo`, `src/lib/timezone.js`'s `DEFAULT_TIMEZONE`). Editable from
+`ProfilePage.jsx` via `Intl.supportedValuesOf('timeZone')` for the full picker list;
+`fmtDateTime()`/`fmtDate()` append a human city label (`tzCityLabel()`) rather than showing a
+raw IANA string. Threaded into `CrmLeadDetail`'s event-history timestamps as the first
+consumer — any other timestamp display should call the same helpers rather than
+`toLocaleString()` directly, to stay consistent as more users set a non-default zone.
+
 ## Full-screen views, not modal popups (`/hub`)
 
 `AdminPanel`, `FinancePanel`, `CommercialPanel`, `BlogPanel`, `MeetingsPage` (combining the
-single-meeting analyze flow and the admin-only bulk Drive import as tabs), and
-`PersonalTodoPanel` are full-screen views switched via `App.jsx`'s `view` state, not centered
-modal popups over the board — `src/components/AppSidebar.jsx` is the persistent, collapsible
-nav between them (`hidden lg:flex`; mobile keeps the existing bottom-nav + sheet-menu
-pattern, wired to the same `view` state). The sidebar always opens collapsed when `view`
-becomes `"board"` — more horizontal room for kanban columns — regardless of the user's
-collapse preference elsewhere, but stays independently toggleable while there; outside the
-board it remembers the user's own choice via `localStorage` (`tk_app_sidebar_collapsed`).
+single-meeting analyze flow and the admin-only bulk Drive import as tabs), `CrmPanel`,
+`CrmWaLinks`, and `PersonalTodoPanel` are full-screen views switched via `App.jsx`'s `view`
+state, not centered modal popups over the board — `src/components/AppSidebar.jsx` is the
+persistent, collapsible nav between them (`hidden lg:flex`; mobile keeps the existing
+bottom-nav + sheet-menu pattern, wired to the same `view` state). The sidebar always opens
+collapsed when `view` becomes `"board"` — more horizontal room for kanban columns —
+regardless of the user's collapse preference elsewhere, but stays independently toggleable
+while there; outside the board it remembers the user's own choice via `localStorage`
+(`tk_app_sidebar_collapsed`).
+
+`CrmPanel` is the one panel with a second, *nested* level of navigation — its own vertical
+inner sidebar (Dashboard/Pipeline/Vendas, desktop-only, falls back to a horizontal tab strip
+on mobile) sits to the right of the Hub's own outer `AppSidebar`, rather than a flat tab
+strip inside the panel body like `CommercialPanel`'s members/contracts/invoices/builders/
+add-ons tabs. No new nav primitive — same `useState(tab) + button row` pattern as every other
+panel's internal tabs, just rendered as a column instead of a row.
 
 ## Landing-page illustrations and media
 
@@ -255,6 +307,33 @@ undid all of it after the user reviewed it live and didn't like the direction. *
 re-attempt this exact treatment without new direction from the user** — the generation pipeline
 that made it possible (previous paragraph) is sound and reusable, but the specific "flat-color
 bust replacing the blob" design was tried and rejected, not abandoned for a technical reason.
+
+**Logo geometry/color must be measured against the brand guide, not eyeballed.** Two rounds
+of "fix the logo" feedback were wrong before landing on the right values — round 1 brightened
+the `ivory` variant's panel color, assuming a dark core needed to be lighter to read on dark
+backgrounds (wrong direction: the brand's actual intent is a true-black core inside a sand
+frame, and the frame alone gives contrast — but only against a *flat* dark background, not a
+busy photographic one, see below); round 2 widened proportions based on a pixel measurement
+of the brand-guide PDF that was contaminated by nearby caption text and grid lines. The
+methodology that finally held up: rasterize the PDF page at `pdftoppm -r 400`, crop to
+isolate just the mark (no surrounding text/grid), classify each pixel by nearest-color
+distance to a small palette of known brand hex values (not a fixed-tolerance threshold, which
+gets fooled by anti-aliasing), and verify across 5+ rows before trusting a measurement.
+`marketing/components/Logo.tsx` and `src/components/LogoMark.jsx` (the Hub's own copy) must
+be kept in sync by hand — no shared import between the two bundles.
+
+**A light frame gives silhouette contrast against a flat background, not a busy one.** The
+homepage hero's photographic background defeated the sand-frame-around-black-core logo even
+though the same colors read correctly against the brand guide's flat reference — fixed by
+reusing the `onBlack` variant's dark-beige core color for `ivory` too, so the core itself
+carries value contrast instead of relying entirely on the frame.
+
+**Footer social icons are hand-drawn SVG, not from lucide-react.** `lucide-react` (this repo's
+icon library everywhere else) dropped all brand/logo glyphs in a past major version for
+trademark reasons — no `Instagram`/`Linkedin`/`Github`/etc. exports exist in the installed
+version. `marketing/components/Footer.tsx` defines two small local `<svg>` components
+(`InstagramIcon`, `LinkedinIcon`) built from basic shapes (`rect`/`circle`/`path`,
+`currentColor` stroke) instead — monochrome, matches the weight of the existing `Mail` icon.
 
 ## Builder profile — gamification (`/hub`)
 
