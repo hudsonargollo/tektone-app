@@ -6,8 +6,11 @@
 // "Document" is {kind, slug, title, status, blocks: JSON[], meta: JSON}.
 //
 //   GET    /api/builder/documents/:kind/:slug        — public, published only
+//   GET    /api/builder/public/:slug                 — public, published form|quiz by slug
+//   POST   /api/builder/public/:slug/submit           — public, { answers } → validate/score/store
 //   GET    /api/builder/admin/documents?kind=        — admin, list (all statuses)
 //   GET    /api/builder/admin/documents/:id          — admin, one document
+//   GET    /api/builder/admin/documents/:id/submissions — admin, list submissions
 //   POST   /api/builder/admin/documents              — admin, { kind, title } → draft
 //   PATCH  /api/builder/admin/documents/:id           — admin, { title, slug, blocks, meta }
 //   POST   /api/builder/admin/documents/:id/publish   — admin
@@ -47,6 +50,47 @@ function parseDoc(row) {
   };
 }
 
+// Never trust a client-supplied score — recompute from the document's own
+// blocks, same principle QualificacaoSection.tsx's scoreQualification
+// already established for the qualification form.
+function scoreQuiz(blocks, answers) {
+  let score = 0;
+  for (const block of blocks) {
+    if (block.type !== "quiz_question") continue;
+    const options = block.props?.options || [];
+    const answer = answers[block.id];
+    if (answer == null) continue;
+    const selected = Array.isArray(answer) ? answer : [answer];
+    for (const val of selected) {
+      const opt = options.find((o) => o.value === val);
+      if (opt) score += Number(opt.scoreWeight) || 0;
+    }
+  }
+  return score;
+}
+
+function tierForScore(scoringRules, score) {
+  const tiers = scoringRules?.tiers;
+  if (!Array.isArray(tiers)) return null;
+  for (const t of tiers) {
+    const min = t.min ?? -Infinity;
+    const max = t.max ?? Infinity;
+    if (score >= min && score <= max) return t.label ?? null;
+  }
+  return null;
+}
+
+function validateFormAnswers(blocks, answers) {
+  for (const block of blocks) {
+    if (block.type !== "form_field") continue;
+    if (block.props?.required) {
+      const val = answers[block.id];
+      if (val == null || val === "") return `Campo obrigatório: ${block.props.label || block.id}`;
+    }
+  }
+  return null;
+}
+
 export async function onRequest(context) {
   const { request, env, params } = context;
   const db = env.DB;
@@ -65,6 +109,49 @@ export async function onRequest(context) {
         .first();
       if (!doc) return json({ error: "not found" }, 404);
       return json({ document: parseDoc(doc) });
+    }
+
+    // ── public: fetch a published form|quiz by slug (kind-agnostic — the
+    // /f/:slug marketing route doesn't know ahead of time which one it is) ─
+    if (seg[0] === "public" && seg[1] && !seg[2] && method === "GET") {
+      const doc = await db
+        .prepare("SELECT * FROM builder_documents WHERE slug = ? AND status = 'published' AND kind IN ('form', 'quiz')")
+        .bind(seg[1])
+        .first();
+      if (!doc) return json({ error: "not found" }, 404);
+      return json({ document: parseDoc(doc) });
+    }
+
+    // ── public: submit a form|quiz response ────────────────────────────────
+    if (seg[0] === "public" && seg[1] && seg[2] === "submit" && method === "POST") {
+      const doc = await db
+        .prepare("SELECT * FROM builder_documents WHERE slug = ? AND status = 'published' AND kind IN ('form', 'quiz')")
+        .bind(seg[1])
+        .first();
+      if (!doc) return json({ error: "not found" }, 404);
+      const body = await request.json().catch(() => ({}));
+      const answers = body.answers && typeof body.answers === "object" ? body.answers : {};
+      const blocks = JSON.parse(doc.blocks || "[]");
+
+      if (doc.kind === "form") {
+        const err = validateFormAnswers(blocks, answers);
+        if (err) return json({ error: err }, 400);
+        await db
+          .prepare("INSERT INTO builder_submissions (id, document_id, kind, answers) VALUES (?, ?, 'form', ?)")
+          .bind(uid(), doc.id, JSON.stringify(answers))
+          .run();
+        return json({ ok: true }, 201);
+      }
+
+      // quiz
+      const meta = doc.meta ? JSON.parse(doc.meta) : null;
+      const score = scoreQuiz(blocks, answers);
+      const tier = tierForScore(meta?.scoringRules, score);
+      await db
+        .prepare("INSERT INTO builder_submissions (id, document_id, kind, answers, score, tier) VALUES (?, ?, 'quiz', ?, ?, ?)")
+        .bind(uid(), doc.id, JSON.stringify(answers), score, tier)
+        .run();
+      return json({ ok: true, score, tier }, 201);
     }
 
     // ── admin ────────────────────────────────────────────────────────────
@@ -133,6 +220,14 @@ export async function onRequest(context) {
           .run();
         const doc = await db.prepare("SELECT * FROM builder_documents WHERE id = ?").bind(seg[2]).first();
         return json({ document: parseDoc(doc) });
+      }
+
+      if (seg[1] === "documents" && seg[2] && seg[3] === "submissions" && method === "GET") {
+        const { results } = await db
+          .prepare("SELECT * FROM builder_submissions WHERE document_id = ? ORDER BY created_at DESC")
+          .bind(seg[2])
+          .all();
+        return json({ submissions: results.map((r) => ({ ...r, answers: JSON.parse(r.answers || "{}") })) });
       }
 
       if (seg[1] === "documents" && seg[2] && seg[3] === "publish" && method === "POST") {

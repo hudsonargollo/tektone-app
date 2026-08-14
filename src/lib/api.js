@@ -174,6 +174,7 @@ export const api = {
   publishBuilderDocument: (id) => req(`/builder/admin/documents/${id}/publish`, { method: "POST" }),
   archiveBuilderDocument: (id) => req(`/builder/admin/documents/${id}/archive`, { method: "POST" }),
   deleteBuilderDocument: (id) => req(`/builder/admin/documents/${id}`, { method: "DELETE" }),
+  listBuilderSubmissions: (id) => req(`/builder/admin/documents/${id}/submissions`),
 
   // builder profile (gamification — see functions/_lib/gamification.js)
   getBuilderProfile: () => req("/gamification/me"),

@@ -32,6 +32,16 @@ export const BLOCK_LIST = MODULES.map((m) => ({
   category: m.category,
 }));
 
+// form/quiz documents render publicly as a one-question-per-step wizard
+// (see marketing/components/FormWizard.tsx) — only form_field/quiz_question
+// answer the document's own kind, plus richtext/image for intro copy.
+// Landing-page blocks (hero, pricing, ...) don't fit that flow.
+export const ALLOWED_BLOCKS_BY_KIND = {
+  page: ["hero", "richtext", "feature_grid", "testimonial", "pricing", "cta_band", "image"],
+  form: ["form_field", "richtext", "image"],
+  quiz: ["quiz_question", "richtext", "image"],
+};
+
 export function createBlock(type) {
   const mod = BLOCK_REGISTRY[type];
   if (!mod) throw new Error(`Unknown block type: ${type}`);

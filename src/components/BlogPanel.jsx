@@ -9,6 +9,8 @@ import DocumentBuilder from "@/builder/DocumentBuilder";
 const CONTENT_TABS = [
   { key: "posts", label: "Posts" },
   { key: "page", label: "Páginas" },
+  { key: "form", label: "Formulários" },
+  { key: "quiz", label: "Quizzes" },
 ];
 
 const STATUS_LABEL = {
@@ -151,12 +153,24 @@ export default function BlogPanel({ onClose }) {
         )}
       </div>
 
-      {contentTab === "page" ? (
+      {contentTab === "page" || contentTab === "form" || contentTab === "quiz" ? (
         <div className="flex min-h-0 flex-1 flex-col">
           <DocumentBuilder
-            kind="page"
-            newPlaceholder="Título da nova página…"
-            emptyText="Nenhuma página criada ainda."
+            kind={contentTab}
+            newPlaceholder={
+              {
+                page: "Título da nova página…",
+                form: "Título do novo formulário…",
+                quiz: "Título do novo quiz…",
+              }[contentTab]
+            }
+            emptyText={
+              {
+                page: "Nenhuma página criada ainda.",
+                form: "Nenhum formulário criado ainda.",
+                quiz: "Nenhum quiz criado ainda.",
+              }[contentTab]
+            }
           />
         </div>
       ) : (

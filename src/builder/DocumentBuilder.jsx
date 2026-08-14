@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Plus, Trash2, ChevronUp, ChevronDown, Copy, ClipboardPaste, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { Spinner } from "@/components/ui";
-import { BLOCK_LIST, BLOCK_REGISTRY, createBlock } from "./registry";
+import { BLOCK_LIST, BLOCK_REGISTRY, ALLOWED_BLOCKS_BY_KIND, createBlock } from "./registry";
 import BlockRenderer from "./BlockRenderer";
 import PropertyPanel from "./PropertyPanel";
 import RichtextEditor from "./RichtextEditor";
@@ -72,6 +72,8 @@ export default function DocumentBuilder({ kind, newPlaceholder, emptyText }) {
   const [newTitle, setNewTitle] = useState("");
   const [creating, setCreating] = useState(false);
   const [aiModal, setAiModal] = useState(null);
+  const saveTimerRef = useRef(null);
+  const pendingPatchRef = useRef({});
 
   function load() {
     api
@@ -93,7 +95,8 @@ export default function DocumentBuilder({ kind, newPlaceholder, emptyText }) {
     }
   }
 
-  function closeDoc() {
+  async function closeDoc() {
+    await flushPendingSave();
     setActiveId(null);
     setDoc(null);
     setSelectedBlockId(null);
@@ -115,18 +118,37 @@ export default function DocumentBuilder({ kind, newPlaceholder, emptyText }) {
     }
   }
 
-  async function saveDoc(patch) {
+  // Debounced: PropertyPanel fires a change on every keystroke, and an
+  // undebounced PATCH-per-keystroke lets responses race and arrive
+  // out of order, silently overwriting a later keystroke with an earlier
+  // one's (already-observed truncating a typed value mid-word). Only the
+  // last change in a burst is ever sent, and it always carries the fully
+  // merged patch accumulated since the previous flush.
+  function saveDoc(patch) {
     if (!doc) return;
     const next = { ...doc, ...patch };
     setDoc(next);
+    pendingPatchRef.current = { ...pendingPatchRef.current, ...patch };
     setSaving(true);
     setError("");
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => flushSave(next), 500);
+  }
+
+  async function flushSave(next) {
+    saveTimerRef.current = null;
+    const patch = pendingPatchRef.current;
+    pendingPatchRef.current = {};
+    if (!next || !Object.keys(patch).length) {
+      setSaving(false);
+      return;
+    }
     try {
       const body = {};
       if ("title" in patch) body.title = next.title;
       if ("slug" in patch) body.slug = next.slug;
       if ("blocks" in patch) body.blocks = next.blocks;
-      await api.updateBuilderDocument(doc.id, body);
+      await api.updateBuilderDocument(next.id, body);
     } catch (e) {
       setError(e.body?.error || "Falha ao salvar.");
     } finally {
@@ -134,8 +156,16 @@ export default function DocumentBuilder({ kind, newPlaceholder, emptyText }) {
     }
   }
 
+  async function flushPendingSave() {
+    if (!saveTimerRef.current) return;
+    clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = null;
+    await flushSave(doc);
+  }
+
   async function publish() {
     if (!doc) return;
+    await flushPendingSave();
     setSaving(true);
     try {
       await api.publishBuilderDocument(doc.id);
@@ -350,7 +380,7 @@ export default function DocumentBuilder({ kind, newPlaceholder, emptyText }) {
           </div>
           <p className="mb-1.5 font-mono text-[10px] uppercase tracking-wider text-stone-400">Adicionar</p>
           <div className="space-y-1">
-            {BLOCK_LIST.map((b) => (
+            {BLOCK_LIST.filter((b) => !ALLOWED_BLOCKS_BY_KIND[kind] || ALLOWED_BLOCKS_BY_KIND[kind].includes(b.key)).map((b) => (
               <button
                 key={b.key}
                 onClick={() => addBlock(b.key)}
