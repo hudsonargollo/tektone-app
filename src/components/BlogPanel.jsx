@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, Newspaper, Check, Ban, Sparkles, Pencil, ImagePlus } from "lucide-react";
 import { api } from "@/lib/api";
 import { Spinner } from "@/components/ui";
-import MilkdownEditor from "@/components/MilkdownEditor";
+import MarkdownTextarea from "@/builder/MarkdownTextarea";
 import MarkdownBody from "@/components/MarkdownBody";
 import DocumentBuilder from "@/builder/DocumentBuilder";
 import FunnelBuilder from "@/builder/FunnelBuilder";
@@ -30,7 +30,7 @@ export default function BlogPanel({ onClose }) {
   const [editorTab, setEditorTab] = useState("editar"); // "editar" | "preview"
   const [imgPrompt, setImgPrompt] = useState("");
   const [imgBusy, setImgBusy] = useState(false);
-  const milkdownRef = useRef(null);
+  const contentEditorRef = useRef(null);
   const [busy, setBusy] = useState(null);
   const [error, setError] = useState("");
   const [generating, setGenerating] = useState(false);
@@ -54,7 +54,7 @@ export default function BlogPanel({ onClose }) {
     setError("");
     try {
       const { key } = await api.generateBlogImage(postId, prompt);
-      milkdownRef.current?.insertImage(key, "");
+      contentEditorRef.current?.insertImage(key, "");
       setImgPrompt("");
     } catch (e) {
       setError(e.body?.error || "Falha ao gerar imagem.");
@@ -238,13 +238,11 @@ export default function BlogPanel({ onClose }) {
                       </div>
 
                       <div className={editorTab === "editar" ? "space-y-2" : "hidden"}>
-                        <div className="milkdown-shell rounded-lg border border-ink/15 bg-transparent px-2">
-                          <MilkdownEditor
-                            ref={milkdownRef}
-                            defaultValue={draft.content}
-                            onChange={(markdown) => setDraft((d) => ({ ...d, content: markdown }))}
-                          />
-                        </div>
+                        <MarkdownTextarea
+                          ref={contentEditorRef}
+                          value={draft.content}
+                          onChange={(markdown) => setDraft((d) => ({ ...d, content: markdown }))}
+                        />
                         <div className="flex items-center gap-2">
                           <input
                             value={imgPrompt}
