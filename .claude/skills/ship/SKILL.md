@@ -66,8 +66,8 @@ npm run build:portal
 npx wrangler pages functions build --outdir=./dist/_worker.js/
 npx wrangler deploy --config wrangler.portal.toml
 
-# tektone-crm (worker/crm-entry.js, CRM-specific functions changed)
-npm run build:crm
+# tektone-crm (worker/crm-entry.js, CRM-specific functions changed — API only, no frontend build;
+# CRM panels live in the Hub bundle, so a src/crm/* UI change needs the tektone-hub deploy above too)
 npx wrangler pages functions build --outdir=./dist/_worker.js/
 npx wrangler deploy --config wrangler.crm.toml
 ```

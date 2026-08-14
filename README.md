@@ -211,7 +211,8 @@ src/
   components/              Board, CardModal, Sidebar, TopBar, NotificationsBell,
                            MeetingIntelligence, MeetingFetch, ReviewPopup, ProfilePage,
                            AdminPanel, CustomerShell, Login, ui (Avatar, Spinner, useIsMobile…)
-  crm/                     CRM frontend (CrmApp, CrmDashboard, CrmLeads, CrmLeadDetail, CrmSales)
+  crm/                     CRM panels, embedded in the Hub (CrmPanel, CrmDashboard, CrmLeads,
+                           CrmLeadDetail, CrmSales, CrmWaLinks — no standalone frontend anymore)
   lib/                     api.js (REST client), constants.js (columns, palette, helpers)
 functions/
   _middleware.js           session guard for /api/kanban/*
@@ -220,7 +221,8 @@ functions/
 worker/
   hub-entry.js              tektone-hub's entry — strips /hub or /task, delegates to functions/
   portal-entry.js            tektone-portal's entry — strips /portal, delegates to functions/
-  crm-entry.js                tektone-crm's entry — new Hono routes + delegates auth/assets to functions/
+  crm-entry.js                tektone-crm's entry — Hono API routes, delegates auth to functions/;
+                              non-API GETs 302 to /hub (no standalone CRM frontend anymore)
   lib/                        crmDb.js, crmRbac.js, crmKbService.js, wonAutomation.js,
                                businessSpecialistService.js, retry.js
 migrations/                   D1 schema, numbered — see docs/ARCHITECTURE.md

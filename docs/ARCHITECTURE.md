@@ -308,15 +308,19 @@ folder with that exact name is actually visible to whichever Google account runs
 
 | Gotcha | Why it matters |
 |---|---|
-| Vite `base` must equal the path prefix (`/hub/`, `/portal/`, `/crm/`) | Otherwise the built HTML's asset links and `import.meta.env.BASE_URL`-derived API calls (`src/lib/api.js`, `src/crm/crmApi.js`) point at the domain root, which no route owns. |
+| Vite `base` must equal the path prefix (`/hub/`, `/portal/`) | Otherwise the built HTML's asset links and `import.meta.env.BASE_URL`-derived API calls (`src/lib/api.js`) point at the domain root, which no route owns. `src/crm/crmApi.js` is the one exception — it's imported from both the Hub bundle (base `/hub/`) and the standalone CRM Worker's API, so its base URL is hardcoded to `/crm` instead of derived from `BASE_URL` (see CRM section below). |
 | `run_worker_first = true` in each `wrangler.*.toml`'s `[assets]` | Without it, Workers' static-asset layer (with SPA fallback on) intercepts *every* request — including `/hub/api/*` — before the Worker code ever runs, silently returning the SPA's `index.html` instead of JSON. |
 | `.assetsignore` (containing `_worker.js`) must live in `public/`, not `dist/` | `dist/` is regenerated every build (gitignored); `public/` is the only place a file survives a rebuild and still gets copied into the output. Without it, the compiled backend bundle gets uploaded as a public, downloadable static file. |
-| Built entry HTML gets renamed to `index.html` post-build | Vite outputs `crm.html`/`portal.html` (matching the source filename); Workers' SPA fallback looks specifically for a file *named* `index.html`. See `build:portal`/`build:crm` npm scripts. |
+| Built entry HTML gets renamed to `index.html` post-build | Vite outputs `portal.html` (matching the source filename); Workers' SPA fallback looks specifically for a file *named* `index.html`. See the `build:portal` npm script. |
 | `next-on-pages` ≠ portable to plain `wrangler deploy` | See "Marketing site: Pages, not Workers" above. |
 
 ## Deploying
 
-Each of the four surfaces deploys independently.
+Each surface deploys independently. The CRM no longer has its own frontend — Dashboard/
+Pipeline/Vendas/Links live inside the Hub app as panels (`src/crm/CrmPanel.jsx`,
+`src/crm/CrmWaLinks.jsx`); the `tektone-crm` Worker only serves `/crm/api/*` now (a direct
+page visit to `/crm` 302s to `/hub`), so it deploys with no separate build step and no
+`[assets]` binding.
 
 ```sh
 # Marketing (from marketing/)
@@ -331,8 +335,7 @@ npm run build:portal
 npx wrangler pages functions build --outdir=./dist/_worker.js/   # shared backend, same step
 npx wrangler deploy --config wrangler.portal.toml
 
-# CRM (from repo root)
-npm run build:crm
+# CRM API (from repo root) — no frontend build, see note above
 npx wrangler pages functions build --outdir=./dist/_worker.js/   # shared backend, same step
 npx wrangler deploy --config wrangler.crm.toml
 ```

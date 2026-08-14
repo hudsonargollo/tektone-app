@@ -7,7 +7,6 @@
     "dev": "vite",
     "build": "vite build",
     "build:portal": "vite build --config vite.portal.config.js && mv dist-portal/portal.html dist-portal/index.html",
-    "build:crm": "vite build --config vite.crm.config.js && mv dist-crm/crm.html dist-crm/index.html",
     "preview": "vite preview",
     "deploy": "npm run build && wrangler pages deploy dist --project-name=tektone-app --commit-dirty=true"
   },

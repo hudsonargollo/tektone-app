@@ -14,14 +14,12 @@ const TABS = [
 // CRM as an in-Hub panel — same "full-screen view swapped in by App.jsx"
 // pattern as CommercialPanel/FinancePanel, but CRM keeps its OWN inner
 // vertical sidebar (Dashboard/Pipeline/Vendas) nested inside the Hub's
-// outer AppSidebar, mirroring the standalone CrmApp.jsx's original desktop
-// nav — just without the logo/logout/back-to-hub chrome, which the Hub
-// shell already owns, and without the Links tab, now a top-level Hub panel
-// of its own (CrmWaLinks, wired directly in App.jsx/AppSidebar). The
-// standalone /crm app (crm.html, crm-main.jsx, CrmApp.jsx) still exists and
-// still owns the CRM API routes on the tektone-crm Worker — this panel
-// reuses the same leaf components + crmApi (hardcoded to /crm, see
-// crmApi.js) instead of duplicating them.
+// outer AppSidebar, without the Links tab, now a top-level Hub panel of its
+// own (CrmWaLinks, wired directly in App.jsx/AppSidebar). The CRM used to
+// have its own standalone full-page app (crm.html/crm-main.jsx/CrmApp.jsx,
+// retired) — the tektone-crm Worker (worker/crm-entry.js) still owns the
+// CRM's API routes, this panel just calls them via crmApi.js (hardcoded to
+// /crm regardless of which bundle it's compiled into).
 export default function CrmPanel({ crmRole, timezone, onClose }) {
   const [view, setView] = useState({ tab: "dashboard" });
 
