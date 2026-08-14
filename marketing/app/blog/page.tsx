@@ -1,12 +1,18 @@
+import { getRequestContext } from "@cloudflare/next-on-pages";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import BlogGrid from "@/components/BlogGrid";
 
 export const runtime = "edge";
 
+// Uses the HUB service binding (see wrangler.toml) instead of
+// fetch("https://tektone.com.br/hub/...") — a same-zone subrequest from
+// this Worker to a different Worker on the same zone gets misrouted back
+// into this Worker's own fetch handler rather than reaching tektone-hub.
 async function getPosts() {
   try {
-    const res = await fetch("https://tektone.com.br/hub/api/blog/posts", { next: { revalidate: 300 } });
+    const { env } = getRequestContext();
+    const res = await env.HUB.fetch("https://tektone.com.br/hub/api/blog/posts");
     if (!res.ok) return [];
     const data = await res.json();
     return data.posts || [];

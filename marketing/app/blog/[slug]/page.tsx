@@ -2,15 +2,21 @@ import { notFound } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import { getRequestContext } from "@cloudflare/next-on-pages";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import MarkdownBody from "@/components/MarkdownBody";
 
 export const runtime = "edge";
 
+// Uses the HUB service binding (see wrangler.toml) instead of
+// fetch("https://tektone.com.br/hub/...") — a same-zone subrequest from
+// this Worker to a different Worker on the same zone gets misrouted back
+// into this Worker's own fetch handler rather than reaching tektone-hub.
 async function getPost(slug: string) {
   try {
-    const res = await fetch(`https://tektone.com.br/hub/api/blog/posts/${slug}`, { next: { revalidate: 300 } });
+    const { env } = getRequestContext();
+    const res = await env.HUB.fetch(`https://tektone.com.br/hub/api/blog/posts/${slug}`);
     if (!res.ok) return null;
     const data = await res.json();
     return data.post || null;
