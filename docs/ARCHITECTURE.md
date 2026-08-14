@@ -6,13 +6,32 @@ subdomains. Four surfaces, four independent Cloudflare deployments, one shared d
 | Path | What | Deployment | Repo location |
 |---|---|---|---|
 | `tektone.com.br/*` | Marketing site + `/login` | Cloudflare **Pages** (`tektone`) | `marketing/` |
-| `tektone.com.br/hub`, `/task` | Staff ops: kanban, meetings, commercial admin, finance | Cloudflare **Worker** (`tektone-hub`) | repo root |
+| `tektone.com.br/hub`, `/task` | Staff ops: kanban, meetings, commercial admin, finance, blog, block builder, gamification, CRM UI | Cloudflare **Worker** (`tektone-hub`) | repo root |
 | `tektone.com.br/portal` | Customer-only: contracts, invoices, add-ons, progress | Cloudflare **Worker** (`tektone-portal`) | repo root |
 | `tektone.com.br/crm` | Lead pipeline, sales, commissions, AI copilot | Cloudflare **Worker** (`tektone-crm`) | repo root |
 
 A published visual walkthrough of all of this (with a routing diagram) exists as a Claude
 Artifact — ask in the project chat if you need the link again, or read this document, which
 has the same content in durable form.
+
+## What exists today
+
+The table above is *where* the code lives. This is *what it does* — every real feature
+running in production, by module, regardless of which of the four deployments hosts it.
+Each links to the section with the full detail.
+
+| Module | Capability |
+|---|---|
+| CRM | Sales pipeline — 5-stage Kanban, drag-and-drop, full audit trail (see "The CRM") |
+| CRM | Analytics dashboard — revenue vs. goal, funnel, source breakdown, closer leaderboard, temperature board (hand-rolled SVG, no chart library) |
+| CRM | Business Specialist Copilot — locked-persona AI grounded in a self-improving knowledge base |
+| CRM | WhatsApp/URL link shortener with click tracking, served by its own Worker (`go.tektone.com.br`) |
+| Marketing | Public qualification form — server-scored hot/warm/cold lead capture (see "Public lead capture") |
+| Hub | Blog — AI-drafted (Claude + Workers AI), nothing publishes without human review |
+| Hub | Block builder — pages/forms/quizzes/funnels from 9 reusable blocks, publishing at `/p`, `/f`, `/n` (see "The block builder") |
+| Hub | Builder gamification — per-person XP/level from ordinary kanban use, no new screen to learn |
+| Portal | Customer self-service — contracts (view + sign), invoices, add-ons, progress meter |
+| All | One session cookie authenticates across all four deployments |
 
 ## Why this shape
 
