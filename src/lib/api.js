@@ -166,6 +166,15 @@ export const api = {
   generateBlogDrafts: () => req("/blog/admin/generate", { method: "POST" }),
   generateBlogImage: (id, prompt) => req(`/blog/admin/posts/${id}/images`, { method: "POST", body: { prompt } }),
 
+  // block builder documents (ADMIN only — see functions/api/builder/[[path]].js)
+  listBuilderDocuments: (kind) => req(`/builder/admin/documents${kind ? `?kind=${kind}` : ""}`),
+  getBuilderDocument: (id) => req(`/builder/admin/documents/${id}`),
+  createBuilderDocument: (body) => req("/builder/admin/documents", { method: "POST", body }),
+  updateBuilderDocument: (id, body) => req(`/builder/admin/documents/${id}`, { method: "PATCH", body }),
+  publishBuilderDocument: (id) => req(`/builder/admin/documents/${id}/publish`, { method: "POST" }),
+  archiveBuilderDocument: (id) => req(`/builder/admin/documents/${id}/archive`, { method: "POST" }),
+  deleteBuilderDocument: (id) => req(`/builder/admin/documents/${id}`, { method: "DELETE" }),
+
   // builder profile (gamification — see functions/_lib/gamification.js)
   getBuilderProfile: () => req("/gamification/me"),
   getBuilderProfileFor: (email) => req(`/gamification/user/${encodeURIComponent(email)}`),

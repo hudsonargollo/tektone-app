@@ -4,6 +4,12 @@ import { api } from "@/lib/api";
 import { Spinner } from "@/components/ui";
 import MilkdownEditor from "@/components/MilkdownEditor";
 import MarkdownBody from "@/components/MarkdownBody";
+import DocumentBuilder from "@/builder/DocumentBuilder";
+
+const CONTENT_TABS = [
+  { key: "posts", label: "Posts" },
+  { key: "page", label: "Páginas" },
+];
 
 const STATUS_LABEL = {
   pending_review: "aguardando revisão",
@@ -12,6 +18,7 @@ const STATUS_LABEL = {
 };
 
 export default function BlogPanel({ onClose }) {
+  const [contentTab, setContentTab] = useState("posts");
   const [tab, setTab] = useState("pending_review");
   const [posts, setPosts] = useState(null);
   const [editing, setEditing] = useState(null); // post being edited, or null
@@ -119,16 +126,41 @@ export default function BlogPanel({ onClose }) {
           </button>
           <Newspaper size={15} className="text-action" />
           <span className="label-tech">Blog</span>
+          <div className="ml-4 flex gap-1">
+            {CONTENT_TABS.map((t) => (
+              <button
+                key={t.key}
+                onClick={() => setContentTab(t.key)}
+                className={`rounded-lg px-2.5 py-1 font-mono text-[11px] transition-colors ${
+                  contentTab === t.key ? "bg-action/10 text-action" : "text-stone-500 hover:bg-ink/[0.04]"
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
         </div>
-        <button
-          onClick={generateNow}
-          disabled={generating}
-          className="flex items-center gap-1.5 rounded-lg border border-ink/15 px-2.5 py-1.5 font-mono text-[11px] text-stone-500 transition-colors hover:border-action/40 hover:text-action disabled:opacity-50"
-        >
-          {generating ? <Spinner /> : <Sparkles size={12} />} gerar agora
-        </button>
+        {contentTab === "posts" && (
+          <button
+            onClick={generateNow}
+            disabled={generating}
+            className="flex items-center gap-1.5 rounded-lg border border-ink/15 px-2.5 py-1.5 font-mono text-[11px] text-stone-500 transition-colors hover:border-action/40 hover:text-action disabled:opacity-50"
+          >
+            {generating ? <Spinner /> : <Sparkles size={12} />} gerar agora
+          </button>
+        )}
       </div>
 
+      {contentTab === "page" ? (
+        <div className="flex min-h-0 flex-1 flex-col">
+          <DocumentBuilder
+            kind="page"
+            newPlaceholder="Título da nova página…"
+            emptyText="Nenhuma página criada ainda."
+          />
+        </div>
+      ) : (
+        <>
         <div className="flex gap-1 border-b border-ink/15 px-6 pt-3">
           {Object.entries(STATUS_LABEL).map(([key, label]) => (
             <button
@@ -294,6 +326,8 @@ export default function BlogPanel({ onClose }) {
             </div>
           )}
         </div>
+        </>
+      )}
     </div>
   );
 }

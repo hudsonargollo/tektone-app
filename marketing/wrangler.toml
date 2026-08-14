@@ -2,3 +2,14 @@ name = "tektone"
 compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
 pages_build_output_dir = ".vercel/output/static"
+
+# Server components that need the Hub's backend (builder documents, etc.)
+# must NOT fetch("https://tektone.com.br/hub/...") — a same-zone subrequest
+# from this Worker back to a different Worker on the same zone gets
+# misrouted back into this Worker's own fetch handler instead of reaching
+# tektone-hub (reproduced and confirmed while building the block builder,
+# see ~/.claude/plans/tektone-block-builder.md). A service binding calls
+# tektone-hub's fetch handler directly, bypassing zone routing entirely.
+[[services]]
+binding = "HUB"
+service = "tektone-hub"
