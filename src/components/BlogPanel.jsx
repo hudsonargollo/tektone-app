@@ -5,12 +5,14 @@ import { Spinner } from "@/components/ui";
 import MilkdownEditor from "@/components/MilkdownEditor";
 import MarkdownBody from "@/components/MarkdownBody";
 import DocumentBuilder from "@/builder/DocumentBuilder";
+import FunnelBuilder from "@/builder/FunnelBuilder";
 
 const CONTENT_TABS = [
   { key: "posts", label: "Posts" },
   { key: "page", label: "Páginas" },
   { key: "form", label: "Formulários" },
   { key: "quiz", label: "Quizzes" },
+  { key: "funnel", label: "Funis" },
 ];
 
 const STATUS_LABEL = {
@@ -172,6 +174,10 @@ export default function BlogPanel({ onClose }) {
               }[contentTab]
             }
           />
+        </div>
+      ) : contentTab === "funnel" ? (
+        <div className="flex min-h-0 flex-1 flex-col">
+          <FunnelBuilder />
         </div>
       ) : (
         <>

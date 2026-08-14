@@ -13,6 +13,11 @@ interface Block {
 interface Props {
   slug: string;
   blocks: Block[];
+  // Set only when this wizard is a step inside a funnel (see
+  // marketing/components/FunnelStep.tsx) — the funnel decides what
+  // happens next (branch/advance), so this wizard skips its own
+  // "Obrigado!" screen and hands the result off instead.
+  onSubmitted?: (result: { score?: number; tier?: string | null }) => void;
 }
 
 const INPUT_CLASS =
@@ -131,7 +136,7 @@ function InteractiveQuizQuestion({
 // because it holds wizard state and posts the answers on submit (a real
 // browser fetch, not a server-side same-zone subrequest, so no HUB
 // service-binding issue here — see /p/[slug] and /blog/[slug] for that).
-export default function FormWizard({ slug, blocks }: Props) {
+export default function FormWizard({ slug, blocks, onSubmitted }: Props) {
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<Record<string, unknown>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -158,7 +163,8 @@ export default function FormWizard({ slug, blocks }: Props) {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Falha ao enviar.");
-      setResult(data);
+      if (onSubmitted) onSubmitted(data);
+      else setResult(data);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Não foi possível enviar. Tente novamente.");
     } finally {

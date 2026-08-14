@@ -8,9 +8,12 @@
 //   GET    /api/builder/documents/:kind/:slug        — public, published only
 //   GET    /api/builder/public/:slug                 — public, published form|quiz by slug
 //   POST   /api/builder/public/:slug/submit           — public, { answers } → validate/score/store
+//   GET    /api/builder/public/funnel/:slug           — public, funnel + its published steps' full documents
 //   GET    /api/builder/admin/documents?kind=        — admin, list (all statuses)
 //   GET    /api/builder/admin/documents/:id          — admin, one document
 //   GET    /api/builder/admin/documents/:id/submissions — admin, list submissions
+//   GET    /api/builder/admin/documents/:id/steps     — admin, list a funnel's ordered steps
+//   PUT    /api/builder/admin/documents/:id/steps     — admin, { steps: [{documentId, nextRule}] } → replace all
 //   POST   /api/builder/admin/documents              — admin, { kind, title } → draft
 //   PATCH  /api/builder/admin/documents/:id           — admin, { title, slug, blocks, meta }
 //   POST   /api/builder/admin/documents/:id/publish   — admin
@@ -122,6 +125,34 @@ export async function onRequest(context) {
       return json({ document: parseDoc(doc) });
     }
 
+    // ── public: fetch a published funnel + its published steps (each step's
+    // full document, so the client doesn't need N extra round-trips) ──────
+    if (seg[0] === "public" && seg[1] === "funnel" && seg[2] && method === "GET") {
+      const funnel = await db
+        .prepare("SELECT * FROM builder_documents WHERE slug = ? AND status = 'published' AND kind = 'funnel'")
+        .bind(seg[2])
+        .first();
+      if (!funnel) return json({ error: "not found" }, 404);
+      const { results } = await db
+        .prepare(
+          `SELECT fs.step_index, fs.next_rule, d.id as document_id, d.kind, d.slug, d.title, d.blocks
+           FROM builder_funnel_steps fs JOIN builder_documents d ON d.id = fs.document_id
+           WHERE fs.funnel_id = ? AND d.status = 'published' ORDER BY fs.step_index`
+        )
+        .bind(funnel.id)
+        .all();
+      const steps = results.map((r) => ({
+        stepIndex: r.step_index,
+        nextRule: r.next_rule ? JSON.parse(r.next_rule) : null,
+        documentId: r.document_id,
+        kind: r.kind,
+        slug: r.slug,
+        title: r.title,
+        blocks: JSON.parse(r.blocks || "[]"),
+      }));
+      return json({ funnel: { id: funnel.id, slug: funnel.slug, title: funnel.title }, steps });
+    }
+
     // ── public: submit a form|quiz response ────────────────────────────────
     if (seg[0] === "public" && seg[1] && seg[2] === "submit" && method === "POST") {
       const doc = await db
@@ -228,6 +259,33 @@ export async function onRequest(context) {
           .bind(seg[2])
           .all();
         return json({ submissions: results.map((r) => ({ ...r, answers: JSON.parse(r.answers || "{}") })) });
+      }
+
+      if (seg[1] === "documents" && seg[2] && seg[3] === "steps" && method === "GET") {
+        const { results } = await db
+          .prepare(
+            `SELECT fs.step_index, fs.document_id, fs.next_rule, d.kind, d.slug, d.title, d.status
+             FROM builder_funnel_steps fs JOIN builder_documents d ON d.id = fs.document_id
+             WHERE fs.funnel_id = ? ORDER BY fs.step_index`
+          )
+          .bind(seg[2])
+          .all();
+        return json({ steps: results.map((r) => ({ ...r, next_rule: r.next_rule ? JSON.parse(r.next_rule) : null })) });
+      }
+
+      if (seg[1] === "documents" && seg[2] && seg[3] === "steps" && method === "PUT") {
+        const body = await request.json().catch(() => ({}));
+        const steps = Array.isArray(body.steps) ? body.steps : [];
+        const stmts = [db.prepare("DELETE FROM builder_funnel_steps WHERE funnel_id = ?").bind(seg[2])];
+        steps.forEach((s, i) => {
+          stmts.push(
+            db
+              .prepare("INSERT INTO builder_funnel_steps (funnel_id, step_index, document_id, next_rule) VALUES (?, ?, ?, ?)")
+              .bind(seg[2], i, s.documentId, s.nextRule ? JSON.stringify(s.nextRule) : null)
+          );
+        });
+        await db.batch(stmts);
+        return json({ ok: true });
       }
 
       if (seg[1] === "documents" && seg[2] && seg[3] === "publish" && method === "POST") {
