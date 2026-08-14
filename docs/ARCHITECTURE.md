@@ -113,6 +113,7 @@ One database, `migrations/` in numbered order. Grouped by when each module shipp
 | `leads`, `lead_events`, `sales`, `commissions` | **CRM** — pipeline + audit trail + sales + a single-beneficiary commission ledger (Hudson, 10%/sale — no affiliates yet, schema stays extensible). `leads.qualification`/`score`/`tier` (migration `0012`) hold the landing-page qualification form's raw answers and computed hot/warm/cold tier, kept separate from the freeform `notes` field a closer edits by hand. |
 | `kb_documents`, `lead_questions` | **CRM knowledge base** — the Business Specialist Copilot's grounding material + interaction log |
 | `blog_pillars`, `blog_posts` | **Blog** — AI-drafted (Claude for copy, Workers AI `flux-1-schnell` for the cover), admin-curated before anything publishes. `POST /api/blog/admin/generate` runs every active pillar and only fails loudly (502) if *all* of them error — one bad pillar no longer silently looks like success. |
+| `builder_documents`, `builder_funnel_steps`, `builder_submissions` | **Block builder** (migrations `0021`/`0022`) — page/form/quiz/funnel documents, a funnel's ordered step references, and form/quiz submissions. See "The block builder" below. |
 
 ## The CRM
 
@@ -370,6 +371,75 @@ learn, XP is just a side effect of doing the work they already do.
   scoring" call — revisit if it gets gamed); the ADMIN-gated `/user/:email` route mirrors the
   tested `/project/:id` gate logic but wasn't itself exercised against a second real ADMIN user.
 
+## The block builder (`/hub`'s Blog panel → Páginas/Formulários/Quizzes/Funis)
+
+A block-based page/form/quiz/funnel builder, added as new tabs inside `BlogPanel.jsx`
+(Posts is now one tab among five, not the whole panel). One shared concept underlies all
+four: a **Document** (`builder_documents`, migration `0021`) is `{kind: page|form|quiz|
+funnel, slug, title, status, blocks: JSON[], meta: JSON}` — `blocks` is an ordered array of
+`{id, type, props}`, and every block type is a plain JS module (`src/builder/blocks/*.jsx`)
+exporting `{key, label, category, schema, defaultProps, Render}`. `Render` is the one
+component used both in the builder's live canvas (`src/builder/BlockRenderer.jsx`) and —
+via a separate `.tsx` port — at publish time in `marketing/`, so the editor preview and the
+shipped page can't structurally drift apart.
+
+9 v1 block types: `hero`, `richtext`, `feature_grid`, `testimonial`, `pricing`, `cta_band`,
+`form_field`, `quiz_question`, `image`. `DocumentBuilder.jsx` restricts which blocks are
+offered per document kind (`ALLOWED_BLOCKS_BY_KIND` in `registry.js`) — a `page` gets the
+landing-page set, `form`/`quiz` only get their own input block plus `richtext`/`image` for
+intro copy.
+
+**Property panel is schema-driven, not per-block custom code.** `PropertyPanel.jsx` renders
+text/textarea/url/image/number/boolean/select/list/array fields generically from each
+block's `schema` array — only `richtext` gets a bespoke editor (see "Removing Milkdown"
+below), since a single free-text field doesn't fit the generic form-field model anyway.
+**Autosave is debounced (500ms), not fired per keystroke** — an earlier undebounced version
+let PATCH responses race and arrive out of order, silently truncating typed text mid-word
+(caught live while testing, not guessed); `DocumentBuilder.jsx`/`FunnelBuilder.jsx` both
+flush the pending save before publish/close so neither action can act on stale state.
+
+**"Paste AI JSON" import**, ported from a BoltStack demo Hudson watched (not their code,
+just the pattern): a "copiar prompt" button serializes the block's schema into a prompt
+asking for matching JSON, "colar resposta" parses a pasted reply and applies it — zero
+server-side AI cost, the user's own Claude/ChatGPT session does the generation.
+
+**Marketing renders three separate public route families** (`.tsx` ports of the same 9
+blocks, in `marketing/components/blocks/`, using `ivory`/`ink`/`green` tokens instead of
+the Hub's `clay`/`ink`/`action` names — same colors, can't share an import across the two
+separate Vite/Next build pipelines):
+- **`/p/:slug`** — a published `page` document, static `BlockRenderer`.
+- **`/f/:slug`** — a published `form`/`quiz` document, rendered as a one-question-per-step
+  wizard (`FormWizard.tsx`, client component) rather than stacked — `GET
+  /api/builder/public/:slug` is kind-agnostic (`kind IN ('form','quiz')`) since the route
+  itself doesn't know which one it's loading ahead of time. Submitting POSTs to
+  `/api/builder/public/:slug/submit`; a quiz's score is **always recomputed server-side**
+  from each question's `scoreWeight` (never trust a client-supplied score — same principle
+  the CRM qualification form already established) and matched against an optional
+  `meta.scoringRules.tiers` list to produce a tier. Both kinds insert into
+  `builder_submissions` (migration `0022`) — an admin `GET .../submissions` endpoint exists
+  to read them back, but there's no viewer UI for it yet (see outstanding items).
+- **`/n/:slug`** — a published `funnel` document. A funnel has no `blocks` of its own — it's
+  an ordered reference to other page/form/quiz documents (`builder_funnel_steps`, migration
+  `0021`), each step optionally branching on a quiz's tier (`next_rule: {default, branches:
+  [{tier, goto}]}`). `FunnelStep.tsx` resolves branching client-side (the rule + submission
+  result are both already in hand) and navigates via `?step=N` in the URL — a page step gets
+  a "continuar" button, a form/quiz step's `FormWizard` takes an `onSubmitted` callback
+  instead of showing its own thank-you screen, since the funnel decides what happens next.
+  Verified live end-to-end against a real quiz→branch→outcome-page funnel (both the hot and
+  cold paths) before this note was written.
+
+**Removing Milkdown.** The Posts tab's editor used to be `@milkdown/{crepe,kit,react}`
+(ProseMirror-based rich text) — removed entirely (198 packages, ~1.5MB off the Hub's main JS
+bundle) because it and `MarkdownBody` (the actual publish-time renderer) were two
+independent markdown pipelines that could silently drift — something Milkdown rendered fine
+that `MarkdownBody` choked on, or vice versa, with no structural guarantee either way. Split
+into `MarkdownTextarea.jsx` (plain textarea + a thin insert-snippet-at-cursor toolbar,
+exposes `insertImage(key, alt)` via ref — same shape Milkdown exposed, so the "gerar imagem"
+AI-insert flow needed no changes) and `RichtextEditor.jsx` (adds editar/preview tabs on top,
+used by the block builder's own `richtext` block). `BlogPanel.jsx`'s Posts tab uses
+`MarkdownTextarea` directly rather than `RichtextEditor`, since it already owns its own
+outer editar/preview tab pair — nesting `RichtextEditor`'s tabs inside would double them up.
+
 ## Meeting Intelligence Drive search
 
 `automation/meeting-notes-sync.gs` is the source-of-truth copy of a Google Apps Script Web App
@@ -392,6 +462,7 @@ folder with that exact name is actually visible to whichever Google account runs
 | `.assetsignore` (containing `_worker.js`) must live in `public/`, not `dist/` | `dist/` is regenerated every build (gitignored); `public/` is the only place a file survives a rebuild and still gets copied into the output. Without it, the compiled backend bundle gets uploaded as a public, downloadable static file. |
 | Built entry HTML gets renamed to `index.html` post-build | Vite outputs `portal.html` (matching the source filename); Workers' SPA fallback looks specifically for a file *named* `index.html`. See the `build:portal` npm script. |
 | `next-on-pages` ≠ portable to plain `wrangler deploy` | See "Marketing site: Pages, not Workers" above. |
+| **A Worker `fetch()`ing another Worker on its own zone can get misrouted back into itself** | `marketing/app/{p,f,n,blog}/**` server components used `fetch("https://tektone.com.br/hub/...")` to call the Hub API — despite `tektone.com.br/hub/*` being a more-specific Workers Route than the marketing Pages project's zone-wide catch-all, the *subrequest* resolved back into the marketing Worker's own fetch handler instead of `tektone-hub`, returning the marketing site's own 404 HTML as if it were the Hub's JSON response. External requests to the same URL (`curl`, a real browser) route correctly — only a Worker calling out to its *own* zone hit this. Fixed with a Cloudflare **service binding** (`marketing/wrangler.toml`'s `[[services]] binding = "HUB", service = "tektone-hub"`, accessed via `getRequestContext().env.HUB.fetch(...)` from `@cloudflare/next-on-pages`) instead of a same-zone HTTP fetch — bypasses zone routing entirely, calls the target Worker's handler directly. Any *new* marketing server component that needs Hub data must use `env.HUB.fetch`, never a bare `fetch()` to `tektone.com.br/hub/...`. Client-side (`FormWizard.tsx`'s submit) is unaffected — a real browser request, not a Worker subrequest. |
 
 ## Deploying
 
@@ -517,3 +588,12 @@ reference against the routes portal can actually reach.
     Drive search" above).
 11. **Password gate is live** (`quemtemseda`) — intentional while pre-launch; remove
     `marketing/middleware.ts` + `app/gate/` before the site should be publicly reachable.
+12. **Block builder has no submissions-viewer UI, and no `meta.scoringRules` editor.**
+    `GET /api/builder/admin/documents/:id/submissions` and a quiz's `meta.scoringRules`
+    (tier thresholds) are both fully supported backend-side but have no Hub UI yet —
+    reading submissions or setting tier rules today means a direct D1 query/PATCH. Build
+    once a real quiz/form is in production use and this stops being acceptable.
+13. **No published page/form/quiz/funnel exists yet** — the whole builder was verified with
+    throwaway test documents (created and deleted via direct D1 writes and the real UI),
+    cleaned up after each check. First real usage will be the first true end-to-end proof
+    in production conditions.
