@@ -226,7 +226,10 @@ app.patch("/crm/api/leads/:id/status", async (c) => {
   });
   let automation = null;
   if (body.status === "won" && existing.status !== "won") {
-    automation = await runWonAutomation(c.env.DB, lead, c.get("user").email);
+    automation = await runWonAutomation(c.env.DB, lead, c.get("user").email, {
+      projectType: body.projectType || null,
+      brief: body.brief || null,
+    });
     lead = await getLead(c.env.DB, id); // re-fetch: converted_project_id now set
   }
   return json(c, { lead, automation });

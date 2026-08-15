@@ -1,5 +1,5 @@
 // Won-lead automation (plan Phase 6) — runs once, when a lead's status
-// transitions to 'won'. Three side effects, each logged to lead_events so
+// transitions to 'won'. Four side effects, each logged to lead_events so
 // the audit trail shows exactly what happened (or didn't):
 //   1. Create the `projects` row + a CUSTOMER `project_users` invite — the
 //      hand-off from /crm into /hub (same D1, no cross-system sync needed).
@@ -8,9 +8,17 @@
 //      duplicated here rather than imported since that file is gated by a
 //      Pages Functions `context` shape this Worker doesn't have) — bulk
 //      seeds the internal onboarding checklist into the new project's tasks.
-//   3. Commission generation already happens at sale-creation time (see
+//   3. Build the adaptive onboarding_plans/onboarding_steps rows (see
+//      onboardingService.js and ~/.claude/plans/tektone-adaptive-onboarding.md)
+//      — a project_type match gets its own rule-based checklist (replacing
+//      the static template for that project); no match mirrors the static
+//      template into the same shape so the Portal still has a checklist.
+//   4. Commission generation already happens at sale-creation time (see
 //      worker/lib/crmDb.js's createCommissionForSale, called from
 //      worker/crm-entry.js's POST /leads/:id/sales) — not repeated here.
+import { buildPlan } from "./onboardingService.js";
+import { ONBOARDING_RULES } from "./onboardingRules.js";
+
 const uid = () => crypto.randomUUID().replace(/-/g, "").slice(0, 12);
 
 // Which workflow_template counts as "the" onboarding checklist is an open
@@ -51,16 +59,23 @@ async function logEvent(db, leadId, type, payload, actorEmail) {
     .run();
 }
 
-export async function runWonAutomation(db, lead, actorEmail) {
+export async function runWonAutomation(db, lead, actorEmail, opts = {}) {
   if (lead.converted_project_id) return { skipped: "already_converted" };
+
+  const projectType = opts.projectType || null;
+  const brief = opts.brief || null;
+  // A project_type with a known rule set replaces the static template for
+  // this project instead of stacking both checklists onto the board — see
+  // onboardingService.buildPlan.
+  const hasRule = Boolean(projectType && ONBOARDING_RULES[projectType]?.length);
 
   const projectId = uid();
   const projectName = lead.company || lead.name || `Lead ${lead.id.slice(0, 8)}`;
   await db
-    .prepare(`INSERT INTO projects (id, name, client_ref, status) VALUES (?, ?, ?, 'ACTIVE')`)
-    .bind(projectId, projectName, lead.id)
+    .prepare(`INSERT INTO projects (id, name, client_ref, status, project_type) VALUES (?, ?, ?, 'ACTIVE', ?)`)
+    .bind(projectId, projectName, lead.id, projectType)
     .run();
-  await logEvent(db, lead.id, "project_created", { projectId, name: projectName }, actorEmail);
+  await logEvent(db, lead.id, "project_created", { projectId, name: projectName, projectType }, actorEmail);
 
   if (lead.email) {
     await db
@@ -75,24 +90,49 @@ export async function runWonAutomation(db, lead, actorEmail) {
     await logEvent(db, lead.id, "customer_invite_skipped", { reason: "lead has no email" }, actorEmail);
   }
 
-  const template = await db
-    .prepare("SELECT * FROM workflow_templates WHERE name = ? ORDER BY created_at DESC LIMIT 1")
-    .bind(ONBOARDING_TEMPLATE_NAME)
-    .first();
-  if (template) {
-    const created = await applyWorkflowTemplate(db, template, projectId);
-    await logEvent(db, lead.id, "onboarding_applied", { templateId: template.id, tasksCreated: created }, actorEmail);
-  } else {
-    await logEvent(
-      db,
-      lead.id,
-      "onboarding_skipped",
-      { reason: `no workflow_template named "${ONBOARDING_TEMPLATE_NAME}" exists yet` },
-      actorEmail
-    );
+  let template = null;
+  if (!hasRule) {
+    template = await db
+      .prepare("SELECT * FROM workflow_templates WHERE name = ? ORDER BY created_at DESC LIMIT 1")
+      .bind(ONBOARDING_TEMPLATE_NAME)
+      .first();
+    if (template) {
+      const created = await applyWorkflowTemplate(db, template, projectId);
+      await logEvent(db, lead.id, "onboarding_applied", { templateId: template.id, tasksCreated: created }, actorEmail);
+    } else {
+      await logEvent(
+        db,
+        lead.id,
+        "onboarding_skipped",
+        { reason: `no workflow_template named "${ONBOARDING_TEMPLATE_NAME}" exists yet` },
+        actorEmail
+      );
+    }
+  }
+
+  // Builds onboarding_plans/onboarding_steps — a rule match here also
+  // mirrors its steps into `tasks` (see onboardingService.js); the static
+  // template branch above already inserted into `tasks` itself, so its
+  // buildPlan call below only records the matching Portal-facing rows.
+  // Wrapped so a failure here can never block project creation/invite,
+  // same fail-open discipline as the template lookup above.
+  let onboardingPlan = null;
+  try {
+    onboardingPlan = await buildPlan(db, { projectId, leadId: lead.id, projectType, brief, template });
+    if (onboardingPlan) {
+      await logEvent(
+        db,
+        lead.id,
+        "onboarding_plan_created",
+        { planId: onboardingPlan.planId, source: onboardingPlan.source, stepCount: onboardingPlan.stepCount },
+        actorEmail
+      );
+    }
+  } catch (e) {
+    await logEvent(db, lead.id, "onboarding_plan_failed", { error: e.message }, actorEmail);
   }
 
   await db.prepare(`UPDATE leads SET converted_project_id = ? WHERE id = ?`).bind(projectId, lead.id).run();
 
-  return { projectId, onboardingApplied: Boolean(template) };
+  return { projectId, onboardingApplied: Boolean(template) || hasRule, onboardingPlan };
 }

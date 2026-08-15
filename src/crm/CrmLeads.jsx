@@ -78,7 +78,7 @@ export default function CrmLeads({ onOpenLead }) {
     setMoveErr(null);
     setLeads((cur) => cur.map((l) => (l.id === id ? { ...l, status } : l)));
     try {
-      await crmApi.setLeadStatus(id, status, lostReason || undefined);
+      await crmApi.setLeadStatus(id, status, { lostReason: lostReason || undefined });
     } catch (e) {
       setLeads((cur) => cur.map((l) => (l.id === id ? { ...l, status: prev } : l)));
       setMoveErr(e.body?.error || "Falha ao mover o lead.");

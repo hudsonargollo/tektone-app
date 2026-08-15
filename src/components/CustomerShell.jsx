@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { LogOut, FileText, Receipt, CheckCircle2, Clock, ShieldCheck, Sparkles, ShoppingBag, Check } from "lucide-react";
+import { LogOut, FileText, Receipt, CheckCircle2, Clock, ShieldCheck, Sparkles, ShoppingBag, Check, ListChecks, Square, CheckSquare } from "lucide-react";
 import { api } from "@/lib/api";
 import { Spinner, Avatar } from "@/components/ui";
 import LogoMark from "@/components/LogoMark";
@@ -19,6 +19,17 @@ const INVOICE_STATUS = {
   OVERDUE: { label: "vencido", color: "text-danger" },
   VOID: { label: "anulado", color: "text-stone-400" },
 };
+// Mirrors the category vocabulary onboarding steps are tagged with (see
+// worker/lib/onboardingRules.js) — display-only grouping labels.
+const ONBOARDING_CATEGORY_LABEL = {
+  kickoff: "Kickoff",
+  access: "Acessos",
+  content: "Conteúdo",
+  technical: "Técnico",
+  design: "Design",
+  training: "Treinamento",
+  launch: "Lançamento",
+};
 
 // The entire experience for a CUSTOMER-role account — deliberately a
 // separate component tree from the staff Kanban app, not a conditional
@@ -34,8 +45,10 @@ export default function CustomerShell({ userName, userEmail, userAvatar, onLogou
   const [invoices, setInvoices] = useState(null);
   const [catalog, setCatalog] = useState(null);
   const [purchased, setPurchased] = useState(null);
+  const [onboarding, setOnboarding] = useState(null);
   const [signing, setSigning] = useState(null);
   const [buying, setBuying] = useState(null);
+  const [togglingStep, setTogglingStep] = useState(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -54,7 +67,23 @@ export default function CustomerShell({ userName, userEmail, userAvatar, onLogou
     api.listContracts(activeProjectId).then(({ contracts }) => setContracts(contracts)).catch(() => {});
     api.listInvoices(activeProjectId).then(({ invoices }) => setInvoices(invoices)).catch(() => {});
     api.listProjectAddons(activeProjectId).then(({ addons }) => setPurchased(addons)).catch(() => {});
+    api.getOnboarding(activeProjectId).then(setOnboarding).catch(() => {});
   }, [activeProjectId]);
+
+  async function toggleStep(step) {
+    if (step.owner !== "customer") return; // read-only chip for the customer, see render below
+    setTogglingStep(step.id);
+    setError("");
+    const nextStatus = step.status === "done" ? "pending" : "done";
+    try {
+      const { step: updated } = await api.setOnboardingStepStatus(activeProjectId, step.id, nextStatus);
+      setOnboarding((prev) => ({ ...prev, steps: prev.steps.map((s) => (s.id === updated.id ? updated : s)) }));
+    } catch (e) {
+      setError(e.body?.error || "Falha ao atualizar a etapa.");
+    } finally {
+      setTogglingStep(null);
+    }
+  }
 
   async function buyAddon(addonId) {
     setBuying(addonId);
@@ -154,6 +183,14 @@ export default function CustomerShell({ userName, userEmail, userAvatar, onLogou
             {/* Tabs */}
             <div className="mb-4 flex gap-1 rounded-lg surface-3 p-1">
               <button
+                onClick={() => setTab("onboarding")}
+                className={`flex flex-1 items-center justify-center gap-1.5 rounded-md py-2 font-mono text-[11px] transition-colors ${
+                  tab === "onboarding" ? "bg-clay text-ink shadow-sm" : "text-stone-500"
+                }`}
+              >
+                <ListChecks size={13} /> onboarding
+              </button>
+              <button
                 onClick={() => setTab("contracts")}
                 className={`flex flex-1 items-center justify-center gap-1.5 rounded-md py-2 font-mono text-[11px] transition-colors ${
                   tab === "contracts" ? "bg-clay text-ink shadow-sm" : "text-stone-500"
@@ -178,6 +215,60 @@ export default function CustomerShell({ userName, userEmail, userAvatar, onLogou
                 <ShoppingBag size={13} /> add-ons
               </button>
             </div>
+
+            {tab === "onboarding" && (
+              <div className="space-y-3">
+                {onboarding === null ? (
+                  <div className="flex justify-center py-8"><Spinner /></div>
+                ) : !onboarding.plan || onboarding.steps.length === 0 ? (
+                  <p className="text-sm text-stone-500">Nenhum checklist de onboarding ainda.</p>
+                ) : (
+                  Object.entries(
+                    onboarding.steps.reduce((acc, s) => {
+                      const key = s.category || "outros";
+                      (acc[key] ||= []).push(s);
+                      return acc;
+                    }, {})
+                  ).map(([category, steps]) => (
+                    <div key={category} className="rounded-xl surface-2 p-5">
+                      <p className="label-tech mb-3">{ONBOARDING_CATEGORY_LABEL[category] || "Outros"}</p>
+                      <div className="space-y-2">
+                        {steps.map((s) => (
+                          <div key={s.id} className="flex items-start gap-3 rounded-lg surface-3 px-3.5 py-2.5">
+                            {s.owner === "customer" ? (
+                              <button
+                                onClick={() => toggleStep(s)}
+                                disabled={togglingStep === s.id}
+                                className={`mt-0.5 shrink-0 ${s.status === "done" ? "text-success" : "text-stone-400"}`}
+                              >
+                                {s.status === "done" ? <CheckSquare size={16} /> : <Square size={16} />}
+                              </button>
+                            ) : (
+                              <span
+                                className={`mt-0.5 shrink-0 ${s.status === "done" ? "text-success" : "text-stone-400"}`}
+                              >
+                                {s.status === "done" ? <CheckCircle2 size={16} /> : <Clock size={16} />}
+                              </span>
+                            )}
+                            <div className="min-w-0 flex-1">
+                              <p className={`text-sm ${s.status === "done" ? "text-stone-500 line-through" : "text-ink"}`}>
+                                {s.title}
+                              </p>
+                              {s.description && <p className="mt-0.5 text-xs text-stone-500">{s.description}</p>}
+                              {s.owner !== "customer" && (
+                                <p className="mt-0.5 font-mono text-[9.5px] uppercase tracking-wider text-stone-400">
+                                  responsável: tektone
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
 
             {tab === "contracts" && (
               <div className="space-y-3">

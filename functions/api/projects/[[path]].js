@@ -12,6 +12,9 @@
 //   POST /api/projects/:id/contracts/:cid/sign  — self-built click-to-sign
 //   GET  /api/projects/:id/invoices             — list
 //   POST /api/projects/:id/invoices             — create (STAFF/ADMIN)
+//   GET  /api/projects/:id/onboarding            — adaptive checklist (see
+//                                                   ~/.claude/plans/tektone-adaptive-onboarding.md)
+//   PATCH /api/projects/:id/onboarding/steps/:sid — toggle a step done/pending
 import { getSessionEmail } from "../../_lib/session.js";
 import { getUserByEmail } from "../../_lib/db.js";
 import { isStaffOrAdmin, isProjectMember } from "../../_lib/rbac.js";
@@ -186,6 +189,47 @@ export async function onRequest(context) {
           .run();
         const invoice = await db.prepare("SELECT * FROM invoices WHERE id = ?").bind(id).first();
         return json({ invoice }, 201);
+      }
+    }
+
+    // ── ONBOARDING (adaptive checklist, Phase 1 — see
+    //    ~/.claude/plans/tektone-adaptive-onboarding.md) ────────────────────
+    if (sub === "onboarding") {
+      if (!subId) {
+        if (method !== "GET") return json({ error: "Not found" }, 404);
+        const plan = await db
+          .prepare(
+            `SELECT * FROM onboarding_plans WHERE project_id = ? AND status = 'approved' ORDER BY created_at DESC LIMIT 1`
+          )
+          .bind(projectId)
+          .first();
+        if (!plan) return json({ plan: null, steps: [] });
+        const { results: steps } = await db
+          .prepare(`SELECT * FROM onboarding_steps WHERE plan_id = ? ORDER BY order_index`)
+          .bind(plan.id)
+          .all();
+        return json({ plan, steps });
+      }
+      if (subId === "steps" && action) {
+        if (method !== "PATCH") return json({ error: "Not found" }, 404);
+        const step = await db
+          .prepare(`SELECT * FROM onboarding_steps WHERE id = ? AND project_id = ?`)
+          .bind(action, projectId)
+          .first();
+        if (!step) return json({ error: "Step not found" }, 404);
+        // A CUSTOMER can only toggle steps assigned to them — staff/admin
+        // can toggle any step (see isProjectMember's own staff bypass above).
+        if (!isStaffOrAdmin(user) && step.owner !== "customer") return json({ error: "forbidden" }, 403);
+        const body = await request.json().catch(() => ({}));
+        const status = ["pending", "done", "skipped"].includes(body.status) ? body.status : "done";
+        await db
+          .prepare(
+            `UPDATE onboarding_steps SET status = ?, completed_at = ?, completed_by = ? WHERE id = ?`
+          )
+          .bind(status, status === "done" ? new Date().toISOString() : null, status === "done" ? email : null, action)
+          .run();
+        const updated = await db.prepare(`SELECT * FROM onboarding_steps WHERE id = ?`).bind(action).first();
+        return json({ step: updated });
       }
     }
 

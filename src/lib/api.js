@@ -68,6 +68,11 @@ export const api = {
   listInvoices: (projectId) => req(`/projects/${projectId}/invoices`),
   createInvoice: (projectId, body) => req(`/projects/${projectId}/invoices`, { method: "POST", body }),
 
+  // adaptive onboarding checklist (Phase 1)
+  getOnboarding: (projectId) => req(`/projects/${projectId}/onboarding`),
+  setOnboardingStepStatus: (projectId, stepId, status) =>
+    req(`/projects/${projectId}/onboarding/steps/${stepId}`, { method: "PATCH", body: { status } }),
+
   // add-on marketplace (Phase 5)
   listAddonsCatalog: () => req("/addons"),
   createAddon: (body) => req("/addons", { method: "POST", body }),

@@ -20,6 +20,21 @@ const TIER_STYLE = {
 };
 const TIER_LABEL = { hot: "quente", warm: "morno", cold: "frio" };
 
+// Mirrors worker/lib/onboardingRules.js's PROJECT_TYPE_LABEL keys — kept as
+// a display-only duplicate here (not shared as a package) so this select
+// stays in lockstep with which project types actually have a rule-based
+// onboarding checklist. "outro" has no rule set on purpose: picking it (or
+// leaving the field blank) falls back to the static "Onboarding padrão"
+// template, same as today.
+const PROJECT_TYPE_LABEL = {
+  site_institucional: "Site institucional",
+  loja_virtual: "Loja virtual",
+  sistema_interno: "Sistema interno",
+  app_mobile: "Aplicativo mobile",
+  automacao: "Automação",
+  outro: "Outro",
+};
+
 // Mirrors marketing/components/QualificacaoSection.tsx's option lists — kept
 // as a display-only lookup here (not shared as a package) so a closer sees
 // the same human labels the visitor picked, not raw enum values like
@@ -77,6 +92,9 @@ export default function CrmLeadDetail({ leadId, timezone, onBack }) {
   const [notes, setNotes] = useState("");
   const [savingNotes, setSavingNotes] = useState(false);
   const [changingStatus, setChangingStatus] = useState(false);
+  const [showWonForm, setShowWonForm] = useState(false);
+  const [wonProjectType, setWonProjectType] = useState("");
+  const [wonBrief, setWonBrief] = useState("");
   const [saleAmount, setSaleAmount] = useState("");
   const [creatingSale, setCreatingSale] = useState(false);
   const [questions, setQuestions] = useState(null);
@@ -148,6 +166,28 @@ export default function CrmLeadDetail({ leadId, timezone, onBack }) {
     }
   }
 
+  // "won" doesn't fire immediately like the other stages — it opens a small
+  // form first so the closer can optionally capture a project_type + brief,
+  // the signal the adaptive onboarding checklist is built from (see
+  // ~/.claude/plans/tektone-adaptive-onboarding.md). Both fields are
+  // optional: leaving them blank falls back to the static template, same
+  // as before this feature existed.
+  async function confirmWon() {
+    setChangingStatus(true);
+    try {
+      await crmApi.setLeadStatus(leadId, "won", {
+        projectType: wonProjectType || undefined,
+        brief: wonBrief.trim() || undefined,
+      });
+      setShowWonForm(false);
+      setWonProjectType("");
+      setWonBrief("");
+      load();
+    } finally {
+      setChangingStatus(false);
+    }
+  }
+
   async function submitSale(e) {
     e.preventDefault();
     const amount = Number(saleAmount);
@@ -209,7 +249,7 @@ export default function CrmLeadDetail({ leadId, timezone, onBack }) {
             <button
               key={s}
               disabled={changingStatus || s === lead.status}
-              onClick={() => setStatus(s)}
+              onClick={() => (s === "won" ? setShowWonForm(true) : setStatus(s))}
               className={`rounded-lg px-3 py-1.5 font-mono text-[11px] transition-colors disabled:opacity-40 ${
                 s === lead.status ? "bg-action text-clay" : "surface-3 text-stone-600 hover:border-action/40"
               }`}
@@ -218,6 +258,51 @@ export default function CrmLeadDetail({ leadId, timezone, onBack }) {
             </button>
           ))}
         </div>
+
+        {showWonForm && (
+          <div className="mb-4 rounded-lg surface-3 p-4">
+            <p className="mb-2.5 font-mono text-[11px] uppercase tracking-wide text-stone-500">
+              Marcar como ganho
+            </p>
+            <div className="flex flex-col gap-2">
+              <select
+                value={wonProjectType}
+                onChange={(e) => setWonProjectType(e.target.value)}
+                className="rounded-lg border border-ink/15 bg-transparent px-3 py-2 text-sm text-ink"
+              >
+                <option value="">Tipo de projeto (opcional)</option>
+                {Object.entries(PROJECT_TYPE_LABEL).map(([k, label]) => (
+                  <option key={k} value={k}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+              <textarea
+                value={wonBrief}
+                onChange={(e) => setWonBrief(e.target.value)}
+                rows={3}
+                placeholder="Diretrizes do projeto (opcional) — contexto que ajuda a montar o onboarding certo para este cliente."
+                className="rounded-lg border border-ink/15 bg-transparent px-3 py-2 text-sm text-ink"
+              />
+            </div>
+            <div className="mt-2.5 flex gap-2">
+              <button
+                onClick={confirmWon}
+                disabled={changingStatus}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-action px-3.5 py-2 font-mono text-[11px] font-semibold text-clay disabled:opacity-50"
+              >
+                {changingStatus && <Spinner />} confirmar ganho
+              </button>
+              <button
+                onClick={() => setShowWonForm(false)}
+                disabled={changingStatus}
+                className="rounded-lg border border-ink/15 px-3.5 py-2 font-mono text-[11px] text-stone-500"
+              >
+                cancelar
+              </button>
+            </div>
+          </div>
+        )}
 
         <label className="mb-1.5 block font-mono text-[11px] uppercase tracking-[0.16em] text-stone-500">Notas</label>
         <textarea
