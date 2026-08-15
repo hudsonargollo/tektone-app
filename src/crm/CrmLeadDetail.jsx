@@ -95,6 +95,7 @@ export default function CrmLeadDetail({ leadId, timezone, onBack }) {
   const [showWonForm, setShowWonForm] = useState(false);
   const [wonProjectType, setWonProjectType] = useState("");
   const [wonBrief, setWonBrief] = useState("");
+  const [wonPendingReview, setWonPendingReview] = useState(false);
   const [saleAmount, setSaleAmount] = useState("");
   const [creatingSale, setCreatingSale] = useState(false);
   const [questions, setQuestions] = useState(null);
@@ -175,13 +176,17 @@ export default function CrmLeadDetail({ leadId, timezone, onBack }) {
   async function confirmWon() {
     setChangingStatus(true);
     try {
-      await crmApi.setLeadStatus(leadId, "won", {
+      const { automation } = await crmApi.setLeadStatus(leadId, "won", {
         projectType: wonProjectType || undefined,
         brief: wonBrief.trim() || undefined,
       });
       setShowWonForm(false);
       setWonProjectType("");
       setWonBrief("");
+      // A brief triggers an AI-generated onboarding plan that lands
+      // pending_review (see ~/.claude/plans/tektone-adaptive-onboarding.md)
+      // — flag it here since this view has no direct link into AdminPanel.
+      setWonPendingReview(automation?.onboardingPlan?.status === "pending_review");
       load();
     } finally {
       setChangingStatus(false);
@@ -258,6 +263,13 @@ export default function CrmLeadDetail({ leadId, timezone, onBack }) {
             </button>
           ))}
         </div>
+
+        {wonPendingReview && (
+          <p className="mb-4 flex items-center gap-1.5 rounded-lg border border-action/30 bg-action/[0.06] px-3 py-2 font-mono text-[11px] text-action">
+            <Sparkles size={12} /> Plano de onboarding gerado por IA — revise em Admin → Onboarding (revisão)
+            antes que ele vire tarefas.
+          </p>
+        )}
 
         {showWonForm && (
           <div className="mb-4 rounded-lg surface-3 p-4">

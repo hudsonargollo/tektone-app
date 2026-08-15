@@ -28,6 +28,7 @@ import {
   approveLeadQuestion,
 } from "./lib/crmDb.js";
 import { runWonAutomation } from "./lib/wonAutomation.js";
+import { listPlans, getPlanWithSteps, addStep, updateStep, deleteStep, approvePlan } from "./lib/onboardingService.js";
 import { ask as askBusinessSpecialist, suggest as suggestBusinessSpecialist } from "./lib/businessSpecialistService.js";
 import { createKbDocument, listKbDocuments, archiveKbDocument, promoteQuestionToFaq } from "./lib/crmKbService.js";
 import { listWaLinks, createWaLink, updateWaLink, deleteWaLink, resolveWaLink } from "./lib/waLinksService.js";
@@ -54,6 +55,7 @@ app.use("/crm/api/wa-links/*", requireCrm);
 app.use("/crm/api/wa-numbers", requireCrm);
 app.use("/crm/api/wa-numbers/*", requireCrm);
 app.use("/crm/api/settings/*", requireCrm);
+app.use("/crm/api/onboarding/*", requireCrm);
 
 async function requireCrm(c, next) {
   const email = await getSessionEmail(c.req.raw, c.env);
@@ -229,10 +231,52 @@ app.patch("/crm/api/leads/:id/status", async (c) => {
     automation = await runWonAutomation(c.env.DB, lead, c.get("user").email, {
       projectType: body.projectType || null,
       brief: body.brief || null,
+      env: c.env,
     });
     lead = await getLead(c.env.DB, id); // re-fetch: converted_project_id now set
   }
   return json(c, { lead, automation });
+});
+
+// ── onboarding review queue (Phase 2 — AI-generated plans awaiting a human;
+//    see worker/lib/onboardingService.js and
+//    ~/.claude/plans/tektone-adaptive-onboarding.md) ───────────────────────
+app.get("/crm/api/onboarding/plans", async (c) => {
+  const plans = await listPlans(c.env.DB, { status: c.req.query("status") || undefined });
+  return json(c, { plans });
+});
+
+app.get("/crm/api/onboarding/plans/:id", async (c) => {
+  const found = await getPlanWithSteps(c.env.DB, c.req.param("id"));
+  if (!found) return json(c, { error: "not found" }, 404);
+  return json(c, found);
+});
+
+app.post("/crm/api/onboarding/plans/:id/steps", async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  const title = String(body.title || "").trim();
+  if (!title) return json(c, { error: "title obrigatório" }, 400);
+  const step = await addStep(c.env.DB, c.req.param("id"), { ...body, title });
+  if (!step) return json(c, { error: "plan not found" }, 404);
+  return json(c, { step }, 201);
+});
+
+app.patch("/crm/api/onboarding/plans/:id/steps/:stepId", async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  const step = await updateStep(c.env.DB, c.req.param("id"), c.req.param("stepId"), body);
+  if (!step) return json(c, { error: "not found" }, 404);
+  return json(c, { step });
+});
+
+app.delete("/crm/api/onboarding/plans/:id/steps/:stepId", async (c) => {
+  await deleteStep(c.env.DB, c.req.param("id"), c.req.param("stepId"));
+  return json(c, { ok: true });
+});
+
+app.post("/crm/api/onboarding/plans/:id/approve", async (c) => {
+  const result = await approvePlan(c.env.DB, c.req.param("id"), c.get("user").email);
+  if (!result) return json(c, { error: "not found" }, 404);
+  return json(c, result);
 });
 
 // ── sales ────────────────────────────────────────────────────────────────

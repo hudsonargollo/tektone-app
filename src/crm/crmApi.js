@@ -50,6 +50,16 @@ export const crmApi = {
     req(`/leads/${leadId}/sales`, { method: "POST", body: { amount, currency } }),
   listSales: () => req("/sales"),
 
+  // onboarding review queue (Phase 2 — AI-generated plans awaiting approval)
+  listOnboardingPlans: (status) => req(`/onboarding/plans${status ? `?status=${status}` : ""}`),
+  getOnboardingPlan: (id) => req(`/onboarding/plans/${id}`),
+  addOnboardingStep: (planId, body) => req(`/onboarding/plans/${planId}/steps`, { method: "POST", body }),
+  updateOnboardingStep: (planId, stepId, body) =>
+    req(`/onboarding/plans/${planId}/steps/${stepId}`, { method: "PATCH", body }),
+  deleteOnboardingStep: (planId, stepId) =>
+    req(`/onboarding/plans/${planId}/steps/${stepId}`, { method: "DELETE" }),
+  approveOnboardingPlan: (planId) => req(`/onboarding/plans/${planId}/approve`, { method: "POST" }),
+
   // Business Specialist Copilot
   askCopilot: (leadId, questionText) => req(`/leads/${leadId}/ask`, { method: "POST", body: { questionText } }),
   suggestCopilot: (leadId) => req(`/leads/${leadId}/suggest`, { method: "POST" }),

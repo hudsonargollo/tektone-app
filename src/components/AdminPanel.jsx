@@ -1,7 +1,29 @@
 import { useEffect, useState } from "react";
-import { ArrowLeft, ShieldCheck, RotateCcw, Check, Clock, Wallet, Layers, Plus, Trash2, PlayCircle } from "lucide-react";
+import {
+  ArrowLeft,
+  ShieldCheck,
+  RotateCcw,
+  Check,
+  Clock,
+  Wallet,
+  Layers,
+  Plus,
+  Trash2,
+  PlayCircle,
+  Sparkles,
+  ChevronDown,
+  ChevronUp,
+  CheckCheck,
+} from "lucide-react";
 import { api } from "@/lib/api";
+import { crmApi } from "@/crm/crmApi";
 import { Spinner } from "@/components/ui";
+
+const ONBOARDING_CATEGORY_OPTIONS = ["kickoff", "access", "content", "technical", "design", "training", "launch"];
+const ONBOARDING_OWNER_OPTIONS = [
+  { value: "tektone", label: "Tektone" },
+  { value: "customer", label: "Cliente" },
+];
 
 // Full-screen view (not a modal) — mounted by App.jsx's view switch when
 // view === "admin". onClose navigates back to the board view; the X/back
@@ -69,6 +91,104 @@ export default function AdminPanel({ currentEmail, clients, onClose }) {
       setError(e.body?.error || "Falha ao remover.");
     } finally {
       setTemplateBusy(null);
+    }
+  }
+
+  // ── Onboarding review queue (Phase 2 — AI-generated plans awaiting a
+  //    human before they touch tasks/the Portal; see
+  //    ~/.claude/plans/tektone-adaptive-onboarding.md) ─────────────────────
+  const [pendingPlans, setPendingPlans] = useState(null);
+  const [expandedPlanId, setExpandedPlanId] = useState(null);
+  const [planDetails, setPlanDetails] = useState({}); // planId -> {plan, steps}
+  const [newStepDraft, setNewStepDraft] = useState({ title: "", owner: "tektone", category: "" });
+  const [onboardingBusy, setOnboardingBusy] = useState(null);
+
+  function loadPendingPlans() {
+    crmApi.listOnboardingPlans("pending_review").then(({ plans }) => setPendingPlans(plans)).catch(() => setPendingPlans([]));
+  }
+  useEffect(() => {
+    if (tab === "onboarding") loadPendingPlans();
+  }, [tab]);
+
+  async function togglePlan(planId) {
+    if (expandedPlanId === planId) {
+      setExpandedPlanId(null);
+      return;
+    }
+    setExpandedPlanId(planId);
+    setNewStepDraft({ title: "", owner: "tektone", category: "" });
+    if (!planDetails[planId]) {
+      const detail = await crmApi.getOnboardingPlan(planId);
+      setPlanDetails((d) => ({ ...d, [planId]: detail }));
+    }
+  }
+
+  function patchLocalStep(planId, stepId, patch) {
+    setPlanDetails((d) => ({
+      ...d,
+      [planId]: { ...d[planId], steps: d[planId].steps.map((s) => (s.id === stepId ? { ...s, ...patch } : s)) },
+    }));
+  }
+
+  async function saveStep(planId, step) {
+    setOnboardingBusy(step.id);
+    try {
+      const { step: updated } = await crmApi.updateOnboardingStep(planId, step.id, {
+        title: step.title,
+        description: step.description,
+        owner: step.owner,
+        category: step.category,
+        dueOffsetDays: step.due_offset_days,
+      });
+      patchLocalStep(planId, step.id, updated);
+    } catch (e) {
+      setError(e.body?.error || "Falha ao salvar a etapa.");
+    } finally {
+      setOnboardingBusy(null);
+    }
+  }
+
+  async function removeStep(planId, stepId) {
+    setOnboardingBusy(stepId);
+    try {
+      await crmApi.deleteOnboardingStep(planId, stepId);
+      setPlanDetails((d) => ({ ...d, [planId]: { ...d[planId], steps: d[planId].steps.filter((s) => s.id !== stepId) } }));
+    } catch (e) {
+      setError(e.body?.error || "Falha ao remover a etapa.");
+    } finally {
+      setOnboardingBusy(null);
+    }
+  }
+
+  async function addOnboardingStep(planId) {
+    if (!newStepDraft.title.trim()) return;
+    setOnboardingBusy("add");
+    try {
+      const { step } = await crmApi.addOnboardingStep(planId, {
+        title: newStepDraft.title.trim(),
+        owner: newStepDraft.owner,
+        category: newStepDraft.category || null,
+      });
+      setPlanDetails((d) => ({ ...d, [planId]: { ...d[planId], steps: [...d[planId].steps, step] } }));
+      setNewStepDraft({ title: "", owner: "tektone", category: "" });
+    } catch (e) {
+      setError(e.body?.error || "Falha ao adicionar etapa.");
+    } finally {
+      setOnboardingBusy(null);
+    }
+  }
+
+  async function approveOnboardingPlan(planId) {
+    if (!window.confirm("Aprovar este plano? As etapas atuais serão aplicadas ao projeto (tarefas + checklist do cliente).")) return;
+    setOnboardingBusy("approve");
+    try {
+      await crmApi.approveOnboardingPlan(planId);
+      setExpandedPlanId(null);
+      loadPendingPlans();
+    } catch (e) {
+      setError(e.body?.error || "Falha ao aprovar o plano.");
+    } finally {
+      setOnboardingBusy(null);
     }
   }
 
@@ -144,6 +264,17 @@ export default function AdminPanel({ currentEmail, clients, onClose }) {
             className={`rounded-t-lg px-3 py-2 font-mono text-[11px] transition-colors ${tab === "templates" ? "border-b-2 border-action text-action" : "text-stone-500"}`}
           >
             templates de workflow
+          </button>
+          <button
+            onClick={() => setTab("onboarding")}
+            className={`flex items-center gap-1.5 rounded-t-lg px-3 py-2 font-mono text-[11px] transition-colors ${tab === "onboarding" ? "border-b-2 border-action text-action" : "text-stone-500"}`}
+          >
+            <Sparkles size={12} /> onboarding (revisão)
+            {pendingPlans?.length > 0 && (
+              <span className="rounded-full bg-action px-1.5 py-0.5 font-mono text-[9px] font-bold text-clay">
+                {pendingPlans.length}
+              </span>
+            )}
           </button>
         </div>
 
@@ -304,6 +435,181 @@ export default function AdminPanel({ currentEmail, clients, onClose }) {
                       </div>
                     </li>
                   ))}
+                </ul>
+              )}
+            </>
+          )}
+
+          {tab === "onboarding" && (
+            <>
+              <p className="mb-4 text-xs leading-relaxed text-stone-500">
+                Planos de onboarding gerados por IA a partir do brief do closer, aguardando revisão. Edite as
+                etapas conforme necessário antes de aprovar — só depois de aprovado o plano vira tarefas no
+                board e aparece no checklist do cliente no Portal.
+              </p>
+
+              {pendingPlans === null ? (
+                <div className="flex justify-center py-6"><Spinner /></div>
+              ) : pendingPlans.length === 0 ? (
+                <p className="text-xs text-stone-500">Nenhum plano aguardando revisão.</p>
+              ) : (
+                <ul className="space-y-2">
+                  {pendingPlans.map((p) => {
+                    const expanded = expandedPlanId === p.id;
+                    const detail = planDetails[p.id];
+                    return (
+                      <li key={p.id} className="rounded-lg surface-3">
+                        <button
+                          onClick={() => togglePlan(p.id)}
+                          className="flex w-full items-center justify-between gap-3 px-3.5 py-3 text-left"
+                        >
+                          <div className="min-w-0">
+                            <p className="flex items-center gap-1.5 text-sm font-semibold text-ink">
+                              <Sparkles size={13} className="text-action" /> {p.project_name || "Projeto"}
+                            </p>
+                            {p.project_type && (
+                              <p className="mt-0.5 font-mono text-[10px] text-stone-500">{p.project_type}</p>
+                            )}
+                          </div>
+                          {expanded ? (
+                            <ChevronUp size={15} className="shrink-0 text-stone-500" />
+                          ) : (
+                            <ChevronDown size={15} className="shrink-0 text-stone-500" />
+                          )}
+                        </button>
+
+                        {expanded && (
+                          <div className="border-t border-ink/10 px-3.5 py-3.5">
+                            {p.brief && (
+                              <div className="mb-3 rounded-lg surface-2 p-3">
+                                <p className="mb-1 font-mono text-[9.5px] uppercase tracking-wider text-stone-500">
+                                  brief do closer
+                                </p>
+                                <p className="whitespace-pre-wrap text-xs leading-relaxed text-stone-600">{p.brief}</p>
+                              </div>
+                            )}
+
+                            {!detail ? (
+                              <div className="flex justify-center py-4">
+                                <Spinner />
+                              </div>
+                            ) : (
+                              <>
+                                <div className="space-y-2">
+                                  {detail.steps.map((s) => (
+                                    <div key={s.id} className="rounded-lg border border-ink/10 p-3">
+                                      <input
+                                        value={s.title}
+                                        onChange={(e) => patchLocalStep(p.id, s.id, { title: e.target.value })}
+                                        className="mb-1.5 w-full rounded-lg border border-ink/15 bg-transparent px-2.5 py-1.5 text-sm font-medium text-ink"
+                                      />
+                                      <textarea
+                                        value={s.description || ""}
+                                        onChange={(e) => patchLocalStep(p.id, s.id, { description: e.target.value })}
+                                        rows={2}
+                                        placeholder="Descrição (opcional)"
+                                        className="mb-1.5 w-full rounded-lg border border-ink/15 bg-transparent px-2.5 py-1.5 text-xs text-ink"
+                                      />
+                                      <div className="flex flex-wrap items-center gap-1.5">
+                                        <select
+                                          value={s.owner}
+                                          onChange={(e) => patchLocalStep(p.id, s.id, { owner: e.target.value })}
+                                          className="rounded-lg border border-ink/15 bg-transparent px-2 py-1 font-mono text-[10.5px] text-ink"
+                                        >
+                                          {ONBOARDING_OWNER_OPTIONS.map((o) => (
+                                            <option key={o.value} value={o.value}>
+                                              {o.label}
+                                            </option>
+                                          ))}
+                                        </select>
+                                        <select
+                                          value={s.category || ""}
+                                          onChange={(e) =>
+                                            patchLocalStep(p.id, s.id, { category: e.target.value || null })
+                                          }
+                                          className="rounded-lg border border-ink/15 bg-transparent px-2 py-1 font-mono text-[10.5px] text-ink"
+                                        >
+                                          <option value="">sem categoria</option>
+                                          {ONBOARDING_CATEGORY_OPTIONS.map((c) => (
+                                            <option key={c} value={c}>
+                                              {c}
+                                            </option>
+                                          ))}
+                                        </select>
+                                        <input
+                                          type="number"
+                                          value={s.due_offset_days ?? ""}
+                                          onChange={(e) =>
+                                            patchLocalStep(p.id, s.id, {
+                                              due_offset_days: e.target.value === "" ? null : Number(e.target.value),
+                                            })
+                                          }
+                                          placeholder="dias"
+                                          className="w-16 rounded-lg border border-ink/15 bg-transparent px-2 py-1 font-mono text-[10.5px] text-ink"
+                                        />
+                                        <div className="ml-auto flex items-center gap-1.5">
+                                          <button
+                                            onClick={() => saveStep(p.id, s)}
+                                            disabled={onboardingBusy === s.id}
+                                            className="inline-flex items-center gap-1 rounded-lg border border-action/40 px-2 py-1 font-mono text-[10.5px] text-action hover:bg-action/10 disabled:opacity-40"
+                                          >
+                                            {onboardingBusy === s.id ? <Spinner /> : <Check size={11} />} salvar
+                                          </button>
+                                          <button
+                                            onClick={() => removeStep(p.id, s.id)}
+                                            disabled={onboardingBusy === s.id}
+                                            className="rounded-lg border border-ink/15 p-1.5 text-stone-500 hover:border-danger/40 hover:text-danger disabled:opacity-40"
+                                          >
+                                            <Trash2 size={11} />
+                                          </button>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+
+                                <div className="mt-3 flex flex-wrap items-center gap-1.5 rounded-lg surface-2 p-2.5">
+                                  <input
+                                    placeholder="Título da nova etapa"
+                                    value={newStepDraft.title}
+                                    onChange={(e) => setNewStepDraft((d) => ({ ...d, title: e.target.value }))}
+                                    className="min-w-0 flex-1 rounded-lg border border-ink/15 bg-transparent px-2.5 py-1.5 text-xs text-ink"
+                                  />
+                                  <select
+                                    value={newStepDraft.owner}
+                                    onChange={(e) => setNewStepDraft((d) => ({ ...d, owner: e.target.value }))}
+                                    className="rounded-lg border border-ink/15 bg-transparent px-2 py-1.5 font-mono text-[10.5px] text-ink"
+                                  >
+                                    {ONBOARDING_OWNER_OPTIONS.map((o) => (
+                                      <option key={o.value} value={o.value}>
+                                        {o.label}
+                                      </option>
+                                    ))}
+                                  </select>
+                                  <button
+                                    onClick={() => addOnboardingStep(p.id)}
+                                    disabled={onboardingBusy === "add" || !newStepDraft.title.trim()}
+                                    className="inline-flex items-center gap-1.5 rounded-lg border border-ink/15 px-2.5 py-1.5 font-mono text-[10.5px] text-stone-600 hover:border-action/40 hover:text-action disabled:opacity-40"
+                                  >
+                                    {onboardingBusy === "add" ? <Spinner /> : <Plus size={11} />} adicionar
+                                  </button>
+                                </div>
+
+                                <button
+                                  onClick={() => approveOnboardingPlan(p.id)}
+                                  disabled={onboardingBusy === "approve" || detail.steps.length === 0}
+                                  className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-action px-3.5 py-2 font-mono text-[11px] font-semibold text-clay disabled:opacity-50"
+                                >
+                                  {onboardingBusy === "approve" ? <Spinner /> : <CheckCheck size={13} />} aprovar e
+                                  aplicar
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
             </>
