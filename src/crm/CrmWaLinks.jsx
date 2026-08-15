@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import {
+  ArrowLeft,
   Link2,
   Copy,
   Check,
@@ -69,7 +70,7 @@ function TypeToggle({ value, onChange }) {
   );
 }
 
-export default function CrmWaLinks() {
+export default function CrmWaLinks({ onClose }) {
   const [links, setLinks] = useState(null);
   const [waNumbers, setWaNumbers] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -184,15 +185,27 @@ export default function CrmWaLinks() {
   }
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold text-ink">Links</h1>
-      <p className="mt-1 text-sm text-stone-500">
-        Crie um link curto para um chat de WhatsApp ou para qualquer outra URL, e acompanhe os cliques de cada um.
-      </p>
-      {error && <p className="mt-3 font-mono text-[11px] text-danger">{error}</p>}
-      {err && <p className="mt-3 font-mono text-[11px] text-danger">{err}</p>}
+    <div data-crm-theme className="flex h-full w-full flex-col surface-2">
+      <div className="flex shrink-0 items-center gap-2 border-b border-ink/15 px-4 py-3 sm:px-6">
+        <button
+          onClick={onClose}
+          className="-ml-1.5 rounded-lg p-1.5 text-stone-500 hover:bg-ink/[0.05] hover:text-ink"
+        >
+          <ArrowLeft size={16} />
+        </button>
+        <Link2 size={15} className="text-action" />
+        <span className="label-tech">Links</span>
+      </div>
 
-      <div className="mt-6 grid grid-cols-1 items-start gap-5 lg:grid-cols-[1fr_1.6fr]">
+      <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+        <h1 className="text-2xl font-bold text-ink">Links</h1>
+        <p className="mt-1 text-sm text-stone-500">
+          Crie um link curto para um chat de WhatsApp ou para qualquer outra URL, e acompanhe os cliques de cada um.
+        </p>
+        {error && <p className="mt-3 font-mono text-[11px] text-danger">{error}</p>}
+        {err && <p className="mt-3 font-mono text-[11px] text-danger">{err}</p>}
+
+        <div className="mt-6 grid grid-cols-1 items-start gap-5 lg:grid-cols-[1fr_1.6fr]">
         <div className="flex flex-col gap-5">
           <div className="surface-2 overflow-hidden rounded-xl">
             <div className="flex items-center gap-2 border-b border-ink/10 px-4 py-3">
@@ -489,6 +502,7 @@ export default function CrmWaLinks() {
               </div>
             </div>
           ))}
+        </div>
         </div>
       </div>
     </div>
