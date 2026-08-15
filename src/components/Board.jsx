@@ -15,6 +15,7 @@ import {
   Sparkles,
   MessageSquare,
   Package,
+  Rocket,
 } from "lucide-react";
 import { COLUMNS, PRIORITY, today, fmtDate } from "@/lib/constants";
 import { Avatar, PriorityBadge } from "@/components/ui";
@@ -143,6 +144,16 @@ function Card({
           title="Criada a partir de anotações de reunião"
         >
           <Sparkles size={9} /> reunião
+        </span>
+      )}
+
+      {card.source === "onboarding" && (
+        <span
+          className="mb-2 inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-wider"
+          style={{ background: "rgba(46,74,67,0.14)", color: "#2E4A43" }}
+          title="Gerada pelo checklist de onboarding do cliente"
+        >
+          <Rocket size={9} /> onboarding
         </span>
       )}
 

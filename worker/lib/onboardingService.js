@@ -88,10 +88,14 @@ export async function mirrorStepsToTasks(db, projectId, steps) {
     stmts.push(
       db
         .prepare(
-          `INSERT INTO tasks (id, project_id, column_id, title, description, priority, assignees, due_date, order_index, comments, created_at)
-           VALUES (?, ?, 'todo', ?, ?, 'medium', '[]', ?, ?, '[]', datetime('now'))`
+          // extra: {"source":"onboarding"} — round-trips through
+          // functions/_lib/tasksStore.js's rowToCard() exactly like the
+          // meeting-notes "source" field already does, so the Hub board
+          // (Board.jsx) can badge these cards without any schema change.
+          `INSERT INTO tasks (id, project_id, column_id, title, description, priority, assignees, due_date, order_index, comments, extra, created_at)
+           VALUES (?, ?, 'todo', ?, ?, 'medium', '[]', ?, ?, '[]', ?, datetime('now'))`
         )
-        .bind(taskId, projectId, step.title, step.description || null, step.due_date, orderIndex++)
+        .bind(taskId, projectId, step.title, step.description || null, step.due_date, orderIndex++, JSON.stringify({ source: "onboarding" }))
     );
     stmts.push(db.prepare(`UPDATE onboarding_steps SET linked_task_id = ? WHERE id = ?`).bind(taskId, step.id));
   }

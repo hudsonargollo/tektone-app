@@ -48,13 +48,49 @@ async function applyWorkflowTemplate(db, template, projectId) {
       : null;
     return db
       .prepare(
-        `INSERT INTO tasks (id, project_id, column_id, title, description, priority, assignees, due_date, order_index, comments, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, '[]', ?, ?, '[]', datetime('now'))`
+        // extra: {"source":"onboarding"} — same tag onboardingService.js's
+        // mirrorStepsToTasks() writes, so the Board.jsx badge covers both
+        // the rule-based/AI path and this static-template fallback path.
+        `INSERT INTO tasks (id, project_id, column_id, title, description, priority, assignees, due_date, order_index, comments, extra, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, '[]', ?, ?, '[]', ?, datetime('now'))`
       )
-      .bind(uid(), projectId, t.columnId || "todo", t.title || "Tarefa", t.description || null, t.priority || "medium", dueDate, orderIndex++);
+      .bind(
+        uid(),
+        projectId,
+        t.columnId || "todo",
+        t.title || "Tarefa",
+        t.description || null,
+        t.priority || "medium",
+        dueDate,
+        orderIndex++,
+        JSON.stringify({ source: "onboarding" })
+      );
   });
   await db.batch(stmts);
   return tasks.length;
+}
+
+// The staff Kanban board's sidebar list (Sidebar.jsx) reads from the KV
+// blob "kanban:clients", a separate store from the D1 `projects` table this
+// automation writes to — before this, a won-lead's project never got a
+// matching KV entry, so it had no sidebar row to filter by (its tasks still
+// showed up under "Todos" — App.jsx's card list is unfiltered there — but
+// with no client-name pill and no project_type tag to attach to). This
+// closes that gap so the "hand-off from /crm into /hub" this file's header
+// comment describes is actually visible on the board. Best-effort: KV
+// unavailable or a race on a concurrent write just means a missing sidebar
+// row, never a reason to fail the rest of won-automation.
+async function ensureKvClient(env, { id, name }) {
+  if (!env?.KANBAN) return;
+  try {
+    const raw = await env.KANBAN.get("kanban:clients");
+    const clients = raw ? JSON.parse(raw) : [];
+    if (clients.some((c) => c.id === id)) return;
+    clients.push({ id, name, color: "#2E4A43" });
+    await env.KANBAN.put("kanban:clients", JSON.stringify(clients));
+  } catch {
+    /* best-effort — see comment above */
+  }
 }
 
 async function logEvent(db, leadId, type, payload, actorEmail) {
@@ -82,6 +118,7 @@ export async function runWonAutomation(db, lead, actorEmail, opts = {}) {
     .bind(projectId, projectName, lead.id, projectType)
     .run();
   await logEvent(db, lead.id, "project_created", { projectId, name: projectName, projectType }, actorEmail);
+  await ensureKvClient(env, { id: projectId, name: projectName });
 
   if (lead.email) {
     await db

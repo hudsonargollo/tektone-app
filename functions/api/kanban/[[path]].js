@@ -483,6 +483,21 @@ export async function onRequest(context) {
             clients = DEFAULT_CLIENTS;
             await kvSet(kv, "kanban:clients", clients);
           }
+          // project_type lives in D1 (captured at won-time — see
+          // ~/.claude/plans/tektone-adaptive-onboarding.md), not in this KV
+          // blob; merge it in by id (same string as the D1 `projects.id`
+          // per migrations/0003_hub_tasks.sql's header comment) rather than
+          // duplicating it into KV, so the D1 row stays the one source of
+          // truth. Best-effort — a missing/failed D1 read just means no tag.
+          if (env.DB) {
+            try {
+              const { results } = await env.DB.prepare("SELECT id, project_type FROM projects WHERE project_type IS NOT NULL").all();
+              const typeById = new Map(results.map((r) => [r.id, r.project_type]));
+              clients = clients.map((c) => (typeById.has(c.id) ? { ...c, projectType: typeById.get(c.id) } : c));
+            } catch {
+              /* best-effort tag — ignore */
+            }
+          }
           return json({ clients });
         }
         if (method === "POST") {

@@ -3,6 +3,7 @@ import { ArrowLeft, Save, Sparkles, Send, Check } from "lucide-react";
 import { crmApi } from "@/crm/crmApi";
 import { Spinner } from "@/components/ui";
 import { fmtDateTime } from "@/lib/timezone";
+import { PROJECT_TYPE_LABEL } from "@/lib/onboardingLabels";
 
 const STAGES = ["new", "contacted", "qualified", "won", "lost", "incomplete"];
 const STAGE_LABEL = {
@@ -19,21 +20,6 @@ const TIER_STYLE = {
   cold: "bg-ink/[0.06] text-stone-500",
 };
 const TIER_LABEL = { hot: "quente", warm: "morno", cold: "frio" };
-
-// Mirrors worker/lib/onboardingRules.js's PROJECT_TYPE_LABEL keys — kept as
-// a display-only duplicate here (not shared as a package) so this select
-// stays in lockstep with which project types actually have a rule-based
-// onboarding checklist. "outro" has no rule set on purpose: picking it (or
-// leaving the field blank) falls back to the static "Onboarding padrão"
-// template, same as today.
-const PROJECT_TYPE_LABEL = {
-  site_institucional: "Site institucional",
-  loja_virtual: "Loja virtual",
-  sistema_interno: "Sistema interno",
-  app_mobile: "Aplicativo mobile",
-  automacao: "Automação",
-  outro: "Outro",
-};
 
 // Mirrors marketing/components/QualificacaoSection.tsx's option lists — kept
 // as a display-only lookup here (not shared as a package) so a closer sees

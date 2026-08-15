@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { LayoutGrid, Plus, Pencil, Trash2, Check, X } from "lucide-react";
 import { PARTNER_COLORS } from "@/lib/constants";
+import { PROJECT_TYPE_LABEL } from "@/lib/onboardingLabels";
 
 export default function Sidebar({ clients, activeId, counts, onSelect, onAdd, onRename, onDelete }) {
   const [adding, setAdding] = useState(false);
@@ -83,7 +84,14 @@ export default function Sidebar({ clients, activeId, counts, onSelect, onAdd, on
                 style={{ color: active ? "#141618" : "#57534e" }}
               >
                 <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: c.color }} />
-                <span className="flex-1 truncate">{c.name}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate">{c.name}</span>
+                  {c.projectType && (
+                    <span className="block truncate font-mono text-[9px] font-normal uppercase tracking-wide text-stone-500">
+                      {PROJECT_TYPE_LABEL[c.projectType] || c.projectType}
+                    </span>
+                  )}
+                </span>
                 <span className="font-mono text-[11px] tnum text-stone-500">{counts[c.id] ?? 0}</span>
               </button>
               <div className="flex items-center gap-0.5 pr-2 opacity-0 transition-opacity group-hover:opacity-100">
