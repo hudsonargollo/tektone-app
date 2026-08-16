@@ -1,7 +1,7 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { Animated } from "react-native";
 import { Redirect, Tabs } from "expo-router";
-import { LayoutGrid, Bell, User, ShieldCheck } from "lucide-react-native";
+import { LayoutGrid, Bell, User, ShieldCheck, ListChecks, Award } from "lucide-react-native";
 import { useAuth } from "@/lib/auth";
 import { colors, fonts } from "@/lib/theme";
 import { RealtimeProvider, useRealtimeContext } from "@/lib/realtime";
@@ -37,6 +37,11 @@ function ShakeWrapper({ children }: { children: ReactNode }) {
   );
 }
 
+// NOTE: as later mobile-parity phases add CRM/Finance/Commercial/Meetings/
+// Blog/Builder/Social tabs, a flat bottom bar stops scaling (6 is already
+// the practical ceiling for a phone-width tab bar). Revisit this as an
+// overflow "mais" tab or a drawer before adding a 7th item — not yet, since
+// today's 6 still fit comfortably.
 function AppTabs({ isAdmin }: { isAdmin: boolean }) {
   return (
     <Tabs
@@ -45,12 +50,20 @@ function AppTabs({ isAdmin }: { isAdmin: boolean }) {
         tabBarActiveTintColor: colors.action,
         tabBarInactiveTintColor: colors.stone500,
         tabBarStyle: { backgroundColor: colors.paper, borderTopColor: "rgba(20,22,24,0.1)" },
-        tabBarLabelStyle: { fontFamily: fonts.mono, fontSize: 10, textTransform: "uppercase", letterSpacing: 1 },
+        tabBarLabelStyle: { fontFamily: fonts.mono, fontSize: 9, textTransform: "uppercase", letterSpacing: 0.6 },
       }}
     >
       <Tabs.Screen
         name="board"
         options={{ title: "Quadro", tabBarIcon: ({ color, size }) => <LayoutGrid color={color} size={size} /> }}
+      />
+      <Tabs.Screen
+        name="todos"
+        options={{ title: "Tarefas", tabBarIcon: ({ color, size }) => <ListChecks color={color} size={size} /> }}
+      />
+      <Tabs.Screen
+        name="journey"
+        options={{ title: "Jornada", tabBarIcon: ({ color, size }) => <Award color={color} size={size} /> }}
       />
       <Tabs.Screen
         name="notifications"

@@ -116,4 +116,14 @@ export const api = {
   createMember: (body: any) => req("/kanban/members", { method: "POST", body }),
   updateMember: (id: string, body: any) => req(`/kanban/members/${id}`, { method: "PUT", body }),
   deleteMember: (id: string) => req(`/kanban/members/${id}`, { method: "DELETE" }),
+
+  // personal daily todos — private per-user checklist, unrelated to the board
+  listTodos: (date: string) => req(`/kanban/todos?date=${date}`),
+  createTodo: (text: string, date: string, recurrence?: string) =>
+    req("/kanban/todos", { method: "POST", body: { text, date, ...(recurrence ? { recurrence } : {}) } }),
+  updateTodo: (id: string, body: any) => req(`/kanban/todos/${id}`, { method: "PUT", body }),
+  deleteTodo: (id: string, series?: boolean) => req(`/kanban/todos/${id}${series ? "?series=1" : ""}`, { method: "DELETE" }),
+
+  // "Jornada" — builder gamification profile (level/XP/streak/wisdom cards)
+  getBuilderProfile: () => req("/gamification/me"),
 };
