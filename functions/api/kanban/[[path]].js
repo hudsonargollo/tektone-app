@@ -30,7 +30,10 @@
  *   POST              /cards/reorder              — { columnId, orderedIds } re-numbers `order` within a column
  *   GET|POST          /members          PUT|DELETE /members/:id
  *   GET                /notifications              — { items, unreadCount } from kanban:notifLog, for the current user
- *   POST               /notifications/ack           — { ids } or { all: true }, marks readAt
+ *   POST               /notifications/ack           — { ids } or { all: true }, marks readAt. If an
+ *                                                      acked notification references a comment (mention/
+ *                                                      request), also marks that comment seenBy me — unifies
+ *                                                      notification read-state with the seenBy system below.
  *   GET   /todos?date=YYYY-MM-DD          — one day's items (defaults to today), recurring instances auto-materialized
  *   POST  /todos                          — { text, date, recurrence?, weeklyDay? } create a one-off or recurring task
  *   PUT   /todos/:id                      — { text?, done? } edit a single day's instance
@@ -1225,15 +1228,44 @@ export async function onRequest(context) {
       const log = await kvGet(kv, "kanban:notifLog", []);
       let changed = false;
       const now = new Date().toISOString();
+      // Newly-acked notifications that reference a specific comment (mention/
+      // request) also feed the read-receipts system below — see the seenBy
+      // block right after this loop.
+      const seenTargets = [];
       for (const n of log) {
         if (n.to !== email) continue;
         if (!all && (!ids || !ids.has(n.id))) continue;
         if (!n.readAt) {
           n.readAt = now;
           changed = true;
+          if (n.cardId && n.commentId) seenTargets.push({ cardId: n.cardId, commentId: n.commentId });
         }
       }
       if (changed) await kvSet(kv, "kanban:notifLog", log);
+
+      // Unify notification read-state with comment read-receipts — previously
+      // two entirely independent systems (kanban:notifLog's readAt vs. each
+      // comment's own seenBy[], no cross-reference at all). Acking a mention/
+      // request notification now also marks the specific comment it refers to
+      // as seen by me, same as opening the card would (POST /cards/:id/seen),
+      // but scoped to just that one comment instead of every unauthored
+      // comment on the card.
+      if (seenTargets.length) {
+        const cards = await loadCards(env);
+        let cardsChanged = false;
+        for (const { cardId, commentId } of seenTargets) {
+          const card = cards.find((c) => c.id === cardId);
+          const comment = card?.comments?.find((c) => c.id === commentId);
+          if (!comment || comment.author === email) continue;
+          comment.seenBy = comment.seenBy || [];
+          if (!comment.seenBy.some((s) => s.email === email)) {
+            comment.seenBy.push({ email, seenAt: now });
+            cardsChanged = true;
+          }
+        }
+        if (cardsChanged) await saveCards(env, cards);
+      }
+
       return json({ ok: true });
     }
 

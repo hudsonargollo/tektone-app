@@ -28,12 +28,15 @@ database_id = "062719db-dc4e-46c0-a9d9-bdb4fef61a30"
 # reverting is just flipping this back and redeploying.
 [vars]
 TASKS_BACKEND = "d1"
-# @mention emails (functions/api/kanban/[[path]].js) fell back to a hardcoded
-# sender at the bare tektone.com.br domain, which Resend doesn't have
-# verified — send.tektone.com.br is the actual verified sending domain, so
-# every notification email was silently failing. Set explicitly rather than
-# relying on the code's fallback.
-NOTIFY_FROM = "TEKTONE <notificacoes@send.tektone.com.br>"
+# NOTIFY_FROM used to live here, but `wrangler pages deploy` never actually
+# applied [vars] to the live Pages project (confirmed: `wrangler pages secret
+# list` showed it absent, and @mention emails were falling back to the
+# unverified tektone.com.br sender). Fixed for real via
+# `wrangler pages secret put NOTIFY_FROM --project-name=tektone-app`
+# (2026-08-15) — a proper Pages secret, not a wrangler.toml var. Keeping both
+# here AND as a secret makes `wrangler pages deploy` fail outright ("Binding
+# name 'NOTIFY_FROM' already in use"), so this entry is deliberately removed
+# rather than merely redundant.
 
 # Durable Object binding for realtime board broadcasts (confetti on card
 # review). The class itself lives in the separate `realtime-worker/` Worker —
