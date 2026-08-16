@@ -561,8 +561,13 @@ reference against the routes portal can actually reach.
    *old* Pages deployment needs the same fix applied via the Cloudflare dashboard (Pages
    project → Settings → Variables) — not via a code redeploy, since `dist/` is now built for
    `/hub`, not domain root.
-4. **CRM content** — author a `workflow_templates` row named exactly "Onboarding padrão";
-   seed `kb_documents` with Tektone's real service catalog/pricing/case studies.
+4. **CRM content** — ~~author a `workflow_templates` row named exactly "Onboarding padrão"~~
+   done (2026-08-15): a generic 6-step checklist (kickoff → access collection → content
+   collection → build → review → launch), created via the AdminPanel templates API, id
+   `8f8e1f3580fe` — this is the fallback the adaptive onboarding feature (see
+   `~/.claude/plans/tektone-adaptive-onboarding.md`) applies when a won lead has no
+   `project_type`/brief signal. Still open: seed `kb_documents` with Tektone's real service
+   catalog/pricing/case studies.
 5. **`crm_role` grants** — `hudson@tektone.com.br` has `admin`; nobody else does yet. Grant
    via direct D1 write (no admin UI for this — low volume, not worth building yet):
    ```sh
