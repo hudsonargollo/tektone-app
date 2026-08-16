@@ -1,7 +1,7 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { Animated } from "react-native";
 import { Redirect, Tabs } from "expo-router";
-import { LayoutGrid, Bell, User, ShieldCheck, ListChecks, Award } from "lucide-react-native";
+import { LayoutGrid, Bell, User, ShieldCheck, ListChecks, Award, MoreHorizontal, Sparkles } from "lucide-react-native";
 import { useAuth } from "@/lib/auth";
 import { colors, fonts } from "@/lib/theme";
 import { RealtimeProvider, useRealtimeContext } from "@/lib/realtime";
@@ -37,12 +37,18 @@ function ShakeWrapper({ children }: { children: ReactNode }) {
   );
 }
 
-// NOTE: as later mobile-parity phases add CRM/Finance/Commercial/Meetings/
-// Blog/Builder/Social tabs, a flat bottom bar stops scaling (6 is already
-// the practical ceiling for a phone-width tab bar). Revisit this as an
-// overflow "mais" tab or a drawer before adding a 7th item — not yet, since
-// today's 6 still fit comfortably.
-function AppTabs({ isAdmin }: { isAdmin: boolean }) {
+// Bottom bar holds only the highest-frequency destinations (5 max —
+// Instagram/most consumer apps' own ceiling for a phone-width bar).
+// Everything else (Jornada, Admin, Meetings, and CRM/Finance/Commercial/
+// Blog/Builder/Social as later mobile-parity phases add them) lives behind
+// "Mais" — a plain menu screen, same role web's AppSidebar plays as a
+// scrollable rail. Those screens stay real Tabs.Screen entries (so they're
+// addressable via router.push and keep their own back-to-tab-bar chrome)
+// with href: null, which hides them from the bar without removing them from
+// the navigator — same trick already used for the admin-only gate below,
+// just applied unconditionally now instead of conditionally — more.tsx
+// reads user.admin itself via useAuth() to decide whether to list Admin.
+function AppTabs() {
   return (
     <Tabs
       screenOptions={{
@@ -62,10 +68,6 @@ function AppTabs({ isAdmin }: { isAdmin: boolean }) {
         options={{ title: "Tarefas", tabBarIcon: ({ color, size }) => <ListChecks color={color} size={size} /> }}
       />
       <Tabs.Screen
-        name="journey"
-        options={{ title: "Jornada", tabBarIcon: ({ color, size }) => <Award color={color} size={size} /> }}
-      />
-      <Tabs.Screen
         name="notifications"
         options={{ title: "Avisos", tabBarIcon: ({ color, size }) => <Bell color={color} size={size} /> }}
       />
@@ -74,12 +76,14 @@ function AppTabs({ isAdmin }: { isAdmin: boolean }) {
         options={{ title: "Perfil", tabBarIcon: ({ color, size }) => <User color={color} size={size} /> }}
       />
       <Tabs.Screen
+        name="more"
+        options={{ title: "Mais", tabBarIcon: ({ color, size }) => <MoreHorizontal color={color} size={size} /> }}
+      />
+      <Tabs.Screen name="journey" options={{ href: null, tabBarIcon: ({ color, size }) => <Award color={color} size={size} /> }} />
+      <Tabs.Screen name="meetings" options={{ href: null, tabBarIcon: ({ color, size }) => <Sparkles color={color} size={size} /> }} />
+      <Tabs.Screen
         name="admin"
-        options={{
-          title: "Admin",
-          href: isAdmin ? undefined : null,
-          tabBarIcon: ({ color, size }) => <ShieldCheck color={color} size={size} />,
-        }}
+        options={{ href: null, tabBarIcon: ({ color, size }) => <ShieldCheck color={color} size={size} /> }}
       />
     </Tabs>
   );
@@ -107,7 +111,7 @@ export default function AppLayout() {
   return (
     <RealtimeProvider myEmail={user.email}>
       <ShakeWrapper>
-        <AppTabs isAdmin={user.admin} />
+        <AppTabs />
       </ShakeWrapper>
     </RealtimeProvider>
   );

@@ -8,6 +8,7 @@ import { COLUMNS } from "@/lib/constants";
 import { colors, fonts } from "@/lib/theme";
 import { useRealtimeContext } from "@/lib/realtime";
 import CardTile, { type Card } from "@/components/CardTile";
+import ReviewsQueueModal, { type ReviewBatch } from "@/components/ReviewsQueueModal";
 
 type Client = { id: string; name: string; color: string };
 
@@ -31,6 +32,7 @@ export default function BoardScreen() {
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [reviews, setReviews] = useState<ReviewBatch[]>([]);
 
   const load = useCallback(async () => {
     try {
@@ -55,6 +57,36 @@ export default function BoardScreen() {
   useEffect(() => {
     load();
   }, [notifSignal, load]);
+
+  // Pending meeting-notes review batches — loaded once per session (not on
+  // every tab focus, unlike cards above), matching web's App.jsx which
+  // fetches this once when `authed` becomes true, not per-view.
+  useEffect(() => {
+    api.listReviews().then(({ reviews }) => setReviews(reviews || [])).catch(() => {});
+  }, []);
+
+  async function ackReviews(ids: string[]) {
+    setReviews([]);
+    try {
+      await api.ackReviews(ids);
+    } catch {
+      /* if ack fails it simply reappears next login, same as web */
+    }
+  }
+
+  async function ackOneReview(id: string) {
+    setReviews((prev) => prev.filter((r) => r.id !== id));
+    try {
+      await api.ackReviews([id]);
+    } catch {
+      /* see ackReviews */
+    }
+  }
+
+  async function dismissTask(cardId: string) {
+    setCards((prev) => prev.filter((c) => c.id !== cardId));
+    api.deleteCard(cardId).catch(() => {});
+  }
 
   const clientById = Object.fromEntries(clients.map((c) => [c.id, c]));
 
@@ -153,6 +185,16 @@ export default function BoardScreen() {
           }}
         />
       )}
+
+      <ReviewsQueueModal
+        visible={reviews.length > 0}
+        reviews={reviews}
+        cards={cards}
+        onClose={() => setReviews([])}
+        onAckAll={ackReviews}
+        onAckOne={ackOneReview}
+        onDismissTask={dismissTask}
+      />
     </SafeAreaView>
   );
 }
