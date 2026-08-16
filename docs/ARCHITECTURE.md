@@ -555,12 +555,17 @@ reference against the routes portal can actually reach.
    Worker's secrets are ever rotated.
 2. **`tasks.tektone.com.br` → `/hub` redirect** — the old standalone Pages deployment there
    still works on its own; nothing forwards it to the new path yet.
-3. **`NOTIFY_FROM` on the live `tasks.tektone.com.br` Pages project** — a real bug was found
-   and fixed in the new Worker configs (@mention emails were sending from an unverified
-   `tektone.com.br` address instead of the Resend-verified `send.tektone.com.br`), but the
-   *old* Pages deployment needs the same fix applied via the Cloudflare dashboard (Pages
-   project → Settings → Variables) — not via a code redeploy, since `dist/` is now built for
-   `/hub`, not domain root.
+3. ~~**`NOTIFY_FROM` on the live `tasks.tektone.com.br` Pages project**~~ — done (2026-08-15):
+   `env.NOTIFY_FROM` was unset in production (`wrangler pages secret list --project-name=tektone-app`
+   confirmed it wasn't there, and `wrangler.toml`'s `[vars]` block — where the correct value
+   already lived — is a Workers-only construct `wrangler pages deploy` never reads), so
+   `functions/api/kanban/[[path]].js:243`'s fallback (`"TEKTONE <notificacoes@tektone.com.br>"`,
+   the unverified address) was firing on every @mention email. Fixed with
+   `wrangler pages secret put NOTIFY_FROM --project-name=tektone-app` (same effect as the
+   dashboard Settings → Variables path, no redeploy needed since Pages secrets are injected at
+   request time, not baked into `dist/`) — now set to `TEKTONE <notificacoes@send.tektone.com.br>`,
+   matching the already-correct Worker configs. Not live-tested with a real @mention (would send
+   an actual email) — verified by confirming the secret exists and reading the fallback logic.
 4. **CRM content** — ~~author a `workflow_templates` row named exactly "Onboarding padrão"~~
    done (2026-08-15): a generic 6-step checklist (kickoff → access collection → content
    collection → build → review → launch), created via the AdminPanel templates API, id
