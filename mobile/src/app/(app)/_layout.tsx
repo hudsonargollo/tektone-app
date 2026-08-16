@@ -84,6 +84,12 @@ export default function AppLayout() {
 
   if (loading) return null;
   if (!user) return <Redirect href="/(auth)" />;
+  // A CUSTOMER-role account gets a completely separate shell, no board
+  // access at all — mirrors web's App.jsx `accessRole === "CUSTOMER" ?
+  // <CustomerShell/> : <Board/>` isolation-by-construction (PRD's stated
+  // defense-in-depth: a customer bundle should never even reach internal
+  // task detail).
+  if (user.accessRole === "CUSTOMER") return <Redirect href="/(customer)" />;
 
   return (
     <RealtimeProvider myEmail={user.email}>

@@ -20,7 +20,15 @@ SplashScreen.preventAutoHideAsync().catch(() => {});
 async function bootstrap() {
   const res = await api.me();
   if (!res.authed) throw new Error("not authed");
-  return { email: res.email, name: res.name, admin: res.admin, avatar: res.avatar };
+  return {
+    email: res.email,
+    name: res.name,
+    admin: res.admin,
+    avatar: res.avatar,
+    accessRole: res.accessRole,
+    financeAccess: res.financeAccess,
+    crmRole: res.crmRole,
+  };
 }
 
 export default function RootLayout() {
@@ -46,6 +54,7 @@ export default function RootLayout() {
         <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.clay } }}>
           <Stack.Screen name="(auth)" />
           <Stack.Screen name="(app)" />
+          <Stack.Screen name="(customer)" />
           <Stack.Screen
             name="card/[id]"
             options={{

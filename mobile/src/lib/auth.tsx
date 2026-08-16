@@ -12,12 +12,39 @@ async function setToken(token: string | null) {
   else await SecureStore.deleteItemAsync(TOKEN_KEY);
 }
 
+// accessRole/financeAccess/crmRole mirror GET /auth/me's response exactly
+// (functions/api/auth/[[path]].js) — accessRole drives which navigator shell
+// mounts (see (app)/_layout.tsx's CUSTOMER redirect), financeAccess/crmRole
+// gate individual tabs added in later phases. `admin` stays a separate
+// derived boolean (accessRole === "ADMIN") for the screens that already
+// checked it before this field existed.
+export type AccessRole = "ADMIN" | "STAFF" | "CUSTOMER";
+export type CrmRole = "partner" | "closer" | "admin" | null;
+
 type AuthUser = {
   email: string;
   name: string | null;
   admin: boolean;
   avatar: string | null;
+  accessRole: AccessRole;
+  financeAccess: boolean;
+  crmRole: CrmRole;
 };
+
+// crm_role ladder — mirrors worker/lib/crmRbac.js exactly (partner < closer
+// < admin), duplicated here rather than shared since it's three lines and
+// lives in a different runtime (same precedent as this codebase's other
+// per-runtime small-constant duplicates, e.g. PROJECT_TYPE_LABEL).
+const CRM_LADDER: Record<string, number> = { partner: 0, closer: 1, admin: 2 };
+
+export function hasCrmAccess(user: AuthUser | null): boolean {
+  return Boolean(user?.crmRole && user.crmRole in CRM_LADDER);
+}
+
+export function isCrmCloserOrAbove(user: AuthUser | null): boolean {
+  if (!user?.crmRole) return false;
+  return CRM_LADDER[user.crmRole] >= CRM_LADDER.closer;
+}
 
 type AuthContextValue = {
   user: AuthUser | null;
