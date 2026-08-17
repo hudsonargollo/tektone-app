@@ -1,7 +1,7 @@
 import { View, Text, Pressable, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Award, Sparkles, ShieldCheck, Wallet, Briefcase, TrendingUp, Link2, Newspaper, Camera, ChevronRight, LogOut } from "lucide-react-native";
+import { Award, Sparkles, ShieldCheck, Wallet, Briefcase, TrendingUp, Link2, Newspaper, Camera, LayoutTemplate, ChevronRight, LogOut } from "lucide-react-native";
 import { useAuth, hasCrmAccess } from "@/lib/auth";
 import { colors, fonts, radii } from "@/lib/theme";
 
@@ -31,6 +31,7 @@ export default function MoreScreen() {
     ...(user?.admin
       ? [
           { key: "blog", label: "Blog", sub: "curadoria: revisar, editar e publicar artigos", Icon: Newspaper, href: "/blog" as const },
+          { key: "builder", label: "Builder", sub: "páginas, formulários, quizzes e funis", Icon: LayoutTemplate, href: "/builder" as const },
           { key: "admin", label: "Admin", sub: "acessos e templates de workflow", Icon: ShieldCheck, href: "/admin" as const },
         ]
       : []),

@@ -198,4 +198,15 @@ export const api = {
   regenerateSocialCaption: (id: string) => req(`/social/${id}/caption`, { method: "POST" }),
   exportSocialPostGroup: (groupId: string) => req(`/social/group/${groupId}`, { method: "PATCH" }),
   deleteSocialPostGroup: (groupId: string) => req(`/social/group/${groupId}`, { method: "DELETE" }),
+
+  // block builder documents (ADMIN only — see functions/api/builder/[[path]].js)
+  listBuilderDocuments: (kind?: string) => req(`/builder/admin/documents${kind ? `?kind=${kind}` : ""}`),
+  getBuilderDocument: (id: string) => req(`/builder/admin/documents/${id}`),
+  createBuilderDocument: (body: any) => req("/builder/admin/documents", { method: "POST", body }),
+  updateBuilderDocument: (id: string, body: any) => req(`/builder/admin/documents/${id}`, { method: "PATCH", body }),
+  publishBuilderDocument: (id: string) => req(`/builder/admin/documents/${id}/publish`, { method: "POST" }),
+  archiveBuilderDocument: (id: string) => req(`/builder/admin/documents/${id}/archive`, { method: "POST" }),
+  deleteBuilderDocument: (id: string) => req(`/builder/admin/documents/${id}`, { method: "DELETE" }),
+  listBuilderSteps: (id: string) => req(`/builder/admin/documents/${id}/steps`),
+  setBuilderSteps: (id: string, steps: any[]) => req(`/builder/admin/documents/${id}/steps`, { method: "PUT", body: { steps } }),
 };
