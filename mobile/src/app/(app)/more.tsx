@@ -1,7 +1,7 @@
 import { View, Text, Pressable, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Award, Sparkles, ShieldCheck, Wallet, Briefcase, TrendingUp, Link2, ChevronRight, LogOut } from "lucide-react-native";
+import { Award, Sparkles, ShieldCheck, Wallet, Briefcase, TrendingUp, Link2, Newspaper, ChevronRight, LogOut } from "lucide-react-native";
 import { useAuth, hasCrmAccess } from "@/lib/auth";
 import { colors, fonts, radii } from "@/lib/theme";
 
@@ -28,7 +28,10 @@ export default function MoreScreen() {
       ? [{ key: "finance", label: "Financeiro", sub: "balanço, orçamento e custos por projeto", Icon: Wallet, href: "/finance" as const }]
       : []),
     ...(user?.admin
-      ? [{ key: "admin", label: "Admin", sub: "acessos e templates de workflow", Icon: ShieldCheck, href: "/admin" as const }]
+      ? [
+          { key: "blog", label: "Blog", sub: "curadoria: revisar, editar e publicar artigos", Icon: Newspaper, href: "/blog" as const },
+          { key: "admin", label: "Admin", sub: "acessos e templates de workflow", Icon: ShieldCheck, href: "/admin" as const },
+        ]
       : []),
   ];
 

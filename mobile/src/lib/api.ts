@@ -175,4 +175,15 @@ export const api = {
   listProjectAddons: (projectId: string) => req(`/projects/${projectId}/addons`),
   addProjectAddon: (projectId: string, addonId: string) =>
     req(`/projects/${projectId}/addons`, { method: "POST", body: { addonId } }),
+
+  // /blog admin (ADMIN only — see functions/api/blog/[[path]].js). Posts-review
+  // only (Phase 9) — Page/Form/Quiz/Funnel authoring stays web-only pending
+  // Phase 11's scope decision.
+  listBlogPosts: (status?: string) => req(`/blog/admin/posts${status ? `?status=${status}` : ""}`),
+  updateBlogPost: (id: string, body: any) => req(`/blog/admin/posts/${id}`, { method: "PATCH", body }),
+  approveBlogPost: (id: string) => req(`/blog/admin/posts/${id}/approve`, { method: "POST" }),
+  rejectBlogPost: (id: string, reviewerNotes?: string) =>
+    req(`/blog/admin/posts/${id}/reject`, { method: "POST", body: { reviewerNotes } }),
+  generateBlogDrafts: () => req("/blog/admin/generate", { method: "POST" }),
+  generateBlogImage: (id: string, prompt: string) => req(`/blog/admin/posts/${id}/images`, { method: "POST", body: { prompt } }),
 };

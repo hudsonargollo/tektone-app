@@ -1,7 +1,7 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { Animated } from "react-native";
 import { Redirect, Tabs } from "expo-router";
-import { LayoutGrid, Bell, User, ShieldCheck, ListChecks, Award, MoreHorizontal, Sparkles, Wallet, Briefcase, TrendingUp, Link2 } from "lucide-react-native";
+import { LayoutGrid, Bell, User, ShieldCheck, ListChecks, Award, MoreHorizontal, Sparkles, Wallet, Briefcase, TrendingUp, Link2, Newspaper } from "lucide-react-native";
 import { useAuth } from "@/lib/auth";
 import { colors, fonts } from "@/lib/theme";
 import { RealtimeProvider, useRealtimeContext } from "@/lib/realtime";
@@ -85,6 +85,7 @@ function AppTabs() {
       <Tabs.Screen name="commercial" options={{ href: null, tabBarIcon: ({ color, size }) => <Briefcase color={color} size={size} /> }} />
       <Tabs.Screen name="crm" options={{ href: null, tabBarIcon: ({ color, size }) => <TrendingUp color={color} size={size} /> }} />
       <Tabs.Screen name="crm-links" options={{ href: null, tabBarIcon: ({ color, size }) => <Link2 color={color} size={size} /> }} />
+      <Tabs.Screen name="blog" options={{ href: null, tabBarIcon: ({ color, size }) => <Newspaper color={color} size={size} /> }} />
       <Tabs.Screen
         name="admin"
         options={{ href: null, tabBarIcon: ({ color, size }) => <ShieldCheck color={color} size={size} /> }}
