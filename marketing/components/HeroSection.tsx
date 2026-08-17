@@ -4,7 +4,6 @@ import { useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import type { Variants } from "framer-motion";
 import { ArrowRight } from "lucide-react";
-import Logo from "@/components/Logo";
 
 const EASE = [0.22, 1, 0.36, 1] as [number, number, number, number];
 
@@ -146,38 +145,35 @@ export default function HeroSection() {
       />
       <div className="absolute inset-0 z-[1] grain-dark" aria-hidden />
 
-      <div className="relative z-10 mx-auto max-w-4xl px-6 pt-28 pb-20 text-center">
-        {/* Wordmark */}
-        <motion.div
-          custom={0}
-          variants={fadeUp}
-          initial="hidden"
-          animate="show"
-          className="mb-10 flex justify-center"
-        >
-          <Logo variant="ivory" className="h-16 w-auto sm:h-[4.5rem]" />
-        </motion.div>
-
-        {/* Eyebrow */}
+      <div className="relative z-10 mx-auto max-w-5xl px-6 pt-20 pb-20 text-center">
+        {/* Eyebrow — the mark wordmark block that used to sit above this was
+            removed: redundant now that the 3D T mark is the hero's own
+            centerpiece, and it was eating vertical space the mark's camera
+            solver needs to keep clear of the headline (see tektone-scene.js's
+            resize()). */}
         <motion.p
           custom={1}
           variants={fadeUp}
           initial="hidden"
           animate="show"
-          className="label-tech-ink mb-6"
+          className="label-tech-ink mb-5"
         >
           Consultoria de Tecnologia &amp; Negócios, Sob Medida
         </motion.p>
 
         {/* Headline — word-by-word reveal. data-band-top: the 3D scene
             measures this element's real rendered position on every resize
-            to solve where the mark's camera framing should land. */}
+            to solve where the mark's camera framing should land. Container
+            widened to max-w-5xl (from max-w-4xl) specifically so this
+            headline wraps to fewer lines — less headline height means more
+            genuine clear space between it and the CTA for the mark to sit
+            in without the scene's own too-tight fallback kicking in. */}
         <motion.h1
           data-band-top
           variants={headContainer}
           initial="hidden"
           animate="show"
-          className="flex flex-wrap justify-center gap-x-[0.28em] gap-y-1 text-4xl sm:text-5xl lg:text-[3.5rem] font-bold leading-[1.12] tracking-display text-ivory"
+          className="flex flex-wrap justify-center gap-x-[0.28em] gap-y-1 text-4xl sm:text-5xl lg:text-[3.25rem] font-bold leading-[1.12] tracking-display text-ivory"
         >
           {headWords.map((w, i) => (
             <motion.span
@@ -197,7 +193,7 @@ export default function HeroSection() {
           variants={fadeUp}
           initial="hidden"
           animate="show"
-          className="text-pretty mx-auto mt-7 max-w-2xl text-lg leading-relaxed text-sand"
+          className="text-pretty mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-sand"
         >
           Transformamos necessidades empresariais em produtos, sistemas e
           ativos digitais construídos para gerar eficiência, diferenciação e
@@ -213,7 +209,7 @@ export default function HeroSection() {
           variants={fadeUp}
           initial="hidden"
           animate="show"
-          className="mt-10 flex flex-col items-center gap-4"
+          className="mt-8 flex flex-col items-center gap-4"
         >
           <a
             href="#qualificacao"

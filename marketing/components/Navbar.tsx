@@ -2,7 +2,6 @@
 
 import { motion, useScroll, useTransform } from "framer-motion";
 import { ArrowUpRight } from "lucide-react";
-import Logo from "@/components/Logo";
 
 const LINKS = [
   { label: "arquitetura", href: "#processo" },
@@ -70,22 +69,16 @@ export default function Navbar({
         }}
       />
 
-      <nav className="relative mx-auto max-w-6xl px-6 h-20 flex items-center justify-between">
-        {/* Wordmark */}
+      <nav className="relative mx-auto max-w-6xl px-4 sm:px-6 h-20 flex items-center justify-between">
+        {/* Wordmark — text only, no mark icon (redundant now that the 3D
+            mark itself is the hero's centerpiece). */}
         <a
           href={isLight ? "/" : "#top"}
-          className="flex items-center gap-3 shrink-0 group"
+          className="flex items-center shrink-0 group"
           aria-label="TEKTONE — início"
         >
-          <span className="relative inline-flex overflow-hidden rounded-sm">
-            <Logo
-              variant={isLight ? "ink" : "ivory"}
-              className="h-10 w-auto transition-transform duration-300 group-hover:scale-105"
-            />
-            <span className="logo-shimmer" aria-hidden />
-          </span>
           <span
-            className={`font-mono text-base font-bold tracking-[0.3em] ${
+            className={`font-mono text-sm sm:text-base font-bold tracking-[0.2em] sm:tracking-[0.3em] ${
               isLight ? "text-ink" : "text-ivory"
             }`}
           >
@@ -111,8 +104,9 @@ export default function Navbar({
           ))}
         </ul>
 
-        {/* Buttons */}
-        <div className="flex items-center gap-3">
+        {/* Buttons — tighter padding/text/gap below sm: so both fit next to
+            the wordmark without wrapping on narrow phones. */}
+        <div className="flex items-center gap-1.5 sm:gap-3">
           {/* Entry point into the app itself (kanban/portal/CRM) — /login is
               the shared front door for every account type; it redirects by
               access_role after auth (CUSTOMER -> /portal, STAFF/ADMIN ->
@@ -123,8 +117,8 @@ export default function Navbar({
             href="/login"
             className={
               isLight
-                ? "inline-flex items-center gap-1.5 rounded-md border border-ink/25 px-2.5 sm:px-4 py-2 text-[11px] sm:text-[13px] font-semibold uppercase tracking-wide text-ink transition-all duration-200 hover:border-ink/50 hover:bg-ink/5"
-                : "inline-flex items-center gap-1.5 rounded-md border border-ivory/30 px-2.5 sm:px-4 py-2 text-[11px] sm:text-[13px] font-semibold uppercase tracking-wide text-ivory transition-all duration-200 hover:border-ivory/60 hover:bg-ivory/10"
+                ? "inline-flex items-center gap-1.5 rounded-md border border-ink/25 px-2 sm:px-4 py-1.5 sm:py-2 text-[9.5px] sm:text-[13px] font-semibold uppercase tracking-wide text-ink transition-all duration-200 hover:border-ink/50 hover:bg-ink/5"
+                : "inline-flex items-center gap-1.5 rounded-md border border-ivory/30 px-2 sm:px-4 py-1.5 sm:py-2 text-[9.5px] sm:text-[13px] font-semibold uppercase tracking-wide text-ivory transition-all duration-200 hover:border-ivory/60 hover:bg-ivory/10"
             }
           >
             ACESSAR HUB
@@ -133,12 +127,12 @@ export default function Navbar({
             href={isLight ? "/#qualificacao" : "#qualificacao"}
             className={
               isLight
-                ? "group inline-flex items-center gap-1.5 rounded-md bg-green px-2.5 sm:px-4 py-2 text-[11px] sm:text-[13px] font-semibold uppercase tracking-wide text-ivory transition-all duration-200 hover:bg-green-hover"
-                : "group inline-flex items-center gap-1.5 rounded-md bg-ivory px-2.5 sm:px-4 py-2 text-[11px] sm:text-[13px] font-semibold uppercase tracking-wide text-ink transition-all duration-200 hover:bg-sand"
+                ? "group inline-flex items-center gap-1.5 rounded-md bg-green px-2 sm:px-4 py-1.5 sm:py-2 text-[9.5px] sm:text-[13px] font-semibold uppercase tracking-wide text-ivory transition-all duration-200 hover:bg-green-hover"
+                : "group inline-flex items-center gap-1.5 rounded-md bg-ivory px-2 sm:px-4 py-1.5 sm:py-2 text-[9.5px] sm:text-[13px] font-semibold uppercase tracking-wide text-ink transition-all duration-200 hover:bg-sand"
             }
           >
             Agendar call
-            <ArrowUpRight className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+            <ArrowUpRight className="h-3 w-3 sm:h-3.5 sm:w-3.5 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
           </a>
         </div>
       </nav>
