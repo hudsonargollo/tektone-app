@@ -66,6 +66,17 @@ export default function RootLayout() {
               presentation: "card",
             }}
           />
+          <Stack.Screen
+            name="crm-lead/[id]"
+            options={{
+              headerShown: true,
+              headerTitle: "Lead",
+              headerStyle: { backgroundColor: colors.clay },
+              headerTintColor: colors.ink,
+              headerShadowVisible: false,
+              presentation: "card",
+            }}
+          />
           <Stack.Screen name="wizard" options={{ presentation: "modal" }} />
         </Stack>
       </AuthProvider>
