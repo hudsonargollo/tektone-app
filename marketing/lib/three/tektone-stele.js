@@ -130,19 +130,30 @@ export function mountStele(container, opts = {}) {
   }
 
   const videoMat = new THREE.MeshBasicMaterial({ color: '#141618' });
+  // Re-applied every frame below (not just once on 'loadedmetadata') — the
+  // one-shot listener left a visible black margin around the picture in
+  // practice: videoWidth/videoHeight are 0 until the browser has actually
+  // decoded a frame, and depending on exactly when that first fires
+  // relative to this mount, the one-time fit() could run against the 3:4
+  // fallback (which equals this panel's own aspect, so it computed a
+  // no-op crop) and never get a second chance to correct itself once the
+  // real dimensions were known. Recomputing each frame is cheap (two
+  // Vector2.set calls) and self-corrects the moment real dimensions
+  // become available, whatever order things actually load in.
+  let fitVideo = null;
   if (opts.video) {
     const tex = new THREE.VideoTexture(opts.video);
     tex.colorSpace = THREE.SRGBColorSpace;
     videoMat.map = tex;
     videoMat.color.set('#ffffff');
     // cover-fit whatever aspect the source has into the 3:4 panel
-    const fit = () => {
-      const va = (opts.video.videoWidth || 3) / (opts.video.videoHeight || 4);
+    fitVideo = () => {
+      if (!opts.video.videoWidth || !opts.video.videoHeight) return;
+      const va = opts.video.videoWidth / opts.video.videoHeight;
       const pa = panelW / panelH;
       if (va > pa) { tex.repeat.set(pa / va, 1); tex.offset.set((1 - pa / va) / 2, 0); }
       else { tex.repeat.set(1, va / pa); tex.offset.set(0, (1 - va / pa) / 2); }
     };
-    opts.video.readyState >= 1 ? fit() : opts.video.addEventListener('loadedmetadata', fit, { once: true });
   }
   videoMat.name = 'video_screen';
   const screen = new THREE.Mesh(new THREE.PlaneGeometry(panelW, panelH), videoMat);
@@ -292,6 +303,7 @@ export function mountStele(container, opts = {}) {
   let raf = 0;
   function frame() {
     raf = requestAnimationFrame(frame);
+    fitVideo?.();
     const dt = clock.getDelta();
     p = lerp(p, tp, Math.min(dt * 2.4, 1));       // smoother settle, matches the hero
     mx = lerp(mx, tmx, Math.min(dt * 2.4, 1));
