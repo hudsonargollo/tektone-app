@@ -2,7 +2,6 @@
 
 import { useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import Video from "next-video";
 import pedroVideo from "/videos/pedro-silvestrini.mp4";
 import AnimatedNumber from "@/components/AnimatedNumber";
 import SectionBlob from "@/components/SectionBlob";
@@ -18,14 +17,25 @@ const stats = [
 
 // Mounts the Tektone 3D "Autoridade" stele (lib/three/tektone-stele.js) — a
 // Greek aedicula whose recessed panel carries Pedro's portrait video as a
-// VideoTexture. next-video's <Video> forwards its ref to the underlying
-// native <video> element (see next-video/dist/components/video.d.ts —
-// RefAttributes<HTMLVideoElement>), so the existing R2-backed video
-// pipeline stays exactly as it was; this only reaches in for the raw
-// element the stele's texture sampler needs. Dynamic-imported inside the
-// effect for the same reason as HeroSection — client-only code, no need
-// for next/dynamic's ssr:false wrapper on top of an already-"use client"
-// component.
+// VideoTexture. Plays a plain native <video> — NOT next-video's <Video>
+// player component, which was tried first and never worked: readyState
+// stayed stuck at 0 (HAVE_NOTHING) forever, panel rendered solid black,
+// even after fixing the CORS issue its default player has (see the git
+// history on this file for that fix, still correct and still needed —
+// video.tektone.com.br sends no Access-Control-Allow-Origin header). The
+// remaining, unfixed problem was almost certainly React hydration error
+// #418 logged in the console on every load — next-video's player is built
+// from custom elements (Media Chrome) wrapped in Suspense, and whatever's
+// mismatching between server and client render there left the component
+// never properly wired up client-side, despite LOOKING like a normal
+// video tag with a valid src in the DOM. This video is invisible (opacity-0,
+// sampled into a VideoTexture, never shown directly) and needs zero of the
+// player's UI/controls/adaptive-bitrate machinery, so bypassing it
+// entirely removes an entire class of problems rather than chasing the
+// hydration bug further. pedroVideo.sources[0].src is the same
+// R2-backed URL next-video's own asset metadata already resolves to (see
+// videos/pedro-silvestrini.mp4.json) — stays in sync with whatever
+// `npx next-video sync` produces, no hardcoded URL.
 function useAutoridadeStele(videoRef: React.RefObject<HTMLVideoElement | null>) {
   const steleContainerRef = useRef<HTMLDivElement>(null);
   const sectionRef = useRef<HTMLElement>(null);
@@ -36,12 +46,9 @@ function useAutoridadeStele(videoRef: React.RefObject<HTMLVideoElement | null>) 
     let cleanup: (() => void) | undefined;
     let raf = 0;
 
-    // next-video's <Video> forwards its ref to the underlying
-    // HTMLVideoElement, but its player may attach that ref a frame or two
-    // after this component's own effects commit (it can lazy-load a
-    // player implementation). Poll briefly on rAF rather than assuming
-    // it's synchronously available — cheap, bounded, and avoids a race
-    // I can't verify without a browser.
+    // A plain <video ref={...}> attaches synchronously, but keep the rAF
+    // wait anyway — cheap, and removes any doubt about ref-timing as a
+    // variable while diagnosing the real (now-fixed) player issue above.
     const tryMount = () => {
       if (destroyed) return;
       const videoEl = videoRef.current;
@@ -49,12 +56,8 @@ function useAutoridadeStele(videoRef: React.RefObject<HTMLVideoElement | null>) 
         raf = requestAnimationFrame(tryMount);
         return;
       }
-      // autoPlay on the underlying <video> attribute isn't always honored
-      // the same way by a custom player wrapper (next-video's own player
-      // may gate playback behind its JS API rather than the raw HTML
-      // attribute) — call play() directly too. Muted, so browser autoplay
-      // policy allows it without a user gesture; the rejection catch is
-      // just a safety net, not an expected path.
+      // Muted, so browser autoplay policy allows it without a user
+      // gesture; the rejection catch is a safety net, not an expected path.
       videoEl.play().catch(() => {});
       import("@/lib/three/tektone-stele.js").then((mod) => {
         if (destroyed || !steleContainerRef.current) return;
@@ -116,39 +119,28 @@ export default function AutoridadeSection() {
             {/* The actual video element — its pixels are sampled into the
                 stele's VideoTexture, never displayed directly, but it must
                 stay genuinely on-screen (full size, just invisible via
-                opacity) rather than clipped to sr-only's 1x1px box: the
-                player's own IntersectionObserver-based visibility logic
-                was reading that clipped box as "off-screen" and never
-                starting playback, which is why the stele panel rendered
-                solid black instead of the video. next-video's pipeline
-                (Cloudflare R2, see next.config.mjs) is unchanged.
-
-                crossOrigin={undefined} overrides next-video's default
-                player, which hardcodes crossOrigin:"" (≈ "anonymous")
-                before spreading props through — video.tektone.com.br
-                doesn't send Access-Control-Allow-Origin, so a
-                crossOrigin="anonymous" video element gets silently
-                blocked from loading ANY data (readyState stuck at 0,
-                paused:false but never actually playing), which is what
-                produced the black panel even after the visibility fix
-                above. The delivery's own README calls this out
-                explicitly: drop the attribute when the host has no CORS
-                header — the resulting "tainted" WebGL texture is fine
-                here since the stele only displays the video, it never
-                reads pixels back out (no toDataURL/readPixels calls). */}
+                opacity) rather than clipped to sr-only's 1x1px box: some
+                player/visibility logic was reading a clipped box as
+                "off-screen" and never starting playback, which is part of
+                why the stele panel rendered solid black. video.tektone.com.br
+                (R2-backed, see next.config.mjs) doesn't send
+                Access-Control-Allow-Origin, so no crossOrigin attribute is
+                set here — the resulting "tainted" WebGL texture is fine
+                since the stele only displays the video, it never reads
+                pixels back out (no toDataURL/readPixels calls). Plain
+                native <video>, not next-video's <Video> player — see the
+                comment on useAutoridadeStele above for why. */}
             <div
               className="pointer-events-none absolute inset-0 opacity-0"
               aria-hidden
             >
-              <Video
+              <video
                 ref={videoRef}
-                src={pedroVideo}
+                src={pedroVideo.sources?.[0]?.src}
                 autoPlay
                 muted
                 loop
                 playsInline
-                controls={false}
-                crossOrigin={undefined}
               />
             </div>
             <p className="mt-4 text-lg font-bold text-ink text-center">
