@@ -149,4 +149,18 @@ export const api = {
   createCost: (projectId: string, body: any) => req(`/finances/${projectId}/costs`, { method: "POST", body }),
   updateCost: (projectId: string, costId: string, body: any) => req(`/finances/${projectId}/costs/${costId}`, { method: "PUT", body }),
   toggleCostArchive: (projectId: string, costId: string) => req(`/finances/${projectId}/costs/${costId}/archive`, { method: "POST" }),
+
+  // commercial (Phase 6) — staff-side project members, contracts, invoices, addons catalog
+  listProjectUsers: (id: string) => req(`/projects/${id}/users`),
+  inviteProjectUser: (id: string, email: string, role: string) =>
+    req(`/projects/${id}/users`, { method: "POST", body: { email, role } }),
+  listContracts: (projectId: string) => req(`/projects/${projectId}/contracts`),
+  createContract: (projectId: string, body: any) => req(`/projects/${projectId}/contracts`, { method: "POST", body }),
+  listInvoices: (projectId: string) => req(`/projects/${projectId}/invoices`),
+  createInvoice: (projectId: string, body: any) => req(`/projects/${projectId}/invoices`, { method: "POST", body }),
+  listAddonsCatalog: () => req("/addons"),
+  createAddon: (body: any) => req("/addons", { method: "POST", body }),
+  updateAddon: (id: string, body: any) => req(`/addons/${id}`, { method: "PUT", body }),
+  deleteAddon: (id: string) => req(`/addons/${id}`, { method: "DELETE" }),
+  getProjectBuilders: (projectId: string) => req(`/gamification/project/${projectId}`),
 };

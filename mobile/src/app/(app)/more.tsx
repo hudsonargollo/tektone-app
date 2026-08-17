@@ -1,7 +1,7 @@
 import { View, Text, Pressable, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Award, Sparkles, ShieldCheck, Wallet, ChevronRight, LogOut } from "lucide-react-native";
+import { Award, Sparkles, ShieldCheck, Wallet, Briefcase, ChevronRight, LogOut } from "lucide-react-native";
 import { useAuth } from "@/lib/auth";
 import { colors, fonts, radii } from "@/lib/theme";
 
@@ -17,6 +17,7 @@ export default function MoreScreen() {
   const rows = [
     { key: "journey", label: "Jornada", sub: "nível, sequência e cartas de sabedoria", Icon: Award, href: "/journey" as const },
     { key: "meetings", label: "Reuniões", sub: "analisar transcrições e gerar tarefas", Icon: Sparkles, href: "/meetings" as const },
+    { key: "commercial", label: "Comercial", sub: "clientes, contratos, faturas e construtores", Icon: Briefcase, href: "/commercial" as const },
     ...(user?.financeAccess
       ? [{ key: "finance", label: "Financeiro", sub: "balanço, orçamento e custos por projeto", Icon: Wallet, href: "/finance" as const }]
       : []),
