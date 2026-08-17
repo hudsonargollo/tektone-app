@@ -126,4 +126,11 @@ export const api = {
 
   // "Jornada" — builder gamification profile (level/XP/streak/wisdom cards)
   getBuilderProfile: () => req("/gamification/me"),
+
+  // admin: workflow templates (batch-create tasks in a project's "todo" column)
+  listWorkflowTemplates: () => req("/workflow-templates"),
+  createWorkflowTemplate: (body: any) => req("/workflow-templates", { method: "POST", body }),
+  deleteWorkflowTemplate: (id: string) => req(`/workflow-templates/${id}`, { method: "DELETE" }),
+  applyWorkflowTemplate: (id: string, projectId: string) =>
+    req(`/workflow-templates/${id}/apply`, { method: "POST", body: { projectId } }),
 };
