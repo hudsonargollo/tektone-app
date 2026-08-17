@@ -15,8 +15,11 @@ export default function CustomerTopBar() {
   return (
     <View style={styles.bar}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-        <LogoMark width={22} height={26} />
-        <Text style={styles.title}>TEKTONE</Text>
+        <LogoMark width={22} height={22} />
+        <View style={{ flexDirection: "column" }}>
+          <Text style={styles.title}>WORKHUB</Text>
+          <Text style={styles.byline}>by TEKTONE</Text>
+        </View>
       </View>
       <Pressable onPress={signOut} style={styles.signOutBtn}>
         <LogOut size={12} color={colors.danger} />
@@ -29,6 +32,7 @@ export default function CustomerTopBar() {
 const styles = StyleSheet.create({
   bar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingTop: 8 },
   title: { fontFamily: fonts.sansSemiBold, fontSize: 13, letterSpacing: 3, color: colors.ink },
+  byline: { fontFamily: fonts.mono, fontSize: 9, letterSpacing: 1.6, color: colors.stone500, marginTop: 1 },
   signOutBtn: { flexDirection: "row", alignItems: "center", gap: 5, borderWidth: 1, borderColor: "rgba(155,61,46,0.3)", borderRadius: radii.md, paddingHorizontal: 9, paddingVertical: 6 },
   signOutText: { fontFamily: fonts.mono, fontSize: 10.5, color: colors.danger },
 });

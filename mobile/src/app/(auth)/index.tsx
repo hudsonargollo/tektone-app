@@ -38,7 +38,7 @@ export default function EmailStep() {
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <View style={styles.brand}>
-        <LogoMark width={72} height={84} />
+        <LogoMark width={72} height={72} />
         <Text style={styles.brandTitle}>WORKHUB</Text>
         <Text style={styles.brandByline}>by TEKTONE</Text>
         <Text style={styles.brandSub}>Ordo · Tekhnē · Permanentia</Text>
