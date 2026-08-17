@@ -297,20 +297,20 @@ export function mountStele(container, opts = {}) {
     mx = lerp(mx, tmx, Math.min(dt * 2.4, 1));
     my = lerp(my, tmy, Math.min(dt * 2.4, 1));
 
-    // -1 below frame, 0 face-on at centre, +1 turned away above
+    // -1 below frame, 0 face-on at centre, +1 turned away above — still
+    // used for the lighting settle-in below, but no longer drives any
+    // rotation/position: the stele should load static and hold its pose
+    // (not swing in on a ~35° turn as it scrolls into view), with only a
+    // slight, pointer-driven left-right sway on top. Vertical parallax
+    // (the old my-driven X-rotation and camera Y-shift) dropped too — the
+    // brief was left-right movement only.
     const t = (p - 0.5) * 2;
     const settle = 1 - Math.abs(t);
-    // on a phone the swing is gentler: less lateral travel, less yaw
-    const amp = MOBILE ? 0.6 : 1;
-    swing.rotation.y = t * 0.62 * amp + mx * 0.10;
-    swing.rotation.x = -t * 0.13 * amp + my * 0.04;
-    swing.position.y = -t * 0.30 * amp;
-    swing.position.x = t * 0.42 * amp;
-    swing.position.z = -Math.abs(t) * 1.0 * amp;
+    swing.rotation.y = mx * 0.06;
     warm.intensity = 1.6 + settle * 2.2;
     key.intensity = 2.4 + settle * 0.9;
 
-    camera.position.set(0, centreY + my * 0.10, dist);
+    camera.position.set(0, centreY, dist);
     camera.lookAt(look);
     renderer.render(scene, camera);
   }

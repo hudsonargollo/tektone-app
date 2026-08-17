@@ -121,7 +121,21 @@ export default function AutoridadeSection() {
                 was reading that clipped box as "off-screen" and never
                 starting playback, which is why the stele panel rendered
                 solid black instead of the video. next-video's pipeline
-                (Cloudflare R2, see next.config.mjs) is unchanged. */}
+                (Cloudflare R2, see next.config.mjs) is unchanged.
+
+                crossOrigin={undefined} overrides next-video's default
+                player, which hardcodes crossOrigin:"" (≈ "anonymous")
+                before spreading props through — video.tektone.com.br
+                doesn't send Access-Control-Allow-Origin, so a
+                crossOrigin="anonymous" video element gets silently
+                blocked from loading ANY data (readyState stuck at 0,
+                paused:false but never actually playing), which is what
+                produced the black panel even after the visibility fix
+                above. The delivery's own README calls this out
+                explicitly: drop the attribute when the host has no CORS
+                header — the resulting "tainted" WebGL texture is fine
+                here since the stele only displays the video, it never
+                reads pixels back out (no toDataURL/readPixels calls). */}
             <div
               className="pointer-events-none absolute inset-0 opacity-0"
               aria-hidden
@@ -134,6 +148,7 @@ export default function AutoridadeSection() {
                 loop
                 playsInline
                 controls={false}
+                crossOrigin={undefined}
               />
             </div>
             <p className="mt-4 text-lg font-bold text-ink text-center">
