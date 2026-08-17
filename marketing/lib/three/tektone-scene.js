@@ -533,6 +533,19 @@ export function mountScene(container, opts = {}) {
   const ro = new ResizeObserver(resize);
   ro.observe(container);
   resize();
+  // The container's own box (min-h-screen) doesn't change size when the
+  // copy inside it settles, so the ResizeObserver above never re-fires for
+  // that — but the [data-band-*] elements it measures DO move: web fonts
+  // swap in after this first paint (changing text metrics/line wraps) and
+  // the headline's Framer Motion stagger is still mid-animation (opacity/
+  // translateY transforms shift getBoundingClientRect() while running) at
+  // the instant this first resize() call fires. Re-measure once fonts are
+  // ready and once more after the stagger has had time to settle, so the
+  // mark frames itself against the real, final copy position instead of
+  // wherever it happened to be at mount.
+  const settleTimer = setTimeout(resize, 1700);
+  let fontsCancelled = false;
+  document.fonts?.ready?.then(() => { if (!fontsCancelled) resize(); });
 
   container.__tk = { scene, camera, markHolder, pedestal, site };   // introspection handle
 
@@ -701,6 +714,8 @@ export function mountScene(container, opts = {}) {
     destroy() {
       cancelAnimationFrame(raf);
       ro.disconnect();
+      clearTimeout(settleTimer);
+      fontsCancelled = true;
       removeEventListener('pointermove', onPointer);
       removeEventListener('scroll', onScroll);
       renderer.dispose();
