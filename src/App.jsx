@@ -44,6 +44,7 @@ export default function App() {
   const [query, setQuery] = useState("");
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [requestsOnly, setRequestsOnly] = useState(false);
+  const [assignedToMeOnly, setAssignedToMeOnly] = useState(false);
   const [authed, setAuthed] = useState(null); // null = checking
   const [userEmail, setUserEmail] = useState(null);
   const [userName, setUserName] = useState(null);
@@ -312,18 +313,29 @@ export default function App() {
   );
   const openRequestsGlobal = useMemo(() => cards.filter(hasOpenRequest).length, [cards]);
 
+  const isAssignedToMe = (c) =>
+    (c.assignees?.length ? c.assignees : c.assignee ? [c.assignee] : []).includes(userName);
+
   const visibleCards = useMemo(() => {
     const q = query.trim().toLowerCase();
     return scopedCards.filter((c) => {
       if (priorityFilter !== "all" && c.priority !== priorityFilter) return false;
       if (requestsOnly && !hasOpenRequest(c)) return false;
+      if (assignedToMeOnly && !isAssignedToMe(c)) return false;
       if (q) {
         const hay = `${c.title} ${c.description ?? ""}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
     });
-  }, [scopedCards, query, priorityFilter, requestsOnly]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scopedCards, query, priorityFilter, requestsOnly, assignedToMeOnly, userName]);
+
+  const assignedToMeCount = useMemo(
+    () => scopedCards.filter(isAssignedToMe).length,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [scopedCards, userName]
+  );
 
   const activeClient = clients.find((c) => c.id === activeId);
 
@@ -662,6 +674,9 @@ export default function App() {
                 requestsOnly={requestsOnly}
                 setRequestsOnly={setRequestsOnly}
                 requestCount={openRequestsScoped}
+                assignedToMeOnly={assignedToMeOnly}
+                setAssignedToMeOnly={setAssignedToMeOnly}
+                assignedToMeCount={assignedToMeCount}
                 saving={saving}
                 onNew={() => setWizard({ mode: "create" })}
                 searchRef={searchRef}

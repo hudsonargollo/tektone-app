@@ -2,13 +2,15 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { View, Text, FlatList, Pressable, ActivityIndicator, StyleSheet, useWindowDimensions } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Plus } from "lucide-react-native";
+import { Plus, ChevronDown, UserCheck } from "lucide-react-native";
 import { api } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 import { COLUMNS } from "@/lib/constants";
-import { colors, fonts } from "@/lib/theme";
+import { colors, fonts, radii } from "@/lib/theme";
 import { useRealtimeContext } from "@/lib/realtime";
 import CardTile, { type Card } from "@/components/CardTile";
 import ReviewsQueueModal, { type ReviewBatch } from "@/components/ReviewsQueueModal";
+import PickerModal from "@/components/CardDetail/PickerModal";
 
 type Client = { id: string; name: string; color: string };
 
@@ -25,6 +27,7 @@ function sortByOrder(list: Card[]) {
 
 export default function BoardScreen() {
   const router = useRouter();
+  const { user } = useAuth();
   const { notifSignal } = useRealtimeContext();
   const { width } = useWindowDimensions();
   const listRef = useRef<FlatList>(null);
@@ -33,6 +36,9 @@ export default function BoardScreen() {
   const [loading, setLoading] = useState(true);
   const [activeIndex, setActiveIndex] = useState(0);
   const [reviews, setReviews] = useState<ReviewBatch[]>([]);
+  const [clientFilter, setClientFilter] = useState<string | null>(null);
+  const [clientPickerOpen, setClientPickerOpen] = useState(false);
+  const [assignedToMeOnly, setAssignedToMeOnly] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -90,6 +96,22 @@ export default function BoardScreen() {
 
   const clientById = Object.fromEntries(clients.map((c) => [c.id, c]));
 
+  const isAssignedToMe = (c: Card) =>
+    (c.assignees?.length ? c.assignees : c.assignee ? [c.assignee] : []).includes(user?.name || "");
+
+  const filteredCards = cards.filter((c) => {
+    if (clientFilter && c.clientId !== clientFilter) return false;
+    if (assignedToMeOnly && !isAssignedToMe(c)) return false;
+    return true;
+  });
+  const assignedToMeCount = cards.filter(isAssignedToMe).length;
+  const activeClient = clientFilter ? clientById[clientFilter] : null;
+  // Reorder (move up/down) is ambiguous against a filtered subset — a card's
+  // position within the filtered list doesn't match its true position in
+  // the full column, so hide the move buttons while any filter is active
+  // rather than risk a confusing reorder.
+  const isFiltering = Boolean(clientFilter) || assignedToMeOnly;
+
   // Swap a card with its neighbor in the manual order, then persist the
   // whole column's new order in one call (same endpoint web's drag uses).
   async function move(colId: string, cardId: string, dir: -1 | 1) {
@@ -123,6 +145,31 @@ export default function BoardScreen() {
         </Pressable>
       </View>
 
+      <View style={styles.filterRow}>
+        <Pressable onPress={() => setClientPickerOpen(true)} style={styles.projectBtn}>
+          <View style={[styles.projectDot, activeClient && { backgroundColor: activeClient.color }]} />
+          <Text style={styles.projectBtnText} numberOfLines={1}>{activeClient ? activeClient.name : "Todos os projetos"}</Text>
+          <ChevronDown size={13} color={colors.stone500} />
+        </Pressable>
+        <Pressable
+          onPress={() => setAssignedToMeOnly((v) => !v)}
+          style={[styles.assignedBtn, assignedToMeOnly && styles.assignedBtnActive]}
+        >
+          <UserCheck size={13} color={assignedToMeOnly ? colors.action : colors.stone500} />
+          {assignedToMeCount > 0 && (
+            <Text style={[styles.assignedBtnCount, assignedToMeOnly && { color: colors.action }]}>{assignedToMeCount}</Text>
+          )}
+        </Pressable>
+      </View>
+      <PickerModal
+        visible={clientPickerOpen}
+        title="Projeto"
+        options={[{ value: "", label: "Todos os projetos" }, ...clients.map((c) => ({ value: c.id, label: c.name, color: c.color }))]}
+        selected={clientFilter ? [clientFilter] : [""]}
+        onToggle={(v) => { setClientFilter(v || null); setClientPickerOpen(false); }}
+        onClose={() => setClientPickerOpen(false)}
+      />
+
       <View style={styles.tabRow}>
         <FlatList
           data={COLUMNS}
@@ -131,7 +178,7 @@ export default function BoardScreen() {
           keyExtractor={(c) => c.id}
           contentContainerStyle={{ paddingHorizontal: 12, gap: 8 }}
           renderItem={({ item, index }) => {
-            const count = cards.filter((c) => c.columnId === item.id).length;
+            const count = filteredCards.filter((c) => c.columnId === item.id).length;
             const active = index === activeIndex;
             return (
               <Pressable onPress={() => jump(index)} style={[styles.tab, active && { backgroundColor: item.color }]}>
@@ -160,7 +207,7 @@ export default function BoardScreen() {
           }}
           getItemLayout={(_, index) => ({ length: width, offset: width * index, index })}
           renderItem={({ item: col }) => {
-            const colCards = sortByOrder(cards.filter((c) => c.columnId === col.id));
+            const colCards = sortByOrder(filteredCards.filter((c) => c.columnId === col.id));
             return (
               <View style={{ width }}>
                 <FlatList
@@ -175,8 +222,8 @@ export default function BoardScreen() {
                       card={item}
                       client={clientById[item.clientId || ""]}
                       onPress={() => router.push(`/card/${item.id}`)}
-                      onMoveUp={index > 0 ? () => move(col.id, item.id, -1) : undefined}
-                      onMoveDown={index < colCards.length - 1 ? () => move(col.id, item.id, 1) : undefined}
+                      onMoveUp={!isFiltering && index > 0 ? () => move(col.id, item.id, -1) : undefined}
+                      onMoveDown={!isFiltering && index < colCards.length - 1 ? () => move(col.id, item.id, 1) : undefined}
                     />
                   )}
                 />
@@ -205,6 +252,19 @@ const styles = StyleSheet.create({
   headerTitle: { fontFamily: fonts.sansSemiBold, fontSize: 20, color: colors.ink },
   newBtn: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: colors.action, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 8 },
   newBtnText: { fontFamily: fonts.sansBold, fontSize: 12, color: colors.clay },
+  filterRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 16, paddingTop: 8 },
+  projectBtn: {
+    flex: 1, flexDirection: "row", alignItems: "center", gap: 6, borderWidth: 1, borderColor: "rgba(20,22,24,0.12)",
+    backgroundColor: colors.paper, borderRadius: radii.md, paddingHorizontal: 10, paddingVertical: 8,
+  },
+  projectDot: { width: 7, height: 7, borderRadius: 3.5, backgroundColor: colors.stone400 },
+  projectBtnText: { flex: 1, fontFamily: fonts.mono, fontSize: 11, color: colors.ink },
+  assignedBtn: {
+    flexDirection: "row", alignItems: "center", gap: 4, borderWidth: 1, borderColor: "rgba(20,22,24,0.12)",
+    backgroundColor: colors.paper, borderRadius: radii.md, paddingHorizontal: 10, paddingVertical: 8,
+  },
+  assignedBtnActive: { borderColor: `${colors.action}66`, backgroundColor: `${colors.action}18` },
+  assignedBtnCount: { fontFamily: fonts.monoMedium, fontSize: 11, color: colors.stone500 },
   tabRow: { paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "rgba(20,22,24,0.08)" },
   tab: {
     flexDirection: "row", alignItems: "center", gap: 6, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 8,

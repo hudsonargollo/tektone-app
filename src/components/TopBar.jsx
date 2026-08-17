@@ -1,4 +1,4 @@
-import { Search, Plus, X, Package } from "lucide-react";
+import { Search, Plus, X, Package, UserCheck } from "lucide-react";
 import { PRIORITY } from "@/lib/constants";
 import { Spinner } from "@/components/ui";
 
@@ -13,6 +13,9 @@ export default function TopBar({
   requestsOnly,
   setRequestsOnly,
   requestCount,
+  assignedToMeOnly,
+  setAssignedToMeOnly,
+  assignedToMeCount,
   saving,
   onNew,
   searchRef,
@@ -65,6 +68,20 @@ export default function TopBar({
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Assigned-to-me filter */}
+          <button
+            onClick={() => setAssignedToMeOnly(!assignedToMeOnly)}
+            title="Mostrar só tarefas atribuídas a mim"
+            className={`inline-flex shrink-0 items-center gap-1.5 rounded-lg border px-2.5 py-2 font-mono text-[11px] font-semibold transition-colors ${
+              assignedToMeOnly
+                ? "border-action/50 bg-action/15 text-action"
+                : "border-ink/15 text-stone-500 hover:text-ink"
+            }`}
+          >
+            <UserCheck size={13} /> {assignedToMeCount > 0 ? assignedToMeCount : ""}
+            <span className="hidden sm:inline">minhas tarefas</span>
+          </button>
+
           {/* Material-requests filter */}
           <button
             onClick={() => setRequestsOnly(!requestsOnly)}
