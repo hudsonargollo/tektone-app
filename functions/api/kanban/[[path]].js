@@ -222,6 +222,19 @@ function dispatchPush(context, env, kv, recipients, payload) {
   }
 }
 
+// Display labels for the "updated" notification's change summary — mirrors
+// mobile/src/lib/constants.ts's COLUMNS (backend has no shared frontend
+// import, kept in sync by hand, same convention as other cross-referenced
+// constants in this codebase).
+const COLUMN_LABEL = {
+  backlog: "Backlog",
+  todo: "A Fazer",
+  inprogress: "Em Andamento",
+  review: "Em Revisão",
+  done: "Concluído",
+};
+const PRIORITY_LABEL = { low: "baixa", medium: "média", high: "alta" };
+
 const reEscape = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 // Members whose @firstname appears in the text (e.g. "@Pedro").
@@ -650,6 +663,38 @@ export async function onRequest(context) {
                 .catch(() => {})
             );
           }
+
+          // Assignees who weren't explicitly @mentioned still get a bell +
+          // push notification for any comment on their task ("watch"-style,
+          // same reasoning as the card-update notification below) — just
+          // not an email, which stays reserved for a direct @mention/
+          // request so it doesn't turn into inbox noise for every comment
+          // on every task someone's assigned to.
+          const norm2 = (s) => String(s || "").trim().toLowerCase();
+          const passiveAssignees = resolveAssigneeEmails(card, members).filter(
+            (e) => e !== norm2(email) && !comment.mentions.includes(e)
+          );
+          if (passiveAssignees.length) {
+            await pushNotifs(
+              kv,
+              passiveAssignees.map((to) => ({
+                type: "comment",
+                to,
+                fromName: authorName,
+                fromEmail: email,
+                cardId: card.id,
+                cardTitle: card.title,
+                clientId: card.clientId,
+                commentId: comment.id,
+                text: text.slice(0, 100),
+              }))
+            );
+            dispatchPush(context, env, kv, passiveAssignees, {
+              title: `${authorName} comentou — ${card.title}`,
+              body: text.slice(0, 140),
+              cardId: card.id,
+            });
+          }
           return json({ card, comment }, 201);
         }
         if (commentId && seg[4] === "nudge" && method === "POST") {
@@ -1043,6 +1088,56 @@ export async function onRequest(context) {
             dispatchPush(context, env, kv, reopenedEmails, {
               title: `${actorName} reabriu — ${updatedCard.title}`,
               body: "A tarefa voltou a ficar em aberto.",
+              cardId: id,
+            });
+          }
+
+          // Any other field change on a card notifies its current assignees
+          // — "watch"-style, so an assignee hears about every action on
+          // their task, not just being added/reopened. Column changes that
+          // already fired the reopen notification above, and whoever just
+          // got freshly assigned above, are excluded here so nobody gets
+          // two notifications for the same PUT.
+          const changeDescriptions = [];
+          if ("columnId" in body && body.columnId !== fromColumn && !reopenComment) {
+            changeDescriptions.push(`moveu para ${COLUMN_LABEL[body.columnId] || body.columnId}`);
+          }
+          if ("dueDate" in body && body.dueDate !== card.dueDate) {
+            changeDescriptions.push(body.dueDate ? "alterou o prazo" : "removeu o prazo");
+          }
+          if ("priority" in body && body.priority !== card.priority) {
+            changeDescriptions.push(`mudou a prioridade para ${PRIORITY_LABEL[body.priority] || body.priority}`);
+          }
+          if ("title" in body && body.title !== card.title) {
+            changeDescriptions.push("editou o título");
+          }
+          if ("description" in body && body.description !== card.description) {
+            changeDescriptions.push("editou a descrição");
+          }
+          const alreadyNotified = new Set([...addedEmails, ...reopenedEmails]);
+          const updatedEmails = changeDescriptions.length
+            ? resolveAssigneeEmails(updatedCard, members).filter(
+                (e) => e !== norm(email) && !alreadyNotified.has(e)
+              )
+            : [];
+          if (updatedEmails.length) {
+            const text = changeDescriptions.join(", ");
+            await pushNotifs(
+              kv,
+              updatedEmails.map((to) => ({
+                type: "updated",
+                to,
+                fromName: actorName,
+                fromEmail: email,
+                cardId: id,
+                cardTitle: updatedCard.title,
+                clientId: updatedCard.clientId,
+                text,
+              }))
+            );
+            dispatchPush(context, env, kv, updatedEmails, {
+              title: `${actorName} atualizou — ${updatedCard.title}`,
+              body: text,
               cardId: id,
             });
           }

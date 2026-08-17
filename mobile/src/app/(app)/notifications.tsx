@@ -2,14 +2,14 @@ import { useCallback, useEffect, useState } from "react";
 import { View, Text, FlatList, Pressable, ActivityIndicator, StyleSheet } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { MessageSquare, Package, PartyPopper, Undo2, Vibrate, UserPlus } from "lucide-react-native";
+import { MessageSquare, Package, PartyPopper, Undo2, Vibrate, UserPlus, Pencil, MessageCircle } from "lucide-react-native";
 import { api } from "@/lib/api";
 import { useRealtimeContext } from "@/lib/realtime";
 import { colors, fonts } from "@/lib/theme";
 
 type Notif = {
   id: string;
-  type: "mention" | "request" | "assigned" | "nudge" | "reviewed" | "reopened";
+  type: "mention" | "request" | "assigned" | "nudge" | "reviewed" | "reopened" | "comment" | "updated";
   fromName: string;
   cardId: string;
   cardTitle: string;
@@ -25,6 +25,8 @@ const TYPE_META: Record<Notif["type"], { Icon: any; color: string }> = {
   nudge: { Icon: Vibrate, color: colors.action },
   reviewed: { Icon: PartyPopper, color: colors.success },
   reopened: { Icon: Undo2, color: colors.warning },
+  comment: { Icon: MessageCircle, color: colors.stone500 },
+  updated: { Icon: Pencil, color: colors.stone500 },
 };
 
 function relTime(iso: string) {

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Bell, Package, MessageSquare, PartyPopper, Undo2, Vibrate, UserPlus } from "lucide-react";
+import { Bell, Package, MessageSquare, PartyPopper, Undo2, Vibrate, UserPlus, Pencil, MessageCircle } from "lucide-react";
 import { api } from "@/lib/api";
 import { Avatar } from "@/components/ui";
 
@@ -20,6 +20,8 @@ const TYPE_META = {
   nudge: { icon: Vibrate, color: "text-action", badge: null },
   reviewed: { icon: PartyPopper, color: "text-success", badge: null },
   reopened: { icon: Undo2, color: "text-warning", badge: null },
+  comment: { icon: MessageCircle, color: "text-stone-400", badge: "sua tarefa" },
+  updated: { icon: Pencil, color: "text-stone-400", badge: "sua tarefa" },
 };
 
 // Self-contained: polls its own state so the 60s refresh never re-renders the board.
