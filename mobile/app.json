@@ -33,6 +33,13 @@
         }
       ],
       [
+        "expo-media-library",
+        {
+          "photosPermission": "O TaskTone salva os posts gerados na sua galeria quando você exporta.",
+          "savePhotosPermission": "O TaskTone salva os posts gerados na sua galeria quando você exporta."
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "backgroundColor": "#efe8dc",

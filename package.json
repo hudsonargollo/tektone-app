@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@block65/webcrypto-web-push": "^1.0.2",
+    "@cf-wasm/photon": "^0.4.0",
     "canvas-confetti": "^1.9.3",
     "framer-motion": "^12.40.0",
     "hono": "^4.13.1",

@@ -14,6 +14,7 @@
  * Response(result).arrayBuffer()`, not base64-decoded.
  */
 import { fetchWithRetry } from "./retry.js";
+import { compositePost } from "./socialCompositor.js";
 
 const uid = () => crypto.randomUUID().replace(/-/g, "").slice(0, 12);
 
@@ -150,8 +151,18 @@ async function generateAndStoreSlide(env, { db, createdBy, objective, visualTone
   ]);
 
   const id = uid();
+  // Raw SDXL output is kept separately from the served/composited image
+  // (see socialCompositor.js's docstring — never composite onto an
+  // already-composited image) so a later caption reroll/edit can always
+  // recomposite from the pristine source instead of stacking overlays.
+  const rawR2Key = `social/${id}-raw.png`;
   const r2Key = `social/${id}.png`;
-  await env.BLOG_MEDIA.put(r2Key, imageBytes, { httpMetadata: { contentType: "image/png" } });
+  const [width, height] = aspectRatio.split("x").map(Number);
+  const compositedBytes = await compositePost(imageBytes, { width, height, caption, watermarkOn: true });
+  await Promise.all([
+    env.BLOG_MEDIA.put(rawR2Key, imageBytes, { httpMetadata: { contentType: "image/png" } }),
+    env.BLOG_MEDIA.put(r2Key, compositedBytes, { httpMetadata: { contentType: "image/png" } }),
+  ]);
 
   await db
     .prepare(
@@ -164,17 +175,47 @@ async function generateAndStoreSlide(env, { db, createdBy, objective, visualTone
   return { id, r2Key, masterPrompt, aspectRatio, postFormat, groupId, slideIndex, caption };
 }
 
+// Recomposites `social/{id}.png` from the pristine `social/{id}-raw.png`
+// with whatever caption is currently in the DB — shared by both the AI
+// caption reroll and a human's manual caption edit, since both need the
+// exact same "start from raw, never double-composite" recipe.
+async function recompositeFromRaw(env, { id, aspectRatio, caption }) {
+  const rawObj = await env.BLOG_MEDIA.get(`social/${id}-raw.png`);
+  if (!rawObj) return; // best-effort — a missing raw shouldn't fail the caption save
+  const rawBytes = new Uint8Array(await rawObj.arrayBuffer());
+  const [width, height] = aspectRatio.split("x").map(Number);
+  const compositedBytes = await compositePost(rawBytes, { width, height, caption, watermarkOn: true });
+  await env.BLOG_MEDIA.put(`social/${id}.png`, compositedBytes, { httpMetadata: { contentType: "image/png" } });
+}
+
 /**
  * Rerolls just the overlay caption for one already-generated post — used
  * by the "sugerir outra" control in SocialPostGenerator.jsx when the
  * AI-drafted line doesn't land, without paying for a fresh SDXL image.
+ * Recomposites the served image from the raw source with the new caption.
  */
 export async function regenerateCaption(env, { id }) {
-  const post = await env.DB.prepare("SELECT objective, subject_context FROM social_posts WHERE id = ?").bind(id).first();
+  const post = await env.DB.prepare("SELECT objective, subject_context, aspect_ratio FROM social_posts WHERE id = ?").bind(id).first();
   if (!post) return null;
   const brandKb = await loadBrandKb(env.DB);
   const caption = await generateCaption(env, { objective: post.objective, subject: post.subject_context, brandKb });
   await env.DB.prepare("UPDATE social_posts SET caption = ? WHERE id = ?").bind(caption, id).run();
+  await recompositeFromRaw(env, { id, aspectRatio: post.aspect_ratio, caption });
+  return caption;
+}
+
+/**
+ * Saves a human-edited caption (the reviewer typing over the AI draft) and
+ * recomposites from raw — previously web only ever baked a hand-typed
+ * caption into the canvas locally, never persisting it server-side, so a
+ * page reload or a later reroll silently lost the edit. This closes that
+ * gap as a side effect of moving compositing server-side.
+ */
+export async function updateCaption(env, { id, caption }) {
+  const post = await env.DB.prepare("SELECT aspect_ratio FROM social_posts WHERE id = ?").bind(id).first();
+  if (!post) return null;
+  await env.DB.prepare("UPDATE social_posts SET caption = ? WHERE id = ?").bind(caption, id).run();
+  await recompositeFromRaw(env, { id, aspectRatio: post.aspect_ratio, caption });
   return caption;
 }
 

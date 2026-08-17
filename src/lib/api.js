@@ -192,6 +192,7 @@ export const api = {
   generateSocialPost: (body) => req("/social/generate", { method: "POST", body }),
   listSocialPosts: () => req("/social"),
   exportSocialPost: (id) => req(`/social/${id}`, { method: "PATCH" }),
+  updateSocialCaption: (id, caption) => req(`/social/${id}`, { method: "PATCH", body: { caption } }),
   deleteSocialPost: (id) => req(`/social/${id}`, { method: "DELETE" }),
   regenerateSocialCaption: (id) => req(`/social/${id}/caption`, { method: "POST" }),
   exportSocialPostGroup: (groupId) => req(`/social/group/${groupId}`, { method: "PATCH" }),

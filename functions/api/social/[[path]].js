@@ -9,14 +9,15 @@
 //   GET    /api/social                  — gallery list, most recent first
 //   GET    /api/social/:id/image        — stream the R2 object (mirrors /api/blog/media/:key+)
 //   POST   /api/social/:id/caption      — reroll just the AI overlay caption for one post
-//   PATCH  /api/social/:id              — mark exported (called after canvas export succeeds)
+//   PATCH  /api/social/:id              — { caption? } to save a hand-edited caption (recomposites),
+//                                          or no body to just mark exported (called after export)
 //   PATCH  /api/social/group/:groupId   — mark every slide in a carousel exported at once
 //   DELETE /api/social/:id              — remove a gallery entry + its R2 object
 //   DELETE /api/social/group/:groupId   — remove every slide in a carousel + their R2 objects
 import { getSessionEmail } from "../../_lib/session.js";
 import { getUserByEmail } from "../../_lib/db.js";
 import { isStaffOrAdmin } from "../../_lib/rbac.js";
-import { generateSocialPost, regenerateCaption } from "../../../worker/lib/socialPostService.js";
+import { generateSocialPost, regenerateCaption, updateCaption } from "../../../worker/lib/socialPostService.js";
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), { status, headers: { "Content-Type": "application/json" } });
@@ -116,8 +117,15 @@ export async function onRequest(context) {
 
     // ── delete whole carousel ────────────────────────────────────────────
     if (seg[0] === "group" && seg[1] && !seg[2] && method === "DELETE") {
-      const { results: slides } = await db.prepare("SELECT r2_key FROM social_posts WHERE group_id = ?").bind(seg[1]).all();
-      if (env.BLOG_MEDIA) await Promise.all(slides.map((s) => env.BLOG_MEDIA.delete(s.r2_key).catch(() => {})));
+      const { results: slides } = await db.prepare("SELECT id, r2_key FROM social_posts WHERE group_id = ?").bind(seg[1]).all();
+      if (env.BLOG_MEDIA) {
+        await Promise.all(
+          slides.flatMap((s) => [
+            env.BLOG_MEDIA.delete(s.r2_key).catch(() => {}),
+            env.BLOG_MEDIA.delete(`social/${s.id}-raw.png`).catch(() => {}),
+          ])
+        );
+      }
       await db.prepare("DELETE FROM social_posts WHERE group_id = ?").bind(seg[1]).run();
       return json({ ok: true });
     }
@@ -130,10 +138,15 @@ export async function onRequest(context) {
       return json({ posts: results });
     }
 
-    // ── mark exported ─────────────────────────────────────────────────
+    // ── save a hand-edited caption (recomposites) or mark exported ─────
     if (seg[0] && !seg[1] && method === "PATCH") {
       const existing = await db.prepare("SELECT id FROM social_posts WHERE id = ?").bind(seg[0]).first();
       if (!existing) return json({ error: "not found" }, 404);
+      const body = await request.json().catch(() => ({}));
+      if (typeof body.caption === "string") {
+        const caption = await updateCaption(env, { id: seg[0], caption: body.caption });
+        return json({ caption });
+      }
       await db.prepare("UPDATE social_posts SET status = 'exported' WHERE id = ?").bind(seg[0]).run();
       return json({ ok: true });
     }
@@ -142,7 +155,10 @@ export async function onRequest(context) {
     if (seg[0] && !seg[1] && method === "DELETE") {
       const existing = await db.prepare("SELECT r2_key FROM social_posts WHERE id = ?").bind(seg[0]).first();
       if (!existing) return json({ error: "not found" }, 404);
-      if (env.BLOG_MEDIA) await env.BLOG_MEDIA.delete(existing.r2_key).catch(() => {});
+      if (env.BLOG_MEDIA) {
+        await env.BLOG_MEDIA.delete(existing.r2_key).catch(() => {});
+        await env.BLOG_MEDIA.delete(`social/${seg[0]}-raw.png`).catch(() => {});
+      }
       await db.prepare("DELETE FROM social_posts WHERE id = ?").bind(seg[0]).run();
       return json({ ok: true });
     }

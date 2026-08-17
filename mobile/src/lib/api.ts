@@ -186,4 +186,16 @@ export const api = {
     req(`/blog/admin/posts/${id}/reject`, { method: "POST", body: { reviewerNotes } }),
   generateBlogDrafts: () => req("/blog/admin/generate", { method: "POST" }),
   generateBlogImage: (id: string, prompt: string) => req(`/blog/admin/posts/${id}/images`, { method: "POST", body: { prompt } }),
+
+  // AI Instagram post generator (STAFF/ADMIN only — see functions/api/social/[[path]].js).
+  // Images arrive server-composited (Phase 10 — see worker/lib/socialCompositor.js), so
+  // mobile just displays/downloads a finished PNG, same as web.
+  generateSocialPost: (body: any) => req("/social/generate", { method: "POST", body }),
+  listSocialPosts: () => req("/social"),
+  exportSocialPost: (id: string) => req(`/social/${id}`, { method: "PATCH" }),
+  updateSocialCaption: (id: string, caption: string) => req(`/social/${id}`, { method: "PATCH", body: { caption } }),
+  deleteSocialPost: (id: string) => req(`/social/${id}`, { method: "DELETE" }),
+  regenerateSocialCaption: (id: string) => req(`/social/${id}/caption`, { method: "POST" }),
+  exportSocialPostGroup: (groupId: string) => req(`/social/group/${groupId}`, { method: "PATCH" }),
+  deleteSocialPostGroup: (groupId: string) => req(`/social/group/${groupId}`, { method: "DELETE" }),
 };

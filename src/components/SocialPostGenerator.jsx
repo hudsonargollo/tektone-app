@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, Instagram, Download, Trash2, Sparkles, Plus, X, RefreshCw } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ArrowLeft, Instagram, Download, Trash2, Sparkles, Plus, X, RefreshCw, Check } from "lucide-react";
 import { api } from "@/lib/api";
 import { Spinner } from "@/components/ui";
 
@@ -7,10 +7,18 @@ import { Spinner } from "@/components/ui";
 // blank textbox, per the PRD's "Guided Prompt Interface") that generates
 // brand-constrained image(s) via Workers AI SDXL plus a short, on-brand
 // overlay caption via Claude (grounded in brand_kb voice + positioning —
-// see socialPostService.js's generateCaption), then a canvas
-// post-processing step applies brand tokens (that caption, optional
-// watermark, no glow/neon/halo per the Mineral System's hard constraint —
-// see docs/BRAND_VISUAL_SYSTEM.md) before export. Backend: functions/api/social/[[path]].js.
+// see socialPostService.js's generateCaption). Backend: functions/api/social/[[path]].js.
+//
+// Compositing (the caption band + Tektone watermark burned onto the raw
+// SDXL image) moved server-side (see worker/lib/socialCompositor.js) so
+// mobile doesn't need to duplicate this app's old <canvas> post-processing
+// step with a heavy RN canvas dependency — both platforms now just display
+// a finished PNG the server already composited. Editing the caption here
+// PATCHes it to the server (which recomposites from the pristine raw
+// image and overwrites the served PNG) instead of redrawing a local
+// canvas — a network round trip on save, not live per-keystroke, but it's
+// also a real fix: the old canvas version never actually persisted a
+// hand-typed caption anywhere, so a reload silently lost your edit.
 //
 // Three formats (migration 0015 added carousel/story on top of the
 // original feed-only generator):
@@ -20,7 +28,9 @@ import { Spinner } from "@/components/ui";
 //   subject/context so the slides can tell a sequence instead of
 //   repeating the same picture. Generated in parallel server-side.
 const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
-const imageUrl = (id) => `${API_BASE}/api/social/${id}/image`;
+// `v` cache-busts the browser's cached PNG bytes after a recomposite
+// (reroll or manual caption save) overwrites the same R2 key/URL.
+const imageUrl = (id, v) => `${API_BASE}/api/social/${id}/image${v ? `?v=${v}` : ""}`;
 
 const OBJECTIVES = [
   { value: "autoridade", label: "Autoridade" },
@@ -51,43 +61,9 @@ const ASPECT_RATIOS = [
   { value: "1080x1080", label: "1080 × 1080 (quadrado)" },
   { value: "1080x1350", label: "1080 × 1350 (retrato)" },
 ];
-const STORY_ASPECT_RATIO = "1080x1920";
 
 const MIN_CAROUSEL_SLIDES = 2;
 const MAX_CAROUSEL_SLIDES = 8;
-
-// Same 3-layer construction as LogoMark.jsx (Architrave/Pillar/Foundation),
-// duplicated as a raw SVG string here since canvas needs a data URL, not a
-// mounted React component.
-const MARK_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 116">
-  <rect x="15" y="18" width="70" height="22" fill="#C7B79C"/>
-  <rect x="18" y="21" width="64" height="16" fill="#141618"/>
-  <rect x="42" y="37" width="16" height="58" fill="#2E4A43"/>
-  <rect x="45" y="37" width="10" height="56" fill="#141618"/>
-  <rect x="49.2" y="41" width="1.6" height="46" fill="#C7B79C"/>
-  <rect x="38" y="95" width="24" height="5" fill="#C7B79C"/>
-  <rect x="33" y="100" width="34" height="4" fill="#141618"/>
-  <rect x="26" y="106.5" width="48" height="1.8" fill="#141618"/>
-  <rect x="21" y="110.5" width="58" height="1.2" fill="#C7B79C"/>
-</svg>`;
-
-function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
-  const words = text.split(" ");
-  const lines = [];
-  let line = "";
-  for (const word of words) {
-    const test = line ? `${line} ${word}` : word;
-    if (ctx.measureText(test).width > maxWidth && line) {
-      lines.push(line);
-      line = word;
-    } else {
-      line = test;
-    }
-  }
-  if (line) lines.push(line);
-  const startY = y - ((lines.length - 1) * lineHeight) / 2;
-  lines.forEach((l, i) => ctx.fillText(l, x, startY + i * lineHeight));
-}
 
 export default function SocialPostGenerator({ onClose }) {
   const [postFormat, setPostFormat] = useState("feed");
@@ -100,14 +76,13 @@ export default function SocialPostGenerator({ onClose }) {
   const [error, setError] = useState("");
   const [results, setResults] = useState([]); // posts from the last generation (1 for feed/story, N for carousel)
   const [groupId, setGroupId] = useState(null);
-  const [showWatermark, setShowWatermark] = useState(true);
   const [captions, setCaptions] = useState({}); // postId -> overlay caption (AI-suggested, editable)
+  const [captionVersion, setCaptionVersion] = useState({}); // postId -> cache-bust counter, bumped on every recomposite
   const [regeneratingCaption, setRegeneratingCaption] = useState(null); // postId currently rerolling, or null
+  const [savingCaption, setSavingCaption] = useState(null); // postId currently saving a manual edit, or null
 
   const [gallery, setGallery] = useState(null);
   const [galleryError, setGalleryError] = useState("");
-
-  const canvasRefs = useRef({});
 
   function loadGallery() {
     api
@@ -155,6 +130,7 @@ export default function SocialPostGenerator({ onClose }) {
       setResults(newPosts);
       setGroupId(newGroupId);
       setCaptions(Object.fromEntries(newPosts.map((p) => [p.id, p.caption || ""])));
+      setCaptionVersion(Object.fromEntries(newPosts.map((p) => [p.id, 0])));
       loadGallery();
     } catch (err) {
       setError(err?.body?.error || "Falha ao gerar a imagem.");
@@ -163,11 +139,16 @@ export default function SocialPostGenerator({ onClose }) {
     }
   }
 
+  function bumpVersion(postId) {
+    setCaptionVersion((prev) => ({ ...prev, [postId]: (prev[postId] || 0) + 1 }));
+  }
+
   async function handleRegenerateCaption(postId) {
     setRegeneratingCaption(postId);
     try {
       const { caption } = await api.regenerateSocialCaption(postId);
       setCaptions((prev) => ({ ...prev, [postId]: caption || "" }));
+      bumpVersion(postId);
     } catch {
       /* keep the existing caption on failure */
     } finally {
@@ -175,93 +156,27 @@ export default function SocialPostGenerator({ onClose }) {
     }
   }
 
-  // Draws each generated image + brand-token overlays onto its own canvas.
-  // No glow/shadow/neon anywhere here — hard constraint from the live
-  // /brand guide (see docs/BRAND_VISUAL_SYSTEM.md).
-  useEffect(() => {
-    if (!results.length) return;
-    const cancelFlags = [];
+  async function handleSaveCaption(postId) {
+    setSavingCaption(postId);
+    try {
+      await api.updateSocialCaption(postId, captions[postId] || "");
+      bumpVersion(postId);
+    } catch {
+      setError("Não foi possível salvar a legenda.");
+    } finally {
+      setSavingCaption(null);
+    }
+  }
 
-    results.forEach((post) => {
-      const canvas = canvasRefs.current[post.id];
-      if (!canvas) return;
-      const [w, h] = post.aspectRatio.split("x").map(Number);
-      canvas.width = w;
-      canvas.height = h;
-      const ctx = canvas.getContext("2d");
-      const caption = captions[post.id] || "";
-
-      // Every keystroke re-runs this effect, each creating a fresh Image()
-      // load — completion order across overlapping loads isn't
-      // guaranteed, so without this guard a stale caption's onload can
-      // resolve after the current one and silently overwrite the canvas
-      // with outdated text.
-      const flag = { cancelled: false };
-      cancelFlags.push(flag);
-
-      const img = new Image();
-      img.crossOrigin = "anonymous";
-      img.onload = () => {
-        if (flag.cancelled) return;
-        // object-cover fit
-        const scale = Math.max(w / img.width, h / img.height);
-        const dw = img.width * scale;
-        const dh = img.height * scale;
-        ctx.drawImage(img, (w - dw) / 2, (h - dh) / 2, dw, dh);
-
-        if (caption.trim()) {
-          ctx.fillStyle = "rgba(20,22,24,0.55)";
-          const bandH = Math.round(h * 0.16);
-          ctx.fillRect(0, h - bandH, w, bandH);
-          ctx.fillStyle = "#EFE8DC";
-          ctx.font = `italic ${Math.round(w * 0.032)}px "EB Garamond", Georgia, serif`;
-          ctx.textAlign = "center";
-          ctx.textBaseline = "middle";
-          wrapText(ctx, caption.trim(), w / 2, h - bandH / 2, w * 0.86, Math.round(w * 0.04));
-        }
-
-        if (showWatermark) {
-          const markSize = Math.round(w * 0.09);
-          const markImg = new Image();
-          markImg.onload = () => {
-            if (flag.cancelled) return;
-            const pad = Math.round(w * 0.035);
-            const mh = markSize * 1.16;
-            ctx.drawImage(markImg, w - markSize - pad, h - mh - pad, markSize, mh);
-          };
-          markImg.src = `data:image/svg+xml;base64,${btoa(MARK_SVG)}`;
-        }
-      };
-      img.src = imageUrl(post.id);
-    });
-
-    return () => {
-      cancelFlags.forEach((f) => (f.cancelled = true));
-    };
-  }, [results, showWatermark, captions]);
-
-  function downloadCanvas(post, index) {
-    return new Promise((resolve) => {
-      const canvas = canvasRefs.current[post.id];
-      if (!canvas) return resolve();
-      canvas.toBlob((blob) => {
-        if (blob) {
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = results.length > 1 ? `tektone-post-${post.id}-slide${index + 1}.png` : `tektone-post-${post.id}.png`;
-          a.click();
-          URL.revokeObjectURL(url);
-        }
-        resolve();
-      }, "image/png");
-    });
+  function downloadResult(post, index) {
+    const a = document.createElement("a");
+    a.href = imageUrl(post.id, captionVersion[post.id]);
+    a.download = results.length > 1 ? `tektone-post-${post.id}-slide${index + 1}.png` : `tektone-post-${post.id}.png`;
+    a.click();
   }
 
   async function handleExportAll() {
-    for (let i = 0; i < results.length; i++) {
-      await downloadCanvas(results[i], i);
-    }
+    results.forEach((post, i) => downloadResult(post, i));
     try {
       if (groupId) await api.exportSocialPostGroup(groupId);
       else if (results[0]) await api.exportSocialPost(results[0].id);
@@ -514,23 +429,18 @@ export default function SocialPostGenerator({ onClose }) {
             </button>
           </form>
 
-          {/* ── Result + canvas overlay(s) ──────────────────────────── */}
+          {/* ── Result (server-composited image) ────────────────────── */}
           {results.length > 0 && (
             <div className="rounded-xl surface-3 p-5">
               <p className="label-tech mb-4">
                 Resultado{results.length > 1 ? ` (${results.length} slides)` : ""}
               </p>
 
-              <label className="mb-4 flex items-center gap-2 text-sm text-ink">
-                <input type="checkbox" checked={showWatermark} onChange={(e) => setShowWatermark(e.target.checked)} />
-                Aplicar marca Tektone (watermark) em todos
-              </label>
-
               <div className={results.length > 1 ? "flex gap-5 overflow-x-auto pb-2" : "flex flex-col gap-5 sm:flex-row"}>
                 {results.map((post) => (
                   <div key={post.id} className={results.length > 1 ? "w-56 shrink-0 space-y-2" : "flex flex-1 flex-col gap-5 sm:flex-row"}>
                     <div className={results.length > 1 ? "overflow-hidden rounded-lg border border-ink/10" : "mx-auto max-w-xs shrink-0 overflow-hidden rounded-lg border border-ink/10"}>
-                      <canvas ref={(el) => { if (el) canvasRefs.current[post.id] = el; }} className="block w-full" />
+                      <img src={imageUrl(post.id, captionVersion[post.id])} alt="" className="block w-full" />
                     </div>
                     <div className={results.length > 1 ? "space-y-2" : "flex-1 space-y-3"}>
                       <div>
@@ -548,13 +458,24 @@ export default function SocialPostGenerator({ onClose }) {
                             <RefreshCw size={12} className={regeneratingCaption === post.id ? "animate-spin" : ""} />
                           </button>
                         </div>
-                        <input
-                          value={captions[post.id] || ""}
-                          onChange={(e) => setCaptions((prev) => ({ ...prev, [post.id]: e.target.value }))}
-                          placeholder="sem legenda — a imagem fica só com a foto"
-                          maxLength={90}
-                          className="w-full rounded-lg border border-ink/15 bg-clay px-3 py-2 text-sm text-ink outline-none placeholder:text-stone-400 focus:border-action"
-                        />
+                        <div className="flex items-center gap-2">
+                          <input
+                            value={captions[post.id] || ""}
+                            onChange={(e) => setCaptions((prev) => ({ ...prev, [post.id]: e.target.value }))}
+                            placeholder="sem legenda — a imagem fica só com a foto"
+                            maxLength={90}
+                            className="w-full rounded-lg border border-ink/15 bg-clay px-3 py-2 text-sm text-ink outline-none placeholder:text-stone-400 focus:border-action"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleSaveCaption(post.id)}
+                            disabled={savingCaption === post.id}
+                            title="Salvar legenda (recompõe a imagem)"
+                            className="inline-flex shrink-0 items-center gap-1 rounded-lg surface-2 px-2.5 py-2 font-mono text-[11px] text-stone-600 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            {savingCaption === post.id ? <Spinner /> : <Check size={13} />} salvar
+                          </button>
+                        </div>
                         <p className="mt-1 text-right font-mono text-[9px] text-stone-400">
                           {(captions[post.id] || "").length}/90 — quanto mais curta, melhor a leitura sobre a imagem
                         </p>

@@ -1,7 +1,7 @@
 import { View, Text, Pressable, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Award, Sparkles, ShieldCheck, Wallet, Briefcase, TrendingUp, Link2, Newspaper, ChevronRight, LogOut } from "lucide-react-native";
+import { Award, Sparkles, ShieldCheck, Wallet, Briefcase, TrendingUp, Link2, Newspaper, Camera, ChevronRight, LogOut } from "lucide-react-native";
 import { useAuth, hasCrmAccess } from "@/lib/auth";
 import { colors, fonts, radii } from "@/lib/theme";
 
@@ -18,6 +18,7 @@ export default function MoreScreen() {
     { key: "journey", label: "Jornada", sub: "nível, sequência e cartas de sabedoria", Icon: Award, href: "/journey" as const },
     { key: "meetings", label: "Reuniões", sub: "analisar transcrições e gerar tarefas", Icon: Sparkles, href: "/meetings" as const },
     { key: "commercial", label: "Comercial", sub: "clientes, contratos, faturas e construtores", Icon: Briefcase, href: "/commercial" as const },
+    { key: "social", label: "Posts", sub: "gerar posts de Instagram com IA", Icon: Camera, href: "/social" as const },
     ...(hasCrmAccess(user)
       ? [
           { key: "crm", label: "CRM", sub: "dashboard, pipeline de leads e vendas", Icon: TrendingUp, href: "/crm" as const },
