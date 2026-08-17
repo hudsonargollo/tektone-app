@@ -185,7 +185,7 @@ export default function CrmWaLinks({ onClose }) {
   }
 
   return (
-    <div data-crm-theme className="flex h-full w-full flex-col surface-2">
+    <div className="flex h-full w-full flex-col surface-2">
       <div className="flex shrink-0 items-center gap-2 border-b border-ink/15 px-4 py-3 sm:px-6">
         <button
           onClick={onClose}

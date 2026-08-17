@@ -232,12 +232,14 @@ export default function SocialPostGenerator({ onClose }) {
     <div className="flex h-full w-full flex-col surface-2">
       <div className="flex items-center justify-between border-b border-ink/15 px-6 py-4">
         <div className="flex items-center gap-2">
-          <button
-            onClick={onClose}
-            className="-ml-1.5 rounded-lg p-1.5 text-stone-500 hover:bg-ink/[0.05] hover:text-ink lg:hidden"
-          >
-            <ArrowLeft size={16} />
-          </button>
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="-ml-1.5 rounded-lg p-1.5 text-stone-500 hover:bg-ink/[0.05] hover:text-ink lg:hidden"
+            >
+              <ArrowLeft size={16} />
+            </button>
+          )}
           <Instagram size={15} className="text-action" />
           <span className="label-tech">Posts</span>
         </div>

@@ -32,7 +32,7 @@ export default function CrmPanel({ crmRole, timezone, onClose }) {
   const activeTab = view.tab === "lead" ? "leads" : view.tab;
 
   return (
-    <div data-crm-theme className="flex h-full w-full surface-2">
+    <div className="flex h-full w-full surface-2">
       {/* Desktop inner sidebar */}
       <aside className="hidden w-44 shrink-0 flex-col border-r border-ink/10 py-4 lg:flex">
         <nav className="flex flex-1 flex-col gap-1 px-2">

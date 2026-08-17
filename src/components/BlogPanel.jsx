@@ -6,9 +6,11 @@ import MarkdownTextarea from "@/builder/MarkdownTextarea";
 import MarkdownBody from "@/components/MarkdownBody";
 import DocumentBuilder from "@/builder/DocumentBuilder";
 import FunnelBuilder from "@/builder/FunnelBuilder";
+import SocialPostGenerator from "@/components/SocialPostGenerator";
 
 const CONTENT_TABS = [
-  { key: "posts", label: "Posts" },
+  { key: "posts", label: "Artigos" },
+  { key: "social", label: "Posts" },
   { key: "page", label: "Páginas" },
   { key: "form", label: "Formulários" },
   { key: "quiz", label: "Quizzes" },
@@ -129,7 +131,7 @@ export default function BlogPanel({ onClose }) {
             <ArrowLeft size={16} />
           </button>
           <Newspaper size={15} className="text-action" />
-          <span className="label-tech">Blog</span>
+          <span className="label-tech">Conteúdo</span>
           <div className="ml-4 flex gap-1">
             {CONTENT_TABS.map((t) => (
               <button
@@ -155,7 +157,11 @@ export default function BlogPanel({ onClose }) {
         )}
       </div>
 
-      {contentTab === "page" || contentTab === "form" || contentTab === "quiz" ? (
+      {contentTab === "social" ? (
+        <div className="flex min-h-0 flex-1 flex-col">
+          <SocialPostGenerator />
+        </div>
+      ) : contentTab === "page" || contentTab === "form" || contentTab === "quiz" ? (
         <div className="flex min-h-0 flex-1 flex-col">
           <DocumentBuilder
             kind={contentTab}

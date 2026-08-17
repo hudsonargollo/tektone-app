@@ -21,7 +21,6 @@ import CommercialPanel from "@/components/CommercialPanel";
 import CustomerShell from "@/components/CustomerShell";
 import ProfilePage from "@/components/ProfilePage";
 import BuilderProfilePanel from "@/components/BuilderProfilePanel";
-import SocialPostGenerator from "@/components/SocialPostGenerator";
 import PersonalTodoPanel from "@/components/PersonalTodoPanel";
 import ReviewPopup from "@/components/ReviewPopup";
 import MeetingsPage from "@/components/MeetingsPage";
@@ -626,7 +625,6 @@ export default function App() {
             {view === "links" && <CrmWaLinks onClose={() => navigateTo("board")} />}
             {view === "todos" && <PersonalTodoPanel />}
             {view === "journey" && <BuilderProfilePanel onClose={() => navigateTo("board")} />}
-            {view === "social" && <SocialPostGenerator onClose={() => navigateTo("board")} />}
             {view === "meetings" && (
               <MeetingsPage
                 clients={clients}
@@ -861,7 +859,7 @@ export default function App() {
                   }}
                   className="flex w-full items-center gap-3 px-5 py-3.5 text-left text-sm text-stone-700 transition-colors active:bg-ink/[0.04]"
                 >
-                  <Newspaper size={16} className="text-action" /> Blog · curadoria
+                  <Newspaper size={16} className="text-action" /> Conteúdo · curadoria
                 </button>
               )}
               {isAdmin && (
