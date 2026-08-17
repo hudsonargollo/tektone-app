@@ -108,7 +108,7 @@ export default function AppLayout() {
   // <CustomerShell/> : <Board/>` isolation-by-construction (PRD's stated
   // defense-in-depth: a customer bundle should never even reach internal
   // task detail).
-  if (user.accessRole === "CUSTOMER") return <Redirect href="/(customer)" />;
+  if (user.accessRole === "CUSTOMER") return <Redirect href="/(customer)/onboarding" />;
 
   return (
     <RealtimeProvider myEmail={user.email}>

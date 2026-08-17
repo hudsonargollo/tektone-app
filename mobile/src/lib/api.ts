@@ -163,4 +163,16 @@ export const api = {
   updateAddon: (id: string, body: any) => req(`/addons/${id}`, { method: "PUT", body }),
   deleteAddon: (id: string) => req(`/addons/${id}`, { method: "DELETE" }),
   getProjectBuilders: (projectId: string) => req(`/gamification/project/${projectId}`),
+
+  // customer portal (Phase 7)
+  listProjects: () => req("/projects"),
+  getProject: (id: string) => req(`/projects/${id}`),
+  signContract: (projectId: string, contractId: string) =>
+    req(`/projects/${projectId}/contracts/${contractId}/sign`, { method: "POST" }),
+  getOnboarding: (projectId: string) => req(`/projects/${projectId}/onboarding`),
+  setOnboardingStepStatus: (projectId: string, stepId: string, status: string) =>
+    req(`/projects/${projectId}/onboarding/steps/${stepId}`, { method: "PATCH", body: { status } }),
+  listProjectAddons: (projectId: string) => req(`/projects/${projectId}/addons`),
+  addProjectAddon: (projectId: string, addonId: string) =>
+    req(`/projects/${projectId}/addons`, { method: "POST", body: { addonId } }),
 };
