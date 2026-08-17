@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import Video from "next-video";
 import pedroVideo from "/videos/pedro-silvestrini.mp4";
@@ -15,9 +16,71 @@ const stats = [
   { value: 4, label: "idiomas falados" },
 ];
 
+// Mounts the Tektone 3D "Autoridade" stele (lib/three/tektone-stele.js) — a
+// Greek aedicula whose recessed panel carries Pedro's portrait video as a
+// VideoTexture. next-video's <Video> forwards its ref to the underlying
+// native <video> element (see next-video/dist/components/video.d.ts —
+// RefAttributes<HTMLVideoElement>), so the existing R2-backed video
+// pipeline stays exactly as it was; this only reaches in for the raw
+// element the stele's texture sampler needs. Dynamic-imported inside the
+// effect for the same reason as HeroSection — client-only code, no need
+// for next/dynamic's ssr:false wrapper on top of an already-"use client"
+// component.
+function useAutoridadeStele(videoRef: React.RefObject<HTMLVideoElement | null>) {
+  const steleContainerRef = useRef<HTMLDivElement>(null);
+  const sectionRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    if (!steleContainerRef.current) return;
+    let destroyed = false;
+    let cleanup: (() => void) | undefined;
+    let raf = 0;
+
+    // next-video's <Video> forwards its ref to the underlying
+    // HTMLVideoElement, but its player may attach that ref a frame or two
+    // after this component's own effects commit (it can lazy-load a
+    // player implementation). Poll briefly on rAF rather than assuming
+    // it's synchronously available — cheap, bounded, and avoids a race
+    // I can't verify without a browser.
+    const tryMount = () => {
+      if (destroyed) return;
+      const videoEl = videoRef.current;
+      if (!videoEl) {
+        raf = requestAnimationFrame(tryMount);
+        return;
+      }
+      import("@/lib/three/tektone-stele.js").then((mod) => {
+        if (destroyed || !steleContainerRef.current) return;
+        const inst = mod.mountStele(steleContainerRef.current, {
+          video: videoEl,
+          scrollTarget: sectionRef.current,
+        });
+        cleanup = () => inst.destroy();
+      });
+    };
+    tryMount();
+
+    return () => {
+      destroyed = true;
+      cancelAnimationFrame(raf);
+      cleanup?.();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return { steleContainerRef, sectionRef };
+}
+
 export default function AutoridadeSection() {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const { steleContainerRef, sectionRef } = useAutoridadeStele(videoRef);
+
   return (
-    <section id="autoridade" className="relative bg-ivory py-16 sm:py-24 overflow-hidden">
+    <section
+      id="autoridade"
+      ref={sectionRef as React.RefObject<HTMLElement>}
+      className="relative bg-ivory py-16 sm:py-24 overflow-hidden"
+    >
       <div className="absolute inset-0 bp-dots opacity-40 mask-fade" aria-hidden />
       <div className="absolute inset-0 grain-light mask-fade" aria-hidden />
       <SectionBlob tone="ochre" className="-left-24 top-10 h-[26rem] w-[26rem]" />
@@ -27,51 +90,41 @@ export default function AutoridadeSection() {
         </h2>
 
         <div className="grid gap-12 lg:grid-cols-[0.8fr_1.2fr] lg:gap-16 items-start">
-          {/* Portrait — video instead of a static photo. Same passe-partout
-              mat/registration-mark framing as before; next-video's <Video>
-              handles poster generation + optimized delivery via the
-              Cloudflare R2 provider (see next.config.mjs) instead of Mux. */}
+          {/* Portrait — the 3D stele carries the video in a recessed panel
+              (see tektone-stele.js) instead of the flat passe-partout mat
+              this section used before. */}
           <motion.div
             initial={{ opacity: 0, y: 24 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-80px" }}
             transition={{ duration: 0.6, ease: EASE }}
           >
-            <div className="relative w-full max-w-sm rounded-2xl surface-paper-raised p-3">
-              {/* Passe-partout mat, in the stone/parchment texture */}
-              <div className="absolute inset-0 rounded-2xl grain-heavy" aria-hidden />
-
-              {/* Corner registration marks — architectural-drawing convention */}
-              {[
-                "left-2 top-2 border-l-2 border-t-2",
-                "right-2 top-2 border-r-2 border-t-2",
-                "left-2 bottom-2 border-l-2 border-b-2",
-                "right-2 bottom-2 border-r-2 border-b-2",
-              ].map((pos) => (
-                <span
-                  key={pos}
-                  aria-hidden
-                  className={`absolute z-10 h-3 w-3 border-green/50 ${pos}`}
-                />
-              ))}
-
-              <div className="relative aspect-[3/4] w-full overflow-hidden rounded-lg ring-1 ring-inset ring-ink/10">
-                <Video
-                  src={pedroVideo}
-                  autoPlay
-                  muted
-                  loop
-                  playsInline
-                  controls={false}
-                  className="h-full w-full [&_video]:h-full [&_video]:w-full [&_video]:object-cover"
-                />
-                <div className="pointer-events-none absolute inset-0 grain-light" aria-hidden />
-              </div>
+            <div
+              ref={steleContainerRef}
+              className="relative w-full"
+              style={{ height: "min(74vh, 600px)", minHeight: 380 }}
+              role="img"
+              aria-label="Estela grega com o vídeo de Pedro Silvestrini"
+            />
+            {/* The actual video element — visually hidden (its pixels are
+                sampled into the stele's VideoTexture, never displayed
+                directly), but very much playing. next-video's pipeline
+                (Cloudflare R2, see next.config.mjs) is unchanged. */}
+            <div className="sr-only">
+              <Video
+                ref={videoRef}
+                src={pedroVideo}
+                autoPlay
+                muted
+                loop
+                playsInline
+                controls={false}
+              />
             </div>
-            <p className="mt-4 text-lg font-bold text-ink">
+            <p className="mt-4 text-lg font-bold text-ink text-center">
               Pedro Silvestrini
             </p>
-            <p className="font-mono text-sm tracking-wide text-green">
+            <p className="font-mono text-sm tracking-wide text-green text-center">
               CEO &amp; Fundador da Tektone
             </p>
           </motion.div>

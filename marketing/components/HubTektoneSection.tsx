@@ -35,7 +35,7 @@ export default function HubTektoneSection() {
           transition={{ duration: 0.6, delay: 0.1, ease: EASE }}
           className="text-balance text-2xl sm:text-4xl font-bold leading-snug tracking-display text-ivory"
         >
-          Hub Tektone. A operação do seu projeto, exposta em tempo real.
+          WORKHUB. A operação do seu projeto, exposta em tempo real.
         </motion.p>
         <motion.p
           initial={{ opacity: 0, y: 16 }}

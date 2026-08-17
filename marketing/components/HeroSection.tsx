@@ -1,10 +1,9 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import type { Variants } from "framer-motion";
-import Image from "next/image";
 import { ArrowRight } from "lucide-react";
-import ColumnBlueprint from "@/components/ColumnBlueprint";
 import Logo from "@/components/Logo";
 
 const EASE = [0.22, 1, 0.36, 1] as [number, number, number, number];
@@ -55,55 +54,97 @@ const headWord: Variants = {
   },
 };
 
+// Mounts the Tektone 3D hero scene (lib/three/tektone-scene.js) as a
+// full-bleed background layer behind the existing copy. Dynamic-imported
+// inside this effect (which only ever runs client-side) rather than via
+// next/dynamic's ssr:false wrapper — this component is already "use
+// client" and mountScene() is an imperative function, not a React
+// component, so there's nothing next/dynamic would add here; the effect
+// alone already guarantees this never runs during SSR.
+//
+// Scoped down from the delivery's reference implementation
+// (delivery/src/tektone-hero-scene.html) in one deliberate way: the
+// reference pins the hero via `.stage { position: sticky }` and pulls the
+// section immediately after it up with `margin-top: -100vh`, so the mark
+// flies past the camera into the NEXT section as part of the scroll exit.
+// That trick assumes the following section is nearly empty (the
+// reference's own "after" section is a single centered paragraph). This
+// site's real next section (AgitacaoSection) is a full, content-rich
+// section with its own imagery — retrofitting a -100vh negative margin
+// onto it risks visibly breaking that section's layout in a way I can't
+// verify without a browser. So: the 3D scene, the data-band-* camera
+// framing, and the CTA departure animation are all here faithfully: only
+// the sticky-pin/scroll-exit cinematic transition is NOT implemented.
+// Flagged in the PR description as the one open follow-up.
+function useHeroScene() {
+  const sceneRef = useRef<HTMLDivElement>(null);
+  const stageRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    if (!sceneRef.current || !stageRef.current) return;
+    let destroyed = false;
+    let cleanup: (() => void) | undefined;
+
+    import("@/lib/three/tektone-scene.js").then((mod) => {
+      if (destroyed || !sceneRef.current) return;
+      const inst = mod.mountScene(sceneRef.current, { scrollTarget: stageRef.current });
+
+      // Every CTA that points at #qualificacao (not just this section's own
+      // button) plays the hero's departure before the page scrolls there —
+      // matches the delivery's reference script exactly.
+      let going = false;
+      const links = Array.from(document.querySelectorAll('a[href="#qualificacao"]'));
+      const onClick = (e: Event) => {
+        e.preventDefault();
+        if (going) return;
+        going = true;
+        document.body.classList.add("departing");
+        inst.depart().then(() => {
+          const t = document.querySelector("#qualificacao");
+          window.scrollTo({ top: t ? (t as HTMLElement).offsetTop : window.innerHeight, behavior: "smooth" });
+          setTimeout(() => {
+            document.body.classList.remove("departing");
+            going = false;
+          }, 1400);
+        });
+      };
+      links.forEach((el) => el.addEventListener("click", onClick));
+
+      cleanup = () => {
+        links.forEach((el) => el.removeEventListener("click", onClick));
+        inst.destroy();
+      };
+    });
+
+    return () => {
+      destroyed = true;
+      cleanup?.();
+    };
+  }, []);
+
+  return { sceneRef, stageRef };
+}
+
 export default function HeroSection() {
+  const { sceneRef, stageRef } = useHeroScene();
+
   return (
     <section
       id="top"
+      ref={stageRef as React.RefObject<HTMLElement>}
       className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden bg-ink-950"
     >
-      {/* Structural backdrop — stepped foundation + rising flutes */}
-      <div className="absolute inset-0 bp-lines-ink mask-fade" aria-hidden />
-      <div className="absolute inset-0 grain-dark" aria-hidden />
-      <div className="absolute inset-0 opacity-80 mask-fade" aria-hidden>
-        <ColumnBlueprint />
-      </div>
-
-      {/* Third pass: the columns-under-construction scene now shares the
-          same visual plane as the bp-lines-ink grid above instead of
-          living in its own thin strip below it — tall enough (85% of the
-          section) to actually read as atmosphere behind the whole hero,
-          not just a sliver pasted along the bottom edge. mask-fade-top
-          still feathers the top into the dark background so the headline
-          column stays legible; opacity is higher than the first attempt
-          (0.09) since that read as barely-there against a busy scene. */}
+      {/* 3D scene — colonnade, god rays, impact dust, the Mineral T assembly */}
+      <div ref={sceneRef} className="absolute inset-0 z-0" aria-hidden />
       <div
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-[85%] opacity-[0.32] mix-blend-screen mask-fade-top"
+        className="pointer-events-none absolute inset-0 z-[1]"
+        style={{
+          background:
+            "radial-gradient(ellipse 70% 60% at 50% 45%, transparent 40%, rgba(6,7,8,.72) 100%)",
+        }}
         aria-hidden
-      >
-        <Image
-          src="/hero-columns-construction.jpg"
-          alt=""
-          fill
-          sizes="100vw"
-          className="object-cover object-bottom"
-          priority
-        />
-      </div>
-
-      {/* Single, contained light source — never a neon halo */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute top-[-6%] left-1/2 -translate-x-1/2 h-[420px] w-[720px] rounded-full bg-[#A1AEAA] opacity-[0.06] blur-[160px]"
       />
-
-      {/* Measuring line — one precise sweep on load, not a repeating loop */}
-      <motion.div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 h-px bg-gradient-to-r from-transparent via-sand/40 to-transparent"
-        initial={{ top: "14%", opacity: 0 }}
-        animate={{ top: "82%", opacity: [0, 0.7, 0.7, 0] }}
-        transition={{ duration: 2.4, ease: EASE, delay: 1.1 }}
-      />
+      <div className="absolute inset-0 z-[1] grain-dark" aria-hidden />
 
       <div className="relative z-10 mx-auto max-w-4xl px-6 pt-28 pb-20 text-center">
         {/* Wordmark */}
@@ -128,8 +169,11 @@ export default function HeroSection() {
           Consultoria de Tecnologia &amp; Negócios, Sob Medida
         </motion.p>
 
-        {/* Headline — word-by-word reveal */}
+        {/* Headline — word-by-word reveal. data-band-top: the 3D scene
+            measures this element's real rendered position on every resize
+            to solve where the mark's camera framing should land. */}
         <motion.h1
+          data-band-top
           variants={headContainer}
           initial="hidden"
           animate="show"
@@ -146,8 +190,9 @@ export default function HeroSection() {
           ))}
         </motion.h1>
 
-        {/* Sub-headline */}
+        {/* Sub-headline — also part of the top band the camera measures */}
         <motion.p
+          data-band-top
           custom={3}
           variants={fadeUp}
           initial="hidden"
@@ -159,8 +204,11 @@ export default function HeroSection() {
           escala.
         </motion.p>
 
-        {/* CTA */}
+        {/* CTA — bottom band. data-band-seat on the button itself: its top
+            edge becomes the mark's base line, so the mark reads as
+            standing on the button like a slab. */}
         <motion.div
+          data-band-bottom
           custom={4}
           variants={fadeUp}
           initial="hidden"
@@ -169,6 +217,7 @@ export default function HeroSection() {
         >
           <a
             href="#qualificacao"
+            data-band-seat
             className="group inline-flex items-center gap-2.5 rounded-lg bg-green px-7 py-4 text-base font-bold tracking-wide text-ivory transition-all duration-200 hover:bg-green-hover active:bg-green-active focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-mist glow-action-ink"
           >
             <span>AGENDAR CALL DE QUALIFICAÇÃO</span>
@@ -183,7 +232,7 @@ export default function HeroSection() {
       {/* Scroll indicator */}
       <motion.div
         aria-hidden
-        className="absolute bottom-8 left-1/2 -translate-x-1/2"
+        className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 1.4, duration: 0.7 }}
