@@ -133,4 +133,20 @@ export const api = {
   deleteWorkflowTemplate: (id: string) => req(`/workflow-templates/${id}`, { method: "DELETE" }),
   applyWorkflowTemplate: (id: string, projectId: string) =>
     req(`/workflow-templates/${id}/apply`, { method: "POST", body: { projectId } }),
+
+  // internal financial tracking (STAFF/ADMIN only — see rbac.hasFinanceAccess)
+  getFinances: (projectId: string, month?: string) => req(`/finances/${projectId}${month ? `?month=${month}` : ""}`),
+  updateFinances: (projectId: string, body: any) => req(`/finances/${projectId}`, { method: "PUT", body }),
+  listCostCategories: () => req("/finances/categories"),
+  createCostCategory: (body: any) => req("/finances/categories", { method: "POST", body }),
+  listCosts: (projectId: string, opts: { all?: boolean; month?: string } = {}) => {
+    const params = new URLSearchParams();
+    if (opts.all) params.set("status", "all");
+    if (opts.month) params.set("month", opts.month);
+    const qs = params.toString();
+    return req(`/finances/${projectId}/costs${qs ? `?${qs}` : ""}`);
+  },
+  createCost: (projectId: string, body: any) => req(`/finances/${projectId}/costs`, { method: "POST", body }),
+  updateCost: (projectId: string, costId: string, body: any) => req(`/finances/${projectId}/costs/${costId}`, { method: "PUT", body }),
+  toggleCostArchive: (projectId: string, costId: string) => req(`/finances/${projectId}/costs/${costId}/archive`, { method: "POST" }),
 };
