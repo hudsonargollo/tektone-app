@@ -49,6 +49,13 @@ function useAutoridadeStele(videoRef: React.RefObject<HTMLVideoElement | null>) 
         raf = requestAnimationFrame(tryMount);
         return;
       }
+      // autoPlay on the underlying <video> attribute isn't always honored
+      // the same way by a custom player wrapper (next-video's own player
+      // may gate playback behind its JS API rather than the raw HTML
+      // attribute) — call play() directly too. Muted, so browser autoplay
+      // policy allows it without a user gesture; the rejection catch is
+      // just a safety net, not an expected path.
+      videoEl.play().catch(() => {});
       import("@/lib/three/tektone-stele.js").then((mod) => {
         if (destroyed || !steleContainerRef.current) return;
         const inst = mod.mountStele(steleContainerRef.current, {
@@ -106,11 +113,19 @@ export default function AutoridadeSection() {
               role="img"
               aria-label="Estela grega com o vídeo de Pedro Silvestrini"
             />
-            {/* The actual video element — visually hidden (its pixels are
-                sampled into the stele's VideoTexture, never displayed
-                directly), but very much playing. next-video's pipeline
+            {/* The actual video element — its pixels are sampled into the
+                stele's VideoTexture, never displayed directly, but it must
+                stay genuinely on-screen (full size, just invisible via
+                opacity) rather than clipped to sr-only's 1x1px box: the
+                player's own IntersectionObserver-based visibility logic
+                was reading that clipped box as "off-screen" and never
+                starting playback, which is why the stele panel rendered
+                solid black instead of the video. next-video's pipeline
                 (Cloudflare R2, see next.config.mjs) is unchanged. */}
-            <div className="sr-only">
+            <div
+              className="pointer-events-none absolute inset-0 opacity-0"
+              aria-hidden
+            >
               <Video
                 ref={videoRef}
                 src={pedroVideo}

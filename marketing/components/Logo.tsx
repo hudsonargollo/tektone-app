@@ -1,88 +1,61 @@
 /**
- * The brand mark — a classical column cross-section (architrave, fuste,
- * fundação), per app/brand/route.ts. Never recolor outside these
- * variants, never stretch off the 100×116 viewBox.
+ * The brand mark — the flat "adaptive-foreground" geometry from the
+ * delivered 3D icon system (same artwork used for the app icon everywhere).
+ * Its own gradient shading (sand frame, dark core, mineral-green pillar
+ * edges) already reads on both light and dark surfaces, so unlike the
+ * earlier hand-coded mark this no longer needs separate light/dark
+ * variants — `variant` is accepted for backward compatibility with
+ * existing call sites but no longer changes anything.
  */
 
-// "ink" renders the true brand-guide colors (Mineral Black core, Mineral
-// Green pillar, Sand frame — matches src/components/LogoMark.jsx, the
-// Hub's own logo) for LIGHT/flat backgrounds, where the sand frame alone
-// gives the core plenty of contrast to read against.
-//
-// "ivory" and "onBlack" both use a dark-beige core instead of true black
-// — same hue family as the sand frame, just lower lightness — for any
-// DARK or busy/photographic background. A flat dark swatch (like the
-// brand guide's own reference renders) is forgiving enough that a black
-// core still reads fine against it purely via the sand frame's outline,
-// which is what an earlier pass here assumed applied everywhere. It
-// doesn't: against the homepage hero's dark photographic backdrop
-// (Navbar's scrolled state, HeroSection, Footer, HubTektoneSection —
-// everywhere "ivory" is used), a true-black core has nowhere near enough
-// value separation from the busy dark photo behind it and the mark reads
-// as a flat, nearly hollow outline instead of a dimensional, layered
-// mark. Dark beige guarantees contrast against ANY dark surface,
-// flat or busy, the same way it does for the "onBlack" business-card
-// swatch (app/brand/route.ts's "Selo · sobre preto puro").
-const VARIANTS = {
-  ink: {
-    sand: "#C7B79C",
-    panel: "#141618",
-    shaft: "#2E4A43",
-  },
-  ivory: {
-    sand: "#C7B79C",
-    panel: "#6B5D45",
-    shaft: "#2E4A43",
-  },
-  onBlack: {
-    sand: "#C7B79C",
-    panel: "#6B5D45",
-    shaft: "#2E4A43",
-  },
-} as const;
-
 export default function Logo({
-  variant = "ink",
   className,
 }: {
-  variant?: keyof typeof VARIANTS;
+  variant?: "ink" | "ivory" | "onBlack";
   className?: string;
 }) {
-  const c = VARIANTS[variant];
   return (
-    <svg
-      viewBox="0 0 100 116"
-      role="img"
-      aria-label="Tektone"
-      className={className}
-    >
-      {/* Architrave — inner:outer width ratio 0.914 (64/70), height ratio
-          0.773 (17/22). Verified by pixel-measuring the brand guide's
-          reference render directly (nearest-color classification across
-          many rows of a clean high-res crop): measured ratio 0.920 — a
-          near-exact match, confirming these original values were already
-          correct. (An earlier pass here briefly widened this to 68 off a
-          noisier measurement that turned out to be contaminated by the
-          reference page's caption text; reverted.) */}
-      <rect x="15" y="18" width="70" height="22" fill={c.sand} />
-      <rect x="18" y="20.5" width="64" height="17" fill={c.panel} />
-      {/* Pillar — core:pillar width ratio 0.5625 (9/16). Same verified
-          pixel measurement gave 0.572 — again a near-exact match. (Also
-          briefly widened to 13 off the same bad measurement; reverted.) */}
-      <rect x="42" y="37" width="16" height="58" fill={c.shaft} />
-      <rect x="45.5" y="37" width="9" height="56" fill={c.panel} />
-      <rect x="49.5" y="41" width="1" height="46" fill={c.sand} />
-      {/* Foundation — four descending strata: sand, stone, horizon, echo.
-          Strata 1-2 widened based on the same pixel measurement (their
-          width relative to the architrave's inner black band measured
-          noticeably wider than originally coded — 0.50 and 0.61 vs the
-          previous 0.375 and 0.531). Strata 3-4 measurements were too
-          noisy (contaminated by the reference page's center-axis
-          guideline) to trust, so left as-is. */}
-      <rect x="34" y="95" width="32" height="5" fill={c.sand} />
-      <rect x="30.5" y="100" width="39" height="4" fill={c.panel} />
-      <rect x="26" y="106.5" width="48" height="1.8" fill={c.panel} />
-      <rect x="21" y="110.5" width="58" height="1.2" fill={c.sand} />
+    <svg viewBox="0 0 432 432" role="img" aria-label="Tektone" className={className}>
+      <defs>
+        <linearGradient id="tk-sand" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#E4D9C3" />
+          <stop offset=".55" stopColor="#C7B79C" />
+          <stop offset="1" stopColor="#A29174" />
+        </linearGradient>
+        <linearGradient id="tk-ink" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#2C3238" />
+          <stop offset=".5" stopColor="#171A1D" />
+          <stop offset="1" stopColor="#0A0C0D" />
+        </linearGradient>
+        <linearGradient id="tk-green" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#456B60" />
+          <stop offset="1" stopColor="#20342E" />
+        </linearGradient>
+        <linearGradient id="tk-flute" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#D3DCD8" />
+          <stop offset="1" stopColor="#8B9C96" />
+        </linearGradient>
+        <linearGradient id="tk-shadow" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#000" stopOpacity=".45" />
+          <stop offset="1" stopColor="#000" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <g transform="translate(216 216) scale(0.3024) translate(-300 -274)">
+        <rect x="0" y="0" width="600" height="147" rx="6" fill="url(#tk-sand)" />
+        <rect x="0" y="0" width="600" height="5" rx="2.5" fill="#F6EEDD" opacity=".65" />
+        <path d="M17 17H583V130H381.4V112.9H364.3V484H235.7V112.9H218.6V130H17Z" fill="url(#tk-ink)" />
+        <rect x="17" y="17" width="566" height="16" fill="url(#tk-shadow)" />
+        <rect x="241.7" y="147" width="13.8" height="337" rx="1.5" fill="url(#tk-green)" />
+        <rect x="241.7" y="147" width="3" height="337" fill="#5C877A" opacity=".55" />
+        <rect x="344.5" y="147" width="13.8" height="337" rx="1.5" fill="url(#tk-green)" />
+        <rect x="344.5" y="147" width="3" height="337" fill="#5C877A" opacity=".55" />
+        <rect x="297" y="165" width="6" height="293" rx="2" fill="url(#tk-flute)" />
+        <rect x="162.5" y="484" width="275" height="30.6" rx="2" fill="url(#tk-sand)" />
+        <rect x="162.5" y="484" width="275" height="3" fill="#F0E6D3" opacity=".55" />
+        <rect x="130" y="514.6" width="340" height="23.3" rx="1.5" fill="url(#tk-ink)" />
+        <rect x="68.5" y="537.9" width="463" height="7.3" rx="1" fill="#15181A" />
+        <rect x="128.5" y="545.2" width="343" height="2.4" fill="#BCAB90" />
+      </g>
     </svg>
   );
 }
