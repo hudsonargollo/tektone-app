@@ -39,7 +39,8 @@ export default function EmailStep() {
     >
       <View style={styles.brand}>
         <LogoMark width={72} height={84} />
-        <Text style={styles.brandTitle}>TASKTONE</Text>
+        <Text style={styles.brandTitle}>WORKHUB</Text>
+        <Text style={styles.brandByline}>by TEKTONE</Text>
         <Text style={styles.brandSub}>Ordo · Tekhnē · Permanentia</Text>
       </View>
 
@@ -87,7 +88,8 @@ export const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.clay, justifyContent: "center", padding: 24 },
   brand: { alignItems: "center", marginBottom: 28 },
   brandTitle: { fontFamily: fonts.sansSemiBold, fontSize: 17, letterSpacing: 4, color: colors.ink, marginTop: 10 },
-  brandSub: { fontFamily: fonts.serifItalic, fontSize: 14, color: colors.green, marginTop: 4 },
+  brandByline: { fontFamily: fonts.mono, fontSize: 10, letterSpacing: 2, color: colors.stone500, marginTop: 3 },
+  brandSub: { fontFamily: fonts.serifItalic, fontSize: 14, color: colors.green, marginTop: 6 },
   card: { backgroundColor: colors.paper, borderRadius: radii.xl, padding: 22, borderWidth: 1, borderColor: "rgba(20,22,24,0.1)" },
   head: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 20 },
   headIcon: { width: 36, height: 36, borderRadius: radii.md, backgroundColor: colors.paper, borderWidth: 1, borderColor: "rgba(20,22,24,0.1)", alignItems: "center", justifyContent: "center" },

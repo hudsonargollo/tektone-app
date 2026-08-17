@@ -116,7 +116,7 @@ export default function BoardScreen() {
   return (
     <SafeAreaView style={styles.screen} edges={["top"]}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>TaskTone</Text>
+        <Text style={styles.headerTitle}>WORKHUB</Text>
         <Pressable onPress={() => router.push("/wizard")} style={styles.newBtn}>
           <Plus size={14} color={colors.clay} />
           <Text style={styles.newBtnText}>Nova tarefa</Text>

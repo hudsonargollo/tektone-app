@@ -119,7 +119,10 @@ export default function CustomerShell({ userName, userEmail, userAvatar, onLogou
       <header className="flex h-14 shrink-0 items-center justify-between border-b border-ink/10 bg-clay/80 px-4 backdrop-blur-xl sm:px-6">
         <div className="flex items-center gap-2">
           <LogoMark className="h-7 w-auto" />
-          <span className="text-sm font-semibold tracking-[0.28em] text-ink">TEKTONE</span>
+          <span className="flex flex-col leading-none">
+            <span className="text-sm font-semibold tracking-[0.28em] text-ink">WORKHUB</span>
+            <span className="mt-0.5 font-mono text-[9px] tracking-[0.16em] text-stone-500">by TEKTONE</span>
+          </span>
         </div>
         <div className="flex items-center gap-3">
           <span className="hidden items-center gap-2 sm:flex">

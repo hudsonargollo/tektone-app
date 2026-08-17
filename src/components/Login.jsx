@@ -94,9 +94,12 @@ export default function Login({ onAuthed }) {
         <div className="mb-8 flex flex-col items-center text-center">
           <LogoMark className="mb-4 h-16 w-auto" />
           <span className="text-lg font-semibold tracking-[0.32em] text-ink">
-            TEKTONE
+            WORKHUB
           </span>
-          <p className="serif mt-1.5 text-[15px] text-green">
+          <span className="mt-1 font-mono text-[10px] font-semibold tracking-[0.22em] text-stone-500">
+            by TEKTONE
+          </span>
+          <p className="serif mt-2 text-[15px] text-green">
             Ordo · Tekhnē · Permanentia
           </p>
         </div>

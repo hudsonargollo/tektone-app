@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "TaskTone",
+    "name": "WORKHUB",
     "slug": "tasktone",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -14,8 +14,8 @@
     "android": {
       "package": "br.com.tektone.tasktone",
       "adaptiveIcon": {
-        "backgroundColor": "#efe8dc",
-        "foregroundImage": "./assets/images/android-icon-foreground.png"
+        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "backgroundImage": "./assets/images/android-icon-background.png"
       },
       "predictiveBackGestureEnabled": false,
       "permissions": [
@@ -38,14 +38,14 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "O TaskTone usa suas fotos para definir o avatar do seu perfil."
+          "photosPermission": "O WORKHUB usa suas fotos para definir o avatar do seu perfil."
         }
       ],
       [
         "expo-media-library",
         {
-          "photosPermission": "O TaskTone salva os posts gerados na sua galeria quando você exporta.",
-          "savePhotosPermission": "O TaskTone salva os posts gerados na sua galeria quando você exporta."
+          "photosPermission": "O WORKHUB salva os posts gerados na sua galeria quando você exporta.",
+          "savePhotosPermission": "O WORKHUB salva os posts gerados na sua galeria quando você exporta."
         }
       ],
       [

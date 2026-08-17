@@ -514,11 +514,13 @@ export default function App() {
           </button>
           <LogoMark className="h-8 w-auto sm:h-7" />
           <span className="hidden h-6 w-px shrink-0 bg-ink/15 sm:block" aria-hidden="true" />
-          <span className="hidden text-sm font-semibold tracking-[0.28em] text-ink sm:inline sm:tracking-[0.3em]">
-            TEKTONE
-          </span>
-          <span className="hidden font-mono text-[11px] font-semibold tracking-[0.18em] text-action sm:inline">
-            WORKHUB
+          <span className="hidden flex-col leading-none sm:flex">
+            <span className="text-sm font-semibold tracking-[0.28em] text-ink sm:tracking-[0.3em]">
+              WORKHUB
+            </span>
+            <span className="mt-1 font-mono text-[9.5px] font-semibold tracking-[0.18em] text-stone-500">
+              by TEKTONE
+            </span>
           </span>
         </div>
 
@@ -894,8 +896,12 @@ export default function App() {
               className="absolute left-0 top-0 h-full w-72 max-w-[82%] overflow-y-auto bg-clay p-4 shadow-2xl"
             >
               <div className="mb-1 flex items-center justify-between">
-                <span className="flex items-center gap-2 font-semibold tracking-[0.2em] text-ink">
-                  <LogoMark className="h-6 w-auto" /> TEKTONE
+                <span className="flex items-center gap-2">
+                  <LogoMark className="h-6 w-auto" />
+                  <span className="flex flex-col leading-none">
+                    <span className="font-semibold tracking-[0.2em] text-ink">WORKHUB</span>
+                    <span className="mt-0.5 font-mono text-[9px] tracking-[0.16em] text-stone-500">by TEKTONE</span>
+                  </span>
                 </span>
                 <button
                   onClick={() => setDrawerOpen(false)}

@@ -28,7 +28,7 @@ export default function ForgotStep() {
         </Text>
 
         <Pressable
-          onPress={() => Linking.openURL(`mailto:${ADMIN_CONTACT}?subject=Reset%20de%20acesso%20-%20TaskTone`)}
+          onPress={() => Linking.openURL(`mailto:${ADMIN_CONTACT}?subject=Reset%20de%20acesso%20-%20WORKHUB`)}
           style={{ marginTop: 16, flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: colors.paper, borderWidth: 1, borderColor: "rgba(20,22,24,0.1)", borderRadius: 8, paddingHorizontal: 14, paddingVertical: 12 }}
         >
           <Mail size={15} color={colors.action} />
