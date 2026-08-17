@@ -112,8 +112,21 @@ function hoursBetween(aIso, bIso) {
   return Math.abs(b.getTime() - a.getTime()) / 3_600_000;
 }
 
-function todayUTC() {
-  return new Date().toISOString().slice(0, 10);
+// Brazil abolished DST in 2019, so America/Sao_Paulo is a fixed UTC-3
+// offset year-round — no DST-transition edge cases to handle. Every
+// "which calendar day did this happen on" decision in this file (streaks,
+// daily stats buckets, on-time-vs-due-date) needs the team's local day, not
+// UTC's — a review made at 22:00 in São Paulo is 01:00 UTC the *next* day,
+// which a naive `.slice(0, 10)` on the ISO timestamp would silently bucket
+// onto the wrong date and could snap or extend a streak incorrectly.
+function saoPauloDateStr(isoOrSqlString) {
+  const iso = isoOrSqlString.includes(" ") && !isoOrSqlString.includes("T")
+    ? `${isoOrSqlString.replace(" ", "T")}Z`
+    : isoOrSqlString.includes("Z") || /[+-]\d\d:\d\d$/.test(isoOrSqlString)
+      ? isoOrSqlString
+      : `${isoOrSqlString}Z`;
+  const d = new Date(new Date(iso).getTime() - 3 * 3_600_000);
+  return d.toISOString().slice(0, 10);
 }
 
 function yesterdayOf(dateStr) {
@@ -132,7 +145,7 @@ async function computeTaskXp(db, { taskId, dueDate, createdAt, reviewedAtIso }) 
   let onTime = false;
 
   if (dueDate) {
-    onTime = reviewedAtIso.slice(0, 10) <= String(dueDate).slice(0, 10);
+    onTime = saoPauloDateStr(reviewedAtIso) <= String(dueDate).slice(0, 10);
     if (onTime) xp += 10;
   }
 
@@ -303,7 +316,7 @@ export async function awardXpForReviewedTask(db, { taskId, projectId, dueDate, c
     if (await wasAlreadyReviewed(db, taskId)) return { skipped: "already-reviewed" };
 
     const { xp, onTime, cycleHours } = await computeTaskXp(db, { taskId, dueDate, createdAt, reviewedAtIso });
-    const statDate = reviewedAtIso.slice(0, 10);
+    const statDate = saoPauloDateStr(reviewedAtIso);
 
     const perAssignee = [];
     for (const email of assigneeEmails) {
