@@ -1,13 +1,27 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import { Platform } from "react-native";
 import * as SecureStore from "expo-secure-store";
 
 const TOKEN_KEY = "tk_token";
 
+// expo-secure-store has no web implementation at all (calling it throws
+// "getValueWithKeyAsync is not a function", uncaught, which left the whole
+// app on a permanent blank screen when loaded in a browser — the bootstrap
+// effect never got past `loading: true`). localStorage is the standard web
+// fallback for this; less secure than the Keychain/Keystore SecureStore
+// gives native, but web is a dev/testing target here, not the primary
+// distribution surface.
 export async function getToken(): Promise<string | null> {
+  if (Platform.OS === "web") return window.localStorage.getItem(TOKEN_KEY);
   return SecureStore.getItemAsync(TOKEN_KEY);
 }
 
 async function setToken(token: string | null) {
+  if (Platform.OS === "web") {
+    if (token) window.localStorage.setItem(TOKEN_KEY, token);
+    else window.localStorage.removeItem(TOKEN_KEY);
+    return;
+  }
   if (token) await SecureStore.setItemAsync(TOKEN_KEY, token);
   else await SecureStore.deleteItemAsync(TOKEN_KEY);
 }

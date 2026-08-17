@@ -1,9 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
-import { View, Text, TextInput, Pressable, Image, ScrollView, ActivityIndicator, Alert, StyleSheet } from "react-native";
+import { View, Text, TextInput, Pressable, Image, ScrollView, ActivityIndicator, Alert, StyleSheet, Platform } from "react-native";
 import { useFocusEffect } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { File, Paths } from "expo-file-system";
-import * as MediaLibrary from "expo-media-library";
 import {
   Camera,
   Sparkles,
@@ -180,14 +178,37 @@ export default function SocialScreen() {
     setExportingId(post.id);
     setError("");
     try {
+      const filename = results.length > 1 ? `tektone-post-${post.id}-slide${index + 1}.png` : `tektone-post-${post.id}.png`;
+      const url = imageUrl(post.id, captionVersion[post.id]);
+
+      // expo-file-system's File/Paths and expo-media-library are both
+      // native-only (importing either at module top-level crashes the web
+      // bundle — "Class extends value undefined" — since Expo Router
+      // eagerly resolves every route file to build its manifest, even on
+      // platforms where this screen only ever runs on native in practice).
+      // Dynamic-imported here, native branch only; web just triggers a
+      // normal browser download, matching web's own SocialPostGenerator.jsx.
+      if (Platform.OS === "web") {
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        return;
+      }
+
+      const [{ File, Paths }, MediaLibrary] = await Promise.all([
+        import("expo-file-system"),
+        import("expo-media-library"),
+      ]);
       const perm = await MediaLibrary.requestPermissionsAsync();
       if (!perm.granted) {
         Alert.alert("Permissão necessária", "Autorize o acesso à galeria para salvar o post.");
         return;
       }
-      const filename = results.length > 1 ? `tektone-post-${post.id}-slide${index + 1}.png` : `tektone-post-${post.id}.png`;
       const dest = new File(Paths.cache, filename);
-      const downloaded = await File.downloadFileAsync(imageUrl(post.id, captionVersion[post.id]), dest, { idempotent: true });
+      const downloaded = await File.downloadFileAsync(url, dest, { idempotent: true });
       await MediaLibrary.Asset.create(downloaded.uri);
     } catch {
       setError("Não foi possível salvar na galeria.");
