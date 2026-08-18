@@ -150,7 +150,7 @@ export default function HeroSection() {
           remaining column (see tektone-scene.js's resize()). Below that the
           guide collapses to nothing and the single centred column below
           takes over — the mobile layout is untouched. */}
-      <div className="relative z-10 mx-auto grid w-full max-w-6xl grid-cols-1 items-center gap-8 px-6 pt-20 pb-20 min-[821px]:grid-cols-[minmax(0,62%)_minmax(0,1fr)] min-[821px]:gap-10 min-[821px]:pb-16">
+      <div className="relative z-10 mx-auto grid w-full max-w-6xl grid-cols-1 items-center gap-8 px-6 pt-16 pb-16 min-[821px]:grid-cols-[minmax(0,62%)_minmax(0,1fr)] min-[821px]:gap-10 min-[821px]:pt-20 min-[821px]:pb-16">
         <div className="mx-auto max-w-5xl text-center min-[821px]:mx-0 min-[821px]:max-w-none min-[821px]:text-left">
           {/* Eyebrow — the mark wordmark block that used to sit above this was
               removed: redundant now that the 3D T mark is the hero's own
@@ -162,7 +162,7 @@ export default function HeroSection() {
             variants={fadeUp}
             initial="hidden"
             animate="show"
-            className="label-tech-ink mb-5"
+            className="label-tech-ink mb-3 min-[821px]:mb-5"
           >
             Consultoria de Tecnologia &amp; Negócios, Sob Medida
           </motion.p>
@@ -170,13 +170,19 @@ export default function HeroSection() {
           {/* Headline — word-by-word reveal. data-band-top: the 3D scene
               measures this element's real rendered position on every resize
               to solve where the mark's camera framing should land (used as
-              the fallback below 820px, once the band-box guide is hidden). */}
+              the fallback below 820px, once the band-box guide is hidden).
+              Sized much smaller on mobile than the old text-4xl default —
+              that size wrapped to 5-6 lines on a phone, which left no real
+              room for the mark below regardless of how the camera solver
+              was tuned. Below min-[821px] a dedicated [data-band-box] guide
+              (right after this) reserves the mark's own space directly
+              instead of relying on whatever's left over from the text. */}
           <motion.h1
             data-band-top
             variants={headContainer}
             initial="hidden"
             animate="show"
-            className="flex flex-wrap justify-center gap-x-[0.28em] gap-y-1 text-4xl sm:text-5xl lg:text-[3.25rem] font-bold leading-[1.12] tracking-display text-ivory min-[821px]:justify-start"
+            className="flex flex-wrap justify-center gap-x-[0.22em] gap-y-0.5 text-[1.65rem] leading-[1.18] sm:text-4xl sm:gap-x-[0.28em] sm:gap-y-1 sm:leading-[1.12] min-[821px]:text-5xl lg:text-[3.25rem] font-bold tracking-display text-ivory min-[821px]:justify-start"
           >
             {headWords.map((w, i) => (
               <motion.span
@@ -196,23 +202,40 @@ export default function HeroSection() {
             variants={fadeUp}
             initial="hidden"
             animate="show"
-            className="text-pretty mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-sand min-[821px]:mx-0"
+            className="text-pretty mx-auto mt-3 max-w-xs text-sm leading-relaxed text-sand sm:mt-5 sm:max-w-2xl sm:text-lg min-[821px]:mx-0"
           >
             Transformamos necessidades empresariais em produtos, sistemas e
             ativos digitais construídos para gerar eficiência, diferenciação e
             escala.
           </motion.p>
 
+          {/* Mobile-only stage for the mark — a real, guaranteed slot instead
+              of whatever space the [data-band-top]/[data-band-bottom]/
+              [data-band-seat] measurement fallback happens to find. That
+              fallback's own minimum-size floor (tektone-scene.js's MIN) had
+              to be dropped so low to stop it overlapping the copy that the
+              mark ended up nearly invisible instead — this guide fixes the
+              actual complaint (can't see the mark) rather than trading it
+              for a different one. Hidden at min-[821px]: the desktop guide
+              further down takes over there instead. */}
+          <div
+            data-band-box
+            aria-hidden
+            className="mx-auto mt-2 h-[min(30vh,210px)] w-full max-w-[220px] min-[821px]:hidden"
+          />
+
           {/* CTA — bottom band. data-band-seat on the button itself: its top
-              edge becomes the mark's base line, so the mark reads as
-              standing on the button like a slab. */}
+              edge becomes the mark's base line when the band-box guide above
+              is hidden (desktop, before min-[821px] layout settles) — with
+              the mobile guide present, the guide wins and this seat/bottom
+              measurement is unused on phones. */}
           <motion.div
             data-band-bottom
             custom={4}
             variants={fadeUp}
             initial="hidden"
             animate="show"
-            className="mt-8 flex flex-col items-center gap-4 min-[821px]:items-start"
+            className="mt-4 flex flex-col items-center gap-3 sm:mt-8 sm:gap-4 min-[821px]:items-start"
           >
             <a
               href="#qualificacao"

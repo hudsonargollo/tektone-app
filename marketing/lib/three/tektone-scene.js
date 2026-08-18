@@ -529,18 +529,20 @@ export function mountScene(container, opts = {}) {
     const yTop = plinthTop + markH, yBot = plinthTop;
     let wantTop = TOP, wantBot = h - BOTTOM;
     // A visible [data-band-box] overrides the band solve entirely: the mark is
-    // framed into that element's rectangle on BOTH axes. Hide the guide with
-    // display:none at a breakpoint and the top/bottom/seat logic above takes
-    // over again, so one scene serves a side-by-side desktop and a stacked
-    // phone without a separate desktop-only scene.
+    // framed into that element's rectangle on BOTH axes. Hide a given guide
+    // with display:none at a breakpoint and the top/bottom/seat logic above
+    // takes back over for that layout. There can be more than one guide in
+    // the DOM at once (e.g. a mobile-sized one and a desktop-sized one, each
+    // hidden at the other's breakpoint) — check all of them and use the
+    // first with a real (non-display:none) rect, not just the first match.
     let boxCentreX = null;
-    const guide = document.querySelector('[data-band-box]');
-    if (guide) {
+    for (const guide of document.querySelectorAll('[data-band-box]')) {
       const g = guide.getBoundingClientRect();
       if (g.width > 2 && g.height > 2) {
         wantTop = g.top - rect.top;
         wantBot = g.bottom - rect.top;
         boxCentreX = (g.left + g.right) / 2 - rect.left;
+        break;
       }
     }
     // Floor this at MIN, not a separate constant — a bigger floor here than
