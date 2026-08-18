@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "634306988575",
+    "project_id": "tektone-e436c",
+    "storage_bucket": "tektone-e436c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:634306988575:android:bf74509cbe230833bc232a",
+        "android_client_info": {
+          "package_name": "br.com.tektone.tasktone"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB5puSlELiRU_5_eonEC8mw4UKZ1QbIGac"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
