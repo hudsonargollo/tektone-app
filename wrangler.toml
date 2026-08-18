@@ -54,6 +54,14 @@ name = "BOARD_ROOM"
 class_name = "BoardRoom"
 script_name = "tektone-realtime"
 
+# Boards realtime sync (Phase B) — one DO instance per board id. Deploy
+# boards-sync-worker (`cd boards-sync-worker && npm run deploy`) before
+# deploying this Pages project, same ordering constraint as BOARD_ROOM above.
+[[durable_objects.bindings]]
+name = "BOARDS_SYNC"
+class_name = "BoardSyncRoom"
+script_name = "tektone-boards-sync"
+
 # Boards feature (collaborative Notion+Miro-style docs/canvas, BlockSuite) — Yjs
 # snapshot blobs. Bucket itself is a one-time manual create:
 # `wrangler r2 bucket create tektone-boards-data`.

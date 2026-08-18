@@ -1,0 +1,17 @@
+name = "tektone-boards-sync"
+main = "src/index.js"
+compatibility_date = "2024-11-01"
+
+[[durable_objects.bindings]]
+name = "BOARDS_SYNC"
+class_name = "BoardSyncRoom"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["BoardSyncRoom"]
+
+# Same bucket the REST snapshot endpoints (functions/api/boards/[[path]].js)
+# read/write — this DO writes directly, no round-trip through the main Worker.
+[[r2_buckets]]
+binding = "BOARDS_DATA"
+bucket_name = "tektone-boards-data"

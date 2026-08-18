@@ -162,6 +162,23 @@ export async function onRequest(context) {
       return json({ ok: true });
     }
 
+    // ── realtime sync (Phase B) ──────────────────────────────────────────
+    // Proxies a WebSocket upgrade to the per-board BoardSyncRoom Durable
+    // Object in the sibling tektone-boards-sync Worker — same pattern as
+    // functions/api/realtime/[[path]].js's BOARD_ROOM proxy, but keyed
+    // per-board via getByName(boardId) instead of a hardcoded "main" room.
+    if (seg[1] === "connect" && method === "GET") {
+      if (!(await isBoardMember(db, user, boardId))) return json({ error: "Acesso negado." }, 403);
+      if (request.headers.get("Upgrade") !== "websocket") {
+        return json({ error: "Expected websocket" }, 426);
+      }
+      if (!env.BOARDS_SYNC) return json({ error: "Sync não configurado." }, 503);
+      const doUrl = new URL(request.url);
+      doUrl.searchParams.set("boardId", boardId);
+      const doRequest = new Request(doUrl, request);
+      return env.BOARDS_SYNC.getByName(boardId).fetch(doRequest);
+    }
+
     return json({ error: "Not found" }, 404);
   } catch (e) {
     console.error("boards error:", e && e.stack);

@@ -1,0 +1,17 @@
+{
+  "name": "tektone-boards-sync",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "yjs": "13.6.32",
+    "y-protocols": "1.0.7",
+    "lib0": "^0.2.85"
+  },
+  "devDependencies": {
+    "wrangler": "^4.84.0"
+  }
+}

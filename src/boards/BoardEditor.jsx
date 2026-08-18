@@ -5,6 +5,7 @@ import { AffineSchemas } from "@blocksuite/blocks";
 import { DocCollection, Schema, Text } from "@blocksuite/store";
 import { MemoryBlobSource } from "@blocksuite/sync";
 import * as Y from "yjs";
+import { WebsocketProvider } from "y-websocket";
 import { api } from "@/lib/api";
 import { Spinner } from "@/components/ui";
 
@@ -63,13 +64,29 @@ class RestDocSource {
   }
 }
 
+// wss://<host>/hub/api/boards/:id/connect — mirrors src/lib/api.js's
+// BASE_URL convention (Vite's import.meta.env.BASE_URL is "/hub/" in
+// production, since the Worker route only owns /hub/* and /task/*, not the
+// bare domain) and y-websocket's own URL construction (serverUrl + "/" +
+// roomname), verified against its actual source rather than guessed.
+function boardsWsUrl(boardId) {
+  const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+  const scheme = window.location.protocol === "https:" ? "wss" : "ws";
+  return {
+    serverUrl: `${scheme}://${window.location.host}${base}/api/boards`,
+    roomname: `${boardId}/connect`,
+  };
+}
+
 export default function BoardEditor({ boardId, title, onClose }) {
   const stageRef = useRef(null);
   const collectionRef = useRef(null);
   const docRef = useRef(null);
   const editorElRef = useRef(null);
+  const providerRef = useRef(null);
   const [mode, setMode] = useState("page");
   const [ready, setReady] = useState(false);
+  const [synced, setSynced] = useState(false);
   const [error, setError] = useState("");
 
   function mountEditor(currentMode) {
@@ -134,6 +151,22 @@ export default function BoardEditor({ boardId, title, onClose }) {
         docRef.current = doc;
         mountEditor(mode);
         setReady(true);
+
+        // Live multi-user sync, layered on top of the REST DocSource above
+        // (which stays as the cold-load path and as a fallback if the socket
+        // never connects — this never becomes a hard dependency). Operates
+        // on the raw Y.Doc (BlockCollection.spaceDoc), not BlockSuite's own
+        // Doc wrapper — WebsocketProvider is yjs-level, it doesn't know
+        // about BlockSuite's block/schema layer, only the underlying CRDT.
+        const blockCollection = collection.getBlockCollection(boardId);
+        if (blockCollection && !destroyed) {
+          const { serverUrl, roomname } = boardsWsUrl(boardId);
+          const provider = new WebsocketProvider(serverUrl, roomname, blockCollection.spaceDoc, {
+            connect: true,
+          });
+          provider.on("sync", (isSynced) => setSynced(Boolean(isSynced)));
+          providerRef.current = provider;
+        }
       } catch (e) {
         if (!destroyed) setError(e?.message || "Falha ao carregar o board.");
       }
@@ -141,6 +174,8 @@ export default function BoardEditor({ boardId, title, onClose }) {
 
     return () => {
       destroyed = true;
+      providerRef.current?.destroy();
+      providerRef.current = null;
       editorElRef.current?.remove();
       collectionRef.current?.dispose();
       collectionRef.current = null;
@@ -165,6 +200,10 @@ export default function BoardEditor({ boardId, title, onClose }) {
             <ArrowLeft size={16} />
           </button>
           <span className="label-tech truncate max-w-[40vw]">{title || "Board"}</span>
+          <span
+            className={`h-1.5 w-1.5 rounded-full ${synced ? "bg-success" : "bg-stone-400"}`}
+            title={synced ? "Sincronizado em tempo real" : "Sincronização em tempo real indisponível — salvando via snapshot"}
+          />
         </div>
         <div className="flex gap-1 rounded-lg surface-3 p-1">
           <button

@@ -15,7 +15,6 @@
     "@block65/webcrypto-web-push": "^1.0.2",
     "@blocksuite/presets": "0.19.5",
     "@blocksuite/store": "0.19.5",
-    "yjs": "13.6.32",
     "@cf-wasm/photon": "^0.4.0",
     "canvas-confetti": "^1.9.3",
     "framer-motion": "^12.40.0",
@@ -23,7 +22,10 @@
     "lucide-react": "^0.511.0",
     "pdfjs-dist": "^6.2.108",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "react-dom": "^19.2.0",
+    "y-protocols": "1.0.7",
+    "y-websocket": "3.1.0",
+    "yjs": "13.6.32"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.0",
