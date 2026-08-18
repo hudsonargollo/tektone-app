@@ -112,17 +112,19 @@ export default function AutoridadeSection() {
             <div
               ref={steleContainerRef}
               className="relative w-full"
-              style={{ height: "min(74vh, 600px)", minHeight: 380 }}
+              style={{ height: "min(58vh, 440px)", minHeight: 340 }}
               role="img"
               aria-label="Estela grega com o vídeo de Pedro Silvestrini"
             />
             {/* The actual video element — its pixels are sampled into the
-                stele's VideoTexture, never displayed directly, but it must
-                stay genuinely on-screen (full size, just invisible via
-                opacity) rather than clipped to sr-only's 1x1px box: some
-                player/visibility logic was reading a clipped box as
-                "off-screen" and never starting playback, which is part of
-                why the stele panel rendered solid black. video.tektone.com.br
+                stele's VideoTexture, never displayed directly. It's tucked
+                into a 2x2px corner with opacity 0.01 rather than display:none
+                or opacity:0 — browsers (confirmed on real iOS Safari, not
+                just a theory) treat a genuinely-zero-opacity/zero-size video
+                as backgrounded and never start decoding it, so readyState
+                gets stuck at 0 forever and the stele panel renders solid
+                black. A technically-on-screen, technically-visible (if
+                imperceptible) video doesn't hit that heuristic. video.tektone.com.br
                 (R2-backed, see next.config.mjs) doesn't send
                 Access-Control-Allow-Origin, so no crossOrigin attribute is
                 set here — the resulting "tainted" WebGL texture is fine
@@ -131,7 +133,7 @@ export default function AutoridadeSection() {
                 native <video>, not next-video's <Video> player — see the
                 comment on useAutoridadeStele above for why. */}
             <div
-              className="pointer-events-none absolute inset-0 opacity-0"
+              className="pointer-events-none fixed left-0 top-0 h-0.5 w-0.5 overflow-hidden opacity-[0.01]"
               aria-hidden
             >
               <video
