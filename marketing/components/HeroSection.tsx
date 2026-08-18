@@ -145,84 +145,99 @@ export default function HeroSection() {
       />
       <div className="absolute inset-0 z-[1] grain-dark" aria-hidden />
 
-      <div className="relative z-10 mx-auto max-w-5xl px-6 pt-20 pb-20 text-center">
-        {/* Eyebrow — the mark wordmark block that used to sit above this was
-            removed: redundant now that the 3D T mark is the hero's own
-            centerpiece, and it was eating vertical space the mark's camera
-            solver needs to keep clear of the headline (see tektone-scene.js's
-            resize()). */}
-        <motion.p
-          custom={1}
-          variants={fadeUp}
-          initial="hidden"
-          animate="show"
-          className="label-tech-ink mb-5"
-        >
-          Consultoria de Tecnologia &amp; Negócios, Sob Medida
-        </motion.p>
-
-        {/* Headline — word-by-word reveal. data-band-top: the 3D scene
-            measures this element's real rendered position on every resize
-            to solve where the mark's camera framing should land. Container
-            widened to max-w-5xl (from max-w-4xl) specifically so this
-            headline wraps to fewer lines — less headline height means more
-            genuine clear space between it and the CTA for the mark to sit
-            in without the scene's own too-tight fallback kicking in. */}
-        <motion.h1
-          data-band-top
-          variants={headContainer}
-          initial="hidden"
-          animate="show"
-          className="flex flex-wrap justify-center gap-x-[0.28em] gap-y-1 text-4xl sm:text-5xl lg:text-[3.25rem] font-bold leading-[1.12] tracking-display text-ivory"
-        >
-          {headWords.map((w, i) => (
-            <motion.span
-              key={i}
-              variants={headWord}
-              className={w.hl ? "text-green-mist" : ""}
-            >
-              {w.t}
-            </motion.span>
-          ))}
-        </motion.h1>
-
-        {/* Sub-headline — also part of the top band the camera measures */}
-        <motion.p
-          data-band-top
-          custom={3}
-          variants={fadeUp}
-          initial="hidden"
-          animate="show"
-          className="text-pretty mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-sand"
-        >
-          Transformamos necessidades empresariais em produtos, sistemas e
-          ativos digitais construídos para gerar eficiência, diferenciação e
-          escala.
-        </motion.p>
-
-        {/* CTA — bottom band. data-band-seat on the button itself: its top
-            edge becomes the mark's base line, so the mark reads as
-            standing on the button like a slab. */}
-        <motion.div
-          data-band-bottom
-          custom={4}
-          variants={fadeUp}
-          initial="hidden"
-          animate="show"
-          className="mt-8 flex flex-col items-center gap-4"
-        >
-          <a
-            href="#qualificacao"
-            data-band-seat
-            className="group inline-flex items-center gap-2.5 rounded-lg bg-green px-7 py-4 text-base font-bold tracking-wide text-ivory transition-all duration-200 hover:bg-green-hover active:bg-green-active focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-mist glow-action-ink"
+      {/* Desktop (>820px): a two-column stage — copy flush left in ~62% of
+          the width, the mark framed into the [data-band-box] guide in the
+          remaining column (see tektone-scene.js's resize()). Below that the
+          guide collapses to nothing and the single centred column below
+          takes over — the mobile layout is untouched. */}
+      <div className="relative z-10 mx-auto grid w-full max-w-6xl grid-cols-1 items-center gap-8 px-6 pt-20 pb-20 min-[821px]:grid-cols-[minmax(0,62%)_minmax(0,1fr)] min-[821px]:gap-10 min-[821px]:pb-16">
+        <div className="mx-auto max-w-5xl text-center min-[821px]:mx-0 min-[821px]:max-w-none min-[821px]:text-left">
+          {/* Eyebrow — the mark wordmark block that used to sit above this was
+              removed: redundant now that the 3D T mark is the hero's own
+              centerpiece, and it was eating vertical space the mark's camera
+              solver needs to keep clear of the headline (see tektone-scene.js's
+              resize()). */}
+          <motion.p
+            custom={1}
+            variants={fadeUp}
+            initial="hidden"
+            animate="show"
+            className="label-tech-ink mb-5"
           >
-            <span>AGENDAR CALL DE QUALIFICAÇÃO</span>
-            <ArrowRight className="h-5 w-5 transition-transform duration-200 group-hover:translate-x-1" />
-          </a>
-          <p className="font-mono text-xs tracking-wide text-sand/70">
-            Leva menos de 3 minutos. Sem compromisso.
-          </p>
-        </motion.div>
+            Consultoria de Tecnologia &amp; Negócios, Sob Medida
+          </motion.p>
+
+          {/* Headline — word-by-word reveal. data-band-top: the 3D scene
+              measures this element's real rendered position on every resize
+              to solve where the mark's camera framing should land (used as
+              the fallback below 820px, once the band-box guide is hidden). */}
+          <motion.h1
+            data-band-top
+            variants={headContainer}
+            initial="hidden"
+            animate="show"
+            className="flex flex-wrap justify-center gap-x-[0.28em] gap-y-1 text-4xl sm:text-5xl lg:text-[3.25rem] font-bold leading-[1.12] tracking-display text-ivory min-[821px]:justify-start"
+          >
+            {headWords.map((w, i) => (
+              <motion.span
+                key={i}
+                variants={headWord}
+                className={w.hl ? "text-green-mist" : ""}
+              >
+                {w.t}
+              </motion.span>
+            ))}
+          </motion.h1>
+
+          {/* Sub-headline — also part of the top band the camera measures */}
+          <motion.p
+            data-band-top
+            custom={3}
+            variants={fadeUp}
+            initial="hidden"
+            animate="show"
+            className="text-pretty mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-sand min-[821px]:mx-0"
+          >
+            Transformamos necessidades empresariais em produtos, sistemas e
+            ativos digitais construídos para gerar eficiência, diferenciação e
+            escala.
+          </motion.p>
+
+          {/* CTA — bottom band. data-band-seat on the button itself: its top
+              edge becomes the mark's base line, so the mark reads as
+              standing on the button like a slab. */}
+          <motion.div
+            data-band-bottom
+            custom={4}
+            variants={fadeUp}
+            initial="hidden"
+            animate="show"
+            className="mt-8 flex flex-col items-center gap-4 min-[821px]:items-start"
+          >
+            <a
+              href="#qualificacao"
+              data-band-seat
+              className="group inline-flex items-center gap-2.5 rounded-lg bg-green px-7 py-4 text-base font-bold tracking-wide text-ivory transition-all duration-200 hover:bg-green-hover active:bg-green-active focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-mist glow-action-ink"
+            >
+              <span>AGENDAR CALL DE QUALIFICAÇÃO</span>
+              <ArrowRight className="h-5 w-5 transition-transform duration-200 group-hover:translate-x-1" />
+            </a>
+            <p className="font-mono text-xs tracking-wide text-sand/70">
+              Leva menos de 3 minutos. Sem compromisso.
+            </p>
+          </motion.div>
+        </div>
+
+        {/* Invisible geometry: the scene reads its rect and frames the mark
+            inside it, so the object follows the layout instead of the
+            reverse. Hidden below 820px — the scene's data-band-top/bottom/
+            seat measurement fallback (above) frames the mark into the
+            mobile stacked layout instead. */}
+        <div
+          data-band-box
+          aria-hidden
+          className="hidden min-[821px]:block min-[821px]:h-[min(40vh,18rem)] min-[821px]:w-full min-[821px]:max-w-xs min-[821px]:justify-self-center"
+        />
       </div>
 
       {/* Scroll indicator */}

@@ -199,14 +199,21 @@ export function mountScene(container, opts = {}) {
   // ── colonnade ────────────────────────────────────────────────────────────
   const colonnade = new THREE.Group();
   colonnade.name = 'colonnade';
-  // Minimalist: one row receding on the LEFT only, so the centred mark keeps
-  // the right half of the frame to itself.
+  // Two rows receding, so the mark stands in a nave between them. The right row
+  // is offset in depth and slightly slimmer, so the colonnade reads built rather
+  // than mirrored. The right row also gives the desktop two-column layout (mark
+  // panned right, into the [data-band-box] guide) something to flank it with —
+  // a left-only colonnade left that side of the frame visibly empty.
   const colSpecs = [
     { x: -3.15, z: 2.4, h: 5.7, r: 0.46, mat: STONE },
     { x: -3.45, z: -0.9, h: 5.9, r: 0.46, mat: STONE },
     { x: -3.85, z: -4.4, h: 2.6, r: 0.44, mat: STONE_DARK, broken: true },
     { x: -4.35, z: -8.0, h: 6.1, r: 0.46, mat: STONE_DARK },
-    { x: -5.0, z: -11.8, h: 6.2, r: 0.46, mat: STONE_DARK }
+    { x: -5.0, z: -11.8, h: 6.2, r: 0.46, mat: STONE_DARK },
+    { x: 2.05, z: -0.4, h: 5.5, r: 0.42, mat: STONE },
+    { x: 2.3, z: -3.4, h: 5.8, r: 0.42, mat: STONE_DARK },
+    { x: 2.7, z: -6.8, h: 6.0, r: 0.42, mat: STONE_DARK },
+    { x: 3.3, z: -10.6, h: 6.2, r: 0.42, mat: STONE_DARK }
   ];
   colSpecs.forEach((s, i) => {
     const c = column(s.h, s.r, s.mat);
@@ -222,12 +229,14 @@ export function mountScene(container, opts = {}) {
       colonnade.add(drum);
     }
   });
-  // a single lintel course above that row
-  const lintel = new THREE.Mesh(new THREE.BoxGeometry(1.30, 0.48, 22), STONE_DARK);
-  lintel.name = 'lintel';
-  lintel.position.set(-4.0, 6.45, -8.6);
-  lintel.castShadow = true; lintel.receiveShadow = true;
-  colonnade.add(lintel);
+  // a lintel course above each row
+  for (const [lx, lz] of [[-4.0, -8.6], [2.6, -7.2]]) {
+    const lintel = new THREE.Mesh(new THREE.BoxGeometry(1.30, 0.48, 22), STONE_DARK);
+    lintel.name = 'lintel';
+    lintel.position.set(lx, 6.45, lz);
+    lintel.castShadow = true; lintel.receiveShadow = true;
+    colonnade.add(lintel);
+  }
   scene.add(colonnade);
 
   // ── the mark, mounted on a stone pedestal ────────────────────────────────
@@ -506,28 +515,63 @@ export function mountScene(container, opts = {}) {
         BOTTOM = h - (centre + MIN / 2);
       }
     }
-    const band = h - TOP - BOTTOM;
     const markH = MARK_HEIGHT * S;
     const yTop = plinthTop + markH, yBot = plinthTop;
-    const wantTop = TOP, wantBot = h - BOTTOM;
+    let wantTop = TOP, wantBot = h - BOTTOM;
+    // A visible [data-band-box] overrides the band solve entirely: the mark is
+    // framed into that element's rectangle on BOTH axes. Hide the guide with
+    // display:none at a breakpoint and the top/bottom/seat logic above takes
+    // over again, so one scene serves a side-by-side desktop and a stacked
+    // phone without a separate desktop-only scene.
+    let boxCentreX = null;
+    const guide = document.querySelector('[data-band-box]');
+    if (guide) {
+      const g = guide.getBoundingClientRect();
+      if (g.width > 2 && g.height > 2) {
+        wantTop = g.top - rect.top;
+        wantBot = g.bottom - rect.top;
+        boxCentreX = (g.left + g.right) / 2 - rect.left;
+      }
+    }
+    const solveBand = Math.max(wantBot - wantTop, h * 0.2);
     // Solve for distance and aim numerically: the view is tilted, so a closed
     // form is off by enough to overlap the type. Six passes converge to the
     // mark sitting exactly inside the clear band.
     aimX = 0;
     aimY = plinthTop + markH * 0.55;
-    let dist = Math.max((markH / (band / h)) / (2 * Math.tan((camera.fov * Math.PI / 180) / 2)), 3);
+    let dist = Math.max((markH / (solveBand / h)) / (2 * Math.tan((camera.fov * Math.PI / 180) / 2)), 3);
     const toPx = y => (1 - new THREE.Vector3(0, y, site.z).project(camera).y) / 2 * h;
+    let panX = 0;
     for (let i = 0; i < 6; i++) {
-      camera.position.set(0, aimY - 0.30, site.z + dist);
+      camera.position.set(panX, aimY - 0.30, site.z + dist);
       camera.updateProjectionMatrix();
-      camera.lookAt(aimX, aimY, 0.4);
+      camera.lookAt(aimX + panX, aimY, 0.4);
       camera.updateMatrixWorld(true);
       const pTop = toPx(yTop), pBot = toPx(yBot), span = pBot - pTop;
       if (!(span > 1) || !(wantBot - wantTop > 1)) break;
       dist = Math.max(dist * span / (wantBot - wantTop), 2.5);
       aimY -= ((pTop + pBot) / 2 - (wantTop + wantBot) / 2) / span * markH;
+      if (boxCentreX !== null) {
+        // Pan laterally so the mark lands on the guide's centre line; the
+        // camera moves opposite to the wanted screen travel.
+        const halfW = dist * Math.tan((camera.fov * Math.PI / 180) / 2) * camera.aspect;
+        panX = -((boxCentreX / w) - 0.5) * 2 * halfW;
+      }
     }
-    camBase.set(0, aimY - 0.30, site.z + dist);
+    camBase.set(panX, aimY - 0.30, site.z + dist);
+    aimX += panX;
+    // A lateral pan carries the whole scene with it, so a colonnade row placed
+    // for the centred layout can leave the frustum. Slide the right row back
+    // toward the axis by the pan, but never inside a clearance corridor around
+    // the mark's footprint — a near column crossing the silhouette would read
+    // as a pillar cutting the architrave. The centred hero is untouched (pan
+    // is 0 with no guide present).
+    const CLEAR = 1.95;              // the mark's half-width is 0.89, plus air
+    colonnade.children.forEach(o => {
+      if (o.userData.homeX === undefined) o.userData.homeX = o.position.x;
+      const home = o.userData.homeX;
+      if (home > 0) o.position.x = Math.max(home + panX * 0.62, Math.min(home, CLEAR));
+    });
     camera.updateProjectionMatrix();
   }
   const ro = new ResizeObserver(resize);
