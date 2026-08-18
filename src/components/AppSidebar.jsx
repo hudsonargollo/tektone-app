@@ -25,24 +25,24 @@ const NAV_ITEMS = [
 export default function AppSidebar({ view, onNavigate, collapsed, onToggleCollapse, isAdmin, financeAccess, crmRole }) {
   const perms = { isAdmin, financeAccess, crmRole };
   const [hovered, setHovered] = useState(false);
-  // "Peeking": pinned collapsed but temporarily shown wide via hover —
-  // doesn't touch the persisted `collapsed` preference, just floats a wider
-  // copy over the content on the right (aside is absolutely positioned
-  // inside a wrapper that keeps reserving the narrow w-14 in normal flow,
-  // so hovering never reflows the board underneath).
+  // "Peeking": pinned collapsed but temporarily shown wide via hover — does
+  // not touch the persisted `collapsed` preference, but DOES reflow the
+  // content beside it (the wrapper's own width tracks `expanded`, same as
+  // the aside inside it, so there's no absolute-positioned overlay for the
+  // board to hide behind).
   const peeking = collapsed && hovered;
   const expanded = !collapsed || peeking;
 
   return (
     <div
-      className={`relative hidden shrink-0 transition-[width] duration-200 lg:block ${collapsed ? "w-14" : "w-52"}`}
+      className={`hidden shrink-0 transition-[width] duration-200 lg:block ${expanded ? "w-52" : "w-14"}`}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
       <aside
-        className={`absolute inset-y-0 left-0 z-30 flex flex-col border-r border-ink/10 py-3 transition-[width] duration-150 ${
-          expanded ? "w-52" : "w-14"
-        } ${peeking ? "bg-clay shadow-2xl" : "bg-clay/60"}`}
+        className={`flex h-full w-full flex-col border-r border-ink/10 py-3 transition-colors duration-150 ${
+          peeking ? "bg-clay shadow-2xl" : "bg-clay/60"
+        }`}
       >
         <nav className="flex flex-1 flex-col gap-1 px-2">
           {NAV_ITEMS.filter((item) => item.show(perms)).map((item) => {
