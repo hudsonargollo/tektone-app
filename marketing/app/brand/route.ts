@@ -125,6 +125,7 @@ const HTML = `<!doctype html>
       var(--clay);
   }
   .hero-logo{margin:44px auto 8px;width:150px;filter:drop-shadow(0 18px 30px rgba(20,22,24,.14));}
+  .hero-logo img{width:100%;height:auto;display:block;border-radius:22px;border:1px solid rgba(20,22,24,.10);}
 
   .hero-name{
     font-family:var(--f-mono);
@@ -170,9 +171,10 @@ const HTML = `<!doctype html>
     border:1px solid var(--ink-14);border-radius:18px;overflow:hidden;background:var(--paper);
   }
   .mark-card .stage{
-    height:230px;display:flex;align-items:center;justify-content:center;
+    height:230px;display:flex;align-items:center;justify-content:center;overflow:hidden;
   }
   .mark-card .stage svg{width:96px;}
+  .mark-card .stage img{width:100%;height:100%;object-fit:cover;display:block;}
   .mark-card.on-clay .stage{background:var(--clay);}
   .mark-card.on-ink .stage{background:var(--ink);}
   .mark-card.on-black .stage{background:#000;}
@@ -244,6 +246,15 @@ const HTML = `<!doctype html>
   .swatch .info b{display:block;font-size:.92rem;margin-bottom:2px;}
   .swatch .info .hex{font-family:var(--f-mono);font-size:.76rem;color:var(--ink-55);}
   .swatch .info .use{font-size:.78rem;color:var(--ink-55);margin-top:7px;line-height:1.45;}
+
+  /* =================== 05 ICONS =================== */
+  .icon-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-bottom:8px;}
+  .icon-card{border:1px solid var(--ink-14);border-radius:16px;overflow:hidden;background:var(--paper);}
+  .icon-card .chip{display:flex;align-items:center;justify-content:center;width:100%;height:150px;background:var(--ink);}
+  .icon-card .chip img{max-width:62%;max-height:62%;object-fit:contain;display:block;}
+  .icon-card .info{padding:13px 16px 15px;}
+  .icon-card .info b{display:block;font-size:.92rem;margin-bottom:2px;}
+  .icon-card .info span{display:block;font-size:.78rem;color:var(--ink-55);margin-top:4px;line-height:1.45;}
   .swatch .copied{color:var(--green);font-weight:600;}
 
   /* =================== 04 TYPE =================== */
@@ -397,17 +408,7 @@ const HTML = `<!doctype html>
 <!-- ============================================================ HERO -->
 <div class="hero">
   <div class="hero-logo" id="heroLogo">
-    <svg viewBox="0 0 100 116" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Tektone">
-      <rect x="15" y="18" width="70" height="22" fill="#C7B79C"/>
-      <rect x="18" y="21" width="64" height="16" fill="#141618"/>
-      <rect x="42" y="37" width="16" height="58" fill="#2E4A43"/>
-      <rect x="45" y="37" width="10" height="56" fill="#141618"/>
-      <rect x="49.2" y="41" width="1.6" height="46" fill="#C7B79C"/>
-      <rect x="38" y="95" width="24" height="5" fill="#C7B79C"/>
-      <rect x="33" y="100" width="34" height="4" fill="#141618"/>
-      <rect x="26" y="106.5" width="48" height="1.8" fill="#141618"/>
-      <rect x="21" y="110.5" width="58" height="1.2" fill="#C7B79C"/>
-    </svg>
+    <img src="/brand/mark-ink.png" alt="Tektone" width="480" height="480" />
   </div>
   <div class="hero-name">Tektone — Brand Identity v1</div>
   <h1>A marca Tektone,<br>agora com <em>estrutura.</em></h1>
@@ -517,16 +518,16 @@ const HTML = `<!doctype html>
 
   <div class="mark-grid">
     <div class="mark-card on-clay">
-      <div class="stage"><svg viewBox="0 0 100 116"><rect x="15" y="18" width="70" height="22" fill="#C7B79C"/><rect x="18" y="21" width="64" height="16" fill="#141618"/><rect x="42" y="37" width="16" height="58" fill="#2E4A43"/><rect x="45.5" y="37" width="9" height="56" fill="#141618"/><rect x="49.2" y="41" width="1.6" height="46" fill="#C7B79C"/><rect x="34" y="95" width="32" height="5" fill="#C7B79C"/><rect x="30.5" y="100" width="39" height="4" fill="#141618"/><rect x="26" y="106.5" width="48" height="1.8" fill="#141618"/><rect x="21" y="110.5" width="58" height="1.2" fill="#C7B79C"/></svg></div>
+      <div class="stage"><img src="/brand/mark-clay.png" alt="Símbolo Tektone sobre fundo claro" width="480" height="480" /></div>
       <div class="cap"><b>Versão principal</b><span>Sobre fundo claro — clay ou paper</span></div>
     </div>
     <div class="mark-card on-ink">
-      <div class="stage"><svg viewBox="0 0 100 116"><rect x="15" y="18" width="70" height="22" fill="#C7B79C"/><rect x="18" y="21" width="64" height="16" fill="#141618"/><rect x="42" y="37" width="16" height="58" fill="#2E4A43"/><rect x="45.5" y="37" width="9" height="56" fill="#141618"/><rect x="49.2" y="41" width="1.6" height="46" fill="#C7B79C"/><rect x="34" y="95" width="32" height="5" fill="#C7B79C"/><rect x="30.5" y="100" width="39" height="4" fill="#141618"/><rect x="26" y="106.5" width="48" height="1.8" fill="#141618"/><rect x="21" y="110.5" width="58" height="1.2" fill="#C7B79C"/></svg></div>
-      <div class="cap"><b>Versão invertida</b><span>Sobre ink — modais, toasts, apresentações</span></div>
+      <div class="stage"><img src="/brand/mark-ink.png" alt="Símbolo Tektone sobre fundo ink" width="480" height="480" /></div>
+      <div class="cap"><b>Versão invertida</b><span>Sobre ink — favicons, ícone de app, modais, apresentações. É a versão que roda em produção hoje.</span></div>
     </div>
     <div class="mark-card on-black">
-      <div class="stage"><svg viewBox="0 0 100 116"><rect x="15" y="18" width="70" height="22" fill="#C7B79C"/><rect x="18" y="21" width="64" height="16" fill="#6B5D45"/><rect x="42" y="37" width="16" height="58" fill="#2E4A43"/><rect x="45.5" y="37" width="9" height="56" fill="#6B5D45"/><rect x="49.2" y="41" width="1.6" height="46" fill="#C7B79C"/><rect x="34" y="95" width="32" height="5" fill="#C7B79C"/><rect x="30.5" y="100" width="39" height="4" fill="#6B5D45"/><rect x="26" y="106.5" width="48" height="1.8" fill="#6B5D45"/><rect x="21" y="110.5" width="58" height="1.2" fill="#C7B79C"/></svg></div>
-      <div class="cap"><b>Selo · sobre preto puro</b><span>Cartão, carimbo, papelaria fundadora — areia escura substitui o núcleo ink para manter a leitura em três camadas mesmo sem preto</span></div>
+      <div class="stage"><img src="/brand/mark-black.png" alt="Símbolo Tektone sobre preto" width="480" height="480" /></div>
+      <div class="cap"><b>Selo · sobre preto puro</b><span>Cartão, carimbo, papelaria fundadora — mesmo render 3D, fundo levado a preto absoluto</span></div>
     </div>
   </div>
 
@@ -534,10 +535,10 @@ const HTML = `<!doctype html>
     <div class="rule-card ok">
       <h4>✓ Uso correto</h4>
       <ul>
-        <li>Manter a proporção original do viewBox (100×116) — nunca esticar.</li>
-        <li>Aplicar apenas sobre fundos sólidos: clay, paper ou ink.</li>
-        <li>Respeitar a margem mínima equivalente à altura do arquitrave (a viga superior).</li>
-        <li>Usar a versão monocromática ink em contextos de uma cor só — carimbos, PDFs, impressos internos.</li>
+        <li>Manter a proporção quadrada do render (1024×1024) — nunca esticar ou recortar fora do centro.</li>
+        <li>Aplicar apenas sobre os três fundos aprovados: clay/paper, ink ou preto puro.</li>
+        <li>Respeitar uma margem mínima equivalente a ~8% da largura do quadro ao redor do símbolo.</li>
+        <li>Usar sempre o render mais recente (ver 05 — Ícones do Sistema) — nunca uma versão antiga salva localmente.</li>
       </ul>
     </div>
     <div class="rule-card no">
@@ -545,7 +546,7 @@ const HTML = `<!doctype html>
       <ul>
         <li>Não girar, inclinar ou espelhar a coluna.</li>
         <li>Não aplicar glow, sombra neon ou halos luminosos — esse vocabulário pertence ao site institucional, não ao Sistema Mineral.</li>
-        <li>Não recolorir as três camadas fora da paleta verde / ink / areia.</li>
+        <li>Não recolorir o render fora da paleta verde / ink / areia já embutida nele.</li>
         <li>Não reduzir abaixo de 32px de altura em tela — a flauta central de areia deixa de ser legível.</li>
       </ul>
     </div>
@@ -564,10 +565,47 @@ const HTML = `<!doctype html>
 
 <div class="strata"><i></i><i></i><i></i></div>
 
+<!-- ============================================================ 01B ICONS -->
+<section class="pad wrap reveal">
+  <div class="sec-head">
+    <span class="eyebrow">05 — Ícones do Sistema</span>
+    <h2>Um símbolo, renderizado por contexto</h2>
+    <p>Favicon e ícone de app não são desenhos à parte — são o mesmo mark 3D, renderizado para cada superfície. Desde o refresh mais recente, a marca-mãe e o WorkHub têm identidades de ícone distintas: antes, site institucional e hub usavam exatamente o mesmo arquivo.</p>
+  </div>
+
+  <p class="subhead">Duas identidades, um sistema</p>
+  <div class="icon-grid">
+    <div class="icon-card">
+      <div class="chip"><img src="/icon-512.png" alt="Ícone Tektone" width="512" height="512" /></div>
+      <div class="info"><b>Tektone</b><span>tektone.com.br — símbolo isolado sobre ink</span></div>
+    </div>
+    <div class="icon-card">
+      <div class="chip"><img src="/brand/workhub-lockup.png" alt="Ícone WorkHub" width="480" height="480" /></div>
+      <div class="info"><b>WorkHub</b><span>tektone.com.br/hub e o app mobile — símbolo + wordmark, mesmo ink #141618</span></div>
+    </div>
+  </div>
+
+  <p class="subhead">Hierarquia por tamanho</p>
+  <div class="scale-table">
+    <div class="scale-row"><div class="tok"><b>1024 · 180 · 167 · 152px</b><span>App Store, apple-touch-icon</span></div><div>Lockup completo — símbolo sobre o nome</div><div class="fam">lockup</div></div>
+    <div class="scale-row"><div class="tok"><b>120 – 88px</b><span>Ícone do app no dispositivo</span></div><div>Símbolo isolado, sem texto</div><div class="fam">mark</div></div>
+    <div class="scale-row"><div class="tok"><b>≤ 87px</b><span>Favicon de aba, notificações</span></div><div>Glifo achatado — entalhes finos somem abaixo disso</div><div class="fam">glifo</div></div>
+  </div>
+
+  <p class="subhead">Onde cada arquivo vive</p>
+  <div class="scale-table">
+    <div class="scale-row"><div class="tok"><b>marketing/public/</b><span>favicon, apple-icon, icon-192/512</span></div><div>Favicons e ícone do site institucional</div><div class="fam">Tektone</div></div>
+    <div class="scale-row"><div class="tok"><b>public/</b><span>raiz do hub — mesmos nomes de arquivo</span></div><div>Favicons e ícone do hub interno</div><div class="fam">WorkHub</div></div>
+    <div class="scale-row"><div class="tok"><b>mobile/assets/images/</b><span>icon, ícone adaptativo Android, splash</span></div><div>Ícone do app e tela de abertura</div><div class="fam">WorkHub</div></div>
+  </div>
+</section>
+
+<div class="strata"><i></i><i></i><i></i></div>
+
 <!-- ============================================================ 02 PILLARS -->
 <section class="pad wrap reveal">
   <div class="sec-head">
-    <span class="eyebrow">05 — Os Três Pilares</span>
+    <span class="eyebrow">06 — Os Três Pilares</span>
     <h2>Ordo · Tekhnē · Permanentia</h2>
     <p>Essas três palavras não são enfeite em latim — são os três compromissos que qualquer trabalho assinado Tektone precisa cumprir, do primeiro rascunho à entrega final.</p>
   </div>
@@ -605,7 +643,7 @@ const HTML = `<!doctype html>
 <!-- ============================================================ 03 PALETTE -->
 <section class="pad wrap-wide reveal">
   <div class="sec-head">
-    <span class="eyebrow">06 — Paleta</span>
+    <span class="eyebrow">07 — Paleta</span>
     <h2>Cores minerais</h2>
     <p>Clique em qualquer cor para copiar o hex.</p>
   </div>
@@ -654,7 +692,7 @@ const HTML = `<!doctype html>
 <!-- ============================================================ 04 TYPE -->
 <section class="pad wrap reveal">
   <div class="sec-head">
-    <span class="eyebrow">07 — Tipografia</span>
+    <span class="eyebrow">08 — Tipografia</span>
     <h2>Três famílias, três funções</h2>
     <p>Nenhuma fonte é decorativa — cada uma tem um trabalho específico a fazer na interface.</p>
   </div>
@@ -695,7 +733,7 @@ const HTML = `<!doctype html>
 <!-- ============================================================ 05 SURFACES -->
 <section class="pad wrap reveal">
   <div class="sec-head">
-    <span class="eyebrow">08 — Superfícies &amp; Textura</span>
+    <span class="eyebrow">09 — Superfícies &amp; Textura</span>
     <h2>Elevação sem sombra dramática</h2>
     <p>A profundidade vem de camadas de cor, não de sombras pesadas. Um grão sutil de papel cobre tudo — a pedra nunca é perfeitamente lisa.</p>
   </div>
@@ -720,7 +758,7 @@ const HTML = `<!doctype html>
 <!-- ============================================================ 06 COMPONENTS -->
 <section class="pad wrap reveal">
   <div class="sec-head">
-    <span class="eyebrow">09 — Aplicação</span>
+    <span class="eyebrow">10 — Aplicação</span>
     <h2>Como o sistema se comporta</h2>
     <p>Os mesmos tokens, aplicados a componentes de interface — o vocabulário que qualquer tela ou produto Tektone deve falar.</p>
   </div>
@@ -759,7 +797,7 @@ const HTML = `<!doctype html>
 <!-- ============================================================ 07 VOICE -->
 <section class="pad wrap reveal">
   <div class="sec-head">
-    <span class="eyebrow">10 — Voz da marca</span>
+    <span class="eyebrow">11 — Voz da marca</span>
     <h2>Faça &amp; não faça</h2>
     <p>A mesma sobriedade da paleta vale para o texto. Precisão em vez de entusiasmo, em qualquer canal.</p>
   </div>
@@ -790,7 +828,7 @@ const HTML = `<!doctype html>
 <!-- ============================================================ MANIFESTO -->
 <section class="manifesto reveal">
   <div class="wrap">
-    <span class="eyebrow">11 — Manifesto</span>
+    <span class="eyebrow">12 — Manifesto</span>
     <blockquote>Tektone vem do grego — quem constrói.<br>Não precisa gritar para ser levado a sério. Precisa apenas não ceder.</blockquote>
     <div class="lines">
       <span>Ordem não é burocracia — é o que libera tempo para o ofício.</span>
