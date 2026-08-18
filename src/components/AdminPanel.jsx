@@ -663,9 +663,9 @@ export default function AdminPanel({ currentEmail, clients, onClose }) {
             <>
               <div className="mb-4 flex items-center justify-between">
                 <p className="text-xs leading-relaxed text-stone-500">
-                  Visitas na home, quantas iniciam o formulário de qualificação e
-                  quantas completam — sessão anônima por aba, sem cookies
-                  persistentes (ver migrations/0024_hub_marketing_analytics.sql).
+                  Acessos à landing, quantos iniciam o formulário de qualificação,
+                  quantos abandonam e quantos confirmam — sessão anônima por aba,
+                  sem cookies persistentes (ver migrations/0024_hub_marketing_analytics.sql).
                 </p>
                 <div className="flex gap-1 rounded-lg surface-3 p-1">
                   {[7, 30, 90].map((d) => (
@@ -690,31 +690,37 @@ export default function AdminPanel({ currentEmail, clients, onClose }) {
                 <>
                   {(() => {
                     const { page_view: visits, form_start: starts, form_complete: completes } = analytics.totals;
+                    const drop = Math.max(starts - completes, 0);
                     const pct = (n, d) => (d > 0 ? `${Math.round((n / d) * 100)}%` : "—");
+                    const maxValue = Math.max(visits, 1);
+                    const funnelStages = [
+                      { key: "visits", label: "Acessos à landing", value: visits, pctOf: null, bar: "bg-action", text: "text-ink" },
+                      { key: "starts", label: "Iniciaram o formulário", value: starts, pctOf: visits, bar: "bg-action", text: "text-ink" },
+                      { key: "drop", label: "Abandonaram", value: drop, pctOf: starts, bar: "bg-danger", text: "text-danger" },
+                      { key: "completes", label: "Confirmaram", value: completes, pctOf: starts, bar: "bg-success", text: "text-success" },
+                    ];
                     return (
                       <>
-                        <div className="mb-5 grid grid-cols-1 gap-2 sm:grid-cols-3">
-                          <div className="rounded-lg surface-3 p-3">
-                            <p className="font-mono text-[9px] uppercase tracking-wider text-stone-500">Visitas</p>
-                            <p className="mt-0.5 text-lg font-semibold text-ink">{visits}</p>
-                          </div>
-                          <div className="rounded-lg surface-3 p-3">
-                            <p className="font-mono text-[9px] uppercase tracking-wider text-stone-500">
-                              Iniciaram o formulário
-                            </p>
-                            <p className="mt-0.5 text-lg font-semibold text-ink">
-                              {starts} <span className="text-xs font-normal text-stone-500">({pct(starts, visits)})</span>
-                            </p>
-                          </div>
-                          <div className="rounded-lg surface-3 p-3">
-                            <p className="font-mono text-[9px] uppercase tracking-wider text-stone-500">
-                              Completaram o formulário
-                            </p>
-                            <p className="mt-0.5 text-lg font-semibold text-success">
-                              {completes}{" "}
-                              <span className="text-xs font-normal text-stone-500">({pct(completes, starts)} de quem iniciou)</span>
-                            </p>
-                          </div>
+                        <div className="mb-5 space-y-2">
+                          {funnelStages.map((s) => (
+                            <div key={s.key} className="rounded-lg surface-3 p-3">
+                              <div className="mb-1.5 flex items-center justify-between">
+                                <p className="font-mono text-[9px] uppercase tracking-wider text-stone-500">{s.label}</p>
+                                <p className={`text-xs font-semibold ${s.text}`}>
+                                  {s.value}
+                                  {s.pctOf !== null && (
+                                    <span className="ml-1 font-normal text-stone-500">({pct(s.value, s.pctOf)})</span>
+                                  )}
+                                </p>
+                              </div>
+                              <div className="h-1.5 w-full overflow-hidden rounded-full bg-ink/[0.06]">
+                                <div
+                                  className={`h-full rounded-full ${s.bar}`}
+                                  style={{ width: `${Math.round((s.value / maxValue) * 100)}%` }}
+                                />
+                              </div>
+                            </div>
+                          ))}
                         </div>
 
                         {analytics.daily.length === 0 ? (
@@ -735,18 +741,24 @@ export default function AdminPanel({ currentEmail, clients, onClose }) {
                                       <th className="px-3 py-2">Dia</th>
                                       <th className="px-3 py-2">Visitas</th>
                                       <th className="px-3 py-2">Iniciaram</th>
+                                      <th className="px-3 py-2">Abandonaram</th>
                                       <th className="px-3 py-2">Completaram</th>
                                     </tr>
                                   </thead>
                                   <tbody>
-                                    {days.map((day) => (
-                                      <tr key={day} className="border-t border-ink/[0.06]">
-                                        <td className="px-3 py-2 font-mono text-xs text-stone-500">{day}</td>
-                                        <td className="px-3 py-2 text-ink">{byDay[day].page_view || 0}</td>
-                                        <td className="px-3 py-2 text-ink">{byDay[day].form_start || 0}</td>
-                                        <td className="px-3 py-2 text-success">{byDay[day].form_complete || 0}</td>
-                                      </tr>
-                                    ))}
+                                    {days.map((day) => {
+                                      const dayStarts = byDay[day].form_start || 0;
+                                      const dayCompletes = byDay[day].form_complete || 0;
+                                      return (
+                                        <tr key={day} className="border-t border-ink/[0.06]">
+                                          <td className="px-3 py-2 font-mono text-xs text-stone-500">{day}</td>
+                                          <td className="px-3 py-2 text-ink">{byDay[day].page_view || 0}</td>
+                                          <td className="px-3 py-2 text-ink">{dayStarts}</td>
+                                          <td className="px-3 py-2 text-danger">{Math.max(dayStarts - dayCompletes, 0)}</td>
+                                          <td className="px-3 py-2 text-success">{dayCompletes}</td>
+                                        </tr>
+                                      );
+                                    })}
                                   </tbody>
                                 </table>
                               </div>

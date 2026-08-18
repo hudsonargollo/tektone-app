@@ -296,8 +296,9 @@ export default function QualificacaoSection() {
     }
   }
 
-  function goNext() {
-    if (step === "gate" && data.hasCompany === false) {
+  function goNext(opts?: { hasCompanyOverride?: boolean | null }) {
+    const hasCompanyValue = opts?.hasCompanyOverride ?? data.hasCompany;
+    if (step === "gate" && hasCompanyValue === false) {
       setEliminated(true);
       return;
     }
@@ -312,6 +313,16 @@ export default function QualificacaoSection() {
       return;
     }
     setStepIndex((i) => Math.min(STEP_KEYS.length - 1, i + 1));
+  }
+
+  // Single-choice steps advance on selection — picking an option is already
+  // a complete answer, so a separate "Avançar" click is just extra friction.
+  // Excluded: "goals" (multi-select), "intro" (free text), "decision" (needs
+  // the consent checkbox too, and is the final submit rather than a next).
+  // A short delay lets the picked option's highlight register before the
+  // step transitions.
+  function selectAndAdvance(opts?: { hasCompanyOverride?: boolean | null }) {
+    setTimeout(() => goNext(opts), 220);
   }
 
   const questionNumber = Math.max(0, stepIndex - 1); // "intro" is dados iniciais, not a scored question
@@ -529,7 +540,10 @@ export default function QualificacaoSection() {
                           <button
                             key={o.l}
                             type="button"
-                            onClick={() => set("hasCompany", o.v)}
+                            onClick={() => {
+                              set("hasCompany", o.v);
+                              selectAndAdvance({ hasCompanyOverride: o.v });
+                            }}
                             className={`rounded-lg border px-4 py-3 text-sm font-medium transition-all duration-150 ${
                               data.hasCompany === o.v
                                 ? "border-green bg-green-subtle text-ink"
@@ -586,7 +600,11 @@ export default function QualificacaoSection() {
                       <ChoiceList
                         options={businessTypeOptions}
                         value={data.businessType}
-                        onChange={(v) => set("businessType", v)}
+                        onChange={(v) => {
+                          set("businessType", v);
+                          // "outro" needs the follow-up text field filled in first.
+                          if (v !== "outro") selectAndAdvance();
+                        }}
                       />
                       {data.businessType === "outro" && (
                         <input
@@ -604,7 +622,10 @@ export default function QualificacaoSection() {
                       <ChoiceList
                         options={teamSizeOptions}
                         value={data.teamSize}
-                        onChange={(v) => set("teamSize", v)}
+                        onChange={(v) => {
+                          set("teamSize", v);
+                          selectAndAdvance();
+                        }}
                       />
                     </Field>
                   )}
@@ -614,7 +635,10 @@ export default function QualificacaoSection() {
                       <ChoiceList
                         options={revenueOptions}
                         value={data.revenue}
-                        onChange={(v) => set("revenue", v)}
+                        onChange={(v) => {
+                          set("revenue", v);
+                          selectAndAdvance();
+                        }}
                       />
                     </Field>
                   )}
@@ -624,7 +648,10 @@ export default function QualificacaoSection() {
                       <ChoiceList
                         options={momentOptions}
                         value={data.moment}
-                        onChange={(v) => set("moment", v)}
+                        onChange={(v) => {
+                          set("moment", v);
+                          selectAndAdvance();
+                        }}
                       />
                     </Field>
                   )}
@@ -673,7 +700,10 @@ export default function QualificacaoSection() {
                       <ChoiceList
                         options={urgencyOptions}
                         value={data.urgency}
-                        onChange={(v) => set("urgency", v)}
+                        onChange={(v) => {
+                          set("urgency", v);
+                          selectAndAdvance();
+                        }}
                       />
                     </Field>
                   )}
@@ -683,7 +713,10 @@ export default function QualificacaoSection() {
                       <ChoiceList
                         options={investmentOptions}
                         value={data.investment}
-                        onChange={(v) => set("investment", v)}
+                        onChange={(v) => {
+                          set("investment", v);
+                          selectAndAdvance();
+                        }}
                       />
                     </Field>
                   )}
@@ -740,7 +773,7 @@ export default function QualificacaoSection() {
                 <button
                   type="button"
                   disabled={!canAdvance || submitting}
-                  onClick={goNext}
+                  onClick={() => goNext()}
                   className="group inline-flex items-center gap-2 rounded-lg bg-green px-5 py-3 text-sm font-bold text-ivory transition-all duration-200 hover:bg-green-hover disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-green"
                 >
                   {step === "gate"
