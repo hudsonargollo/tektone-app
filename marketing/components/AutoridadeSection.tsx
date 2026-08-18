@@ -150,7 +150,7 @@ export default function AutoridadeSection() {
           </motion.div>
 
           {/* Narrative + stats */}
-          <div>
+          <div className="autoridade-narrative">
             <motion.div
               initial={{ opacity: 0, y: 24 }}
               whileInView={{ opacity: 1, y: 0 }}

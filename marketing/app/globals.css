@@ -428,7 +428,12 @@ body {
     top: 0;
     z-index: 1;
     margin: 0 -1.5rem;
-    padding: 0.5rem 1.5rem 0.25rem;
+    padding: 0.5rem 1.5rem 1.5rem;
     background: linear-gradient(180deg, #efe8dc 0%, #efe8dc 72%, rgba(239, 232, 220, 0) 100%);
+  }
+  /* extra breathing room beyond the grid's own gap-12, so the narrative
+     doesn't read as flush against the sticky artifact's fade-out edge */
+  .autoridade-narrative {
+    margin-top: 1.5rem;
   }
 }
