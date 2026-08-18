@@ -1,7 +1,8 @@
-// Tektone · Autoridade — a Greek aedicula (stele billboard) carrying the video.
-// Two fluted columns on a stylobate, architrave, pediment, and the portrait
-// video set into a recessed panel. The whole artifact swings into frame as the
-// section scrolls past, like a billboard turning to face you.
+// Tektone · Autoridade — a minimal Greek stele carrying the video.
+// Two plain columns on a stylobate with a single lintel across them, and the
+// portrait video filling almost the whole opening between. No pediment, no
+// frieze, no ornament: the screen is the subject, the stone only frames it.
+// The artifact swings into frame as the section scrolls past.
 //
 // mountStele(container, { video, scrollTarget }) -> { destroy() }
 import * as THREE from 'three';
@@ -12,9 +13,7 @@ const EASE = t => 1 - Math.pow(1 - t, 3);
 
 const STONE = new THREE.MeshStandardMaterial({ name: 'marble_pale', color: '#D8CDBA', roughness: 0.42, metalness: 0.04 });
 const STONE_D = new THREE.MeshStandardMaterial({ name: 'marble_shadow', color: '#A2988A', roughness: 0.5, metalness: 0.04 });
-const SAND = new THREE.MeshStandardMaterial({ name: 'mineral_sand', color: '#C7B79C', roughness: 0.55, metalness: 0.06 });
 const INK = new THREE.MeshStandardMaterial({ name: 'mineral_black', color: '#141618', roughness: 0.35, metalness: 0.18 });
-const GREEN = new THREE.MeshStandardMaterial({ name: 'mineral_green', color: '#2E4A43', roughness: 0.42, metalness: 0.2 });
 const BRASS = new THREE.MeshStandardMaterial({ name: 'brass', color: '#B2894C', roughness: 0.24, metalness: 0.9 });
 
 function box(name, mat, w, h, d, x, y, z) {
@@ -25,49 +24,110 @@ function box(name, mat, w, h, d, x, y, z) {
   return m;
 }
 
+// A proper Doric capital, in profile: a necking ring, a curved echinus cushion
+// that flares out of the shaft, and a square abacus with a chamfered underside.
+// BASE_H + CAP_H is the column's fixed overhead above the shaft.
+const BASE_H = 0.09;
+const ANN_H = 0.054, ECH_H = 0.086, ABA_H = 0.070, ABA_CH = 0.018;
+const CAP_H = ANN_H + ECH_H + ABA_H;
+
+// The Doric shaft is fluted: twenty shallow arcs meeting at sharp arrises, with
+// a slight entasis so the profile is not a plain cone. Built once per radius.
+function flutedShaft(r, h, flutes = 12, cutAbs = 0.016) {
+  const pts = [];
+  const N = flutes * 8;
+  const cut = cutAbs / r;                    // an absolute depth, not a fraction
+  for (let i = 0; i < N; i++) {
+    const a = (i / N) * Math.PI * 2;
+    const rr = 1 - cut * (0.5 + 0.5 * Math.cos(flutes * a));
+    pts.push(new THREE.Vector2(Math.cos(a) * rr, Math.sin(a) * rr));
+  }
+  const geo = new THREE.ExtrudeGeometry(new THREE.Shape(pts), {
+    depth: 1, bevelEnabled: false, curveSegments: 1
+  });
+  // rotateX already lays the extrusion along y = 0..1 — do NOT translate, or the
+  // entasis clamp below collapses every vertex to the top and the shaft vanishes.
+  geo.rotateX(-Math.PI / 2);
+  const p = geo.attributes.position;
+  for (let i = 0; i < p.count; i++) {
+    const t = Math.min(Math.max(p.getY(i), 0), 1);
+    // taper to 0.86 at the neck, with a small swell at a third height
+    const k = (1 - 0.14 * t) * (1 + 0.018 * Math.sin(Math.PI * t));
+    p.setX(i, p.getX(i) * k * r);
+    p.setZ(i, p.getZ(i) * k * r);
+    p.setY(i, t * h);
+  }
+  geo.computeVertexNormals();
+  const m = new THREE.Mesh(geo, STONE);
+  m.name = 'shaft';
+  m.castShadow = true; m.receiveShadow = true;
+  return m;
+}
+
+// The echinus: a flaring cushion, tight at the annulets and opening almost to
+// the abacus — a cone softened by a curve, not a mushroom cap.
+function echinus(r, h) {
+  const pts = [];
+  const N = 16;
+  for (let i = 0; i <= N; i++) {
+    const t = i / N;
+    // slow at the neck, then a strong outward flare near the top
+    const rr = r * (1 + 0.62 * Math.pow(t, 1.55));
+    pts.push(new THREE.Vector2(rr, t * h));
+  }
+  const geo = new THREE.LatheGeometry(pts, 48);
+  const m = new THREE.Mesh(geo, STONE);
+  m.name = 'echinus';
+  m.castShadow = true; m.receiveShadow = true;
+  return m;
+}
+
 function column(name, h, r) {
   const g = new THREE.Group();
   g.name = name;
-  // Modern Doric: no swelling echinus, just a square capital and a plain base.
-  const base = box('base', STONE_D, r * 2.3, 0.10, r * 2.3, 0, 0.05, 0);
-  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.94, r, h, 24, 1, false), STONE);
-  shaft.name = 'shaft';
-  shaft.position.y = 0.10 + h / 2;
-  for (let i = 0; i < 12; i++) {
-    const a = (i / 12) * Math.PI * 2;
-    const f = new THREE.Mesh(new THREE.BoxGeometry(0.014, h - 0.06, 0.02), STONE_D);
-    f.name = 'flute_' + (i + 1);
-    f.position.set(Math.cos(a) * r * 0.985, 0.10 + h / 2, Math.sin(a) * r * 0.985);
-    f.rotation.y = -a;
-    f.receiveShadow = true;
-    g.add(f);
+  const base = box('base', STONE_D, r * 2.2, BASE_H, r * 2.2, 0, BASE_H / 2, 0);
+  const shaft = flutedShaft(r, h);
+  shaft.position.y = BASE_H;
+
+  // Annulets: the three thin rings that separate shaft from echinus. They are
+  // what makes a Doric capital read as Doric.
+  const neckY = BASE_H + h;
+  const neckR = r * 0.86;
+  const rings = [];
+  for (let i = 0; i < 3; i++) {
+    const rh = ANN_H / 3;
+    const ring = new THREE.Mesh(
+      new THREE.CylinderGeometry(neckR * (1.03 + i * 0.035), neckR * (1.0 + i * 0.035), rh * 0.78, 48),
+      i === 1 ? STONE_D : STONE
+    );
+    ring.name = 'annulet_' + (i + 1);
+    ring.position.y = neckY + rh * (i + 0.5);
+    rings.push(ring);
   }
-  const collar = new THREE.Mesh(new THREE.CylinderGeometry(r * 1.02, r * 1.02, 0.02, 24), BRASS);
-  collar.name = 'brass_collar';
-  collar.position.y = 0.10 + h - 0.04;
-  const capital = box('capital', STONE, r * 2.5, 0.11, r * 2.5, 0, 0.10 + h + 0.055, 0);
-  for (const m of [base, shaft, collar, capital]) { m.castShadow = true; m.receiveShadow = true; g.add(m); }
-  g.userData.top = 0.10 + h + 0.11;
+
+  const echR = neckR * 1.07;
+  const ech = echinus(echR, ECH_H);
+  ech.position.y = neckY + ANN_H;
+
+  // The abacus is a thin plate with a real overhang past the echinus, and a
+  // chamfered underside so its edge catches the key light.
+  const abaW = echR * 1.62 * 2;
+  const chamfer = new THREE.Mesh(
+    new THREE.CylinderGeometry(abaW * 0.5, echR * 1.62, ABA_CH, 4), STONE);
+  chamfer.name = 'abacus_chamfer';
+  chamfer.rotation.y = Math.PI / 4;
+  chamfer.position.y = neckY + ANN_H + ECH_H + ABA_CH / 2;
+  const abaPlate = ABA_H - ABA_CH;
+  const abacus = box('abacus', STONE, abaW, abaPlate, abaW,
+    0, neckY + ANN_H + ECH_H + ABA_CH + abaPlate / 2, 0);
+
+  for (const m of [base, shaft, ...rings, chamfer, abacus]) {
+    m.castShadow = true; m.receiveShadow = true; g.add(m);
+  }
+  g.add(ech);
+  g.userData.top = BASE_H + h + CAP_H;
+  g.userData.abaW = abaW;
   return g;
-}
-
-// A thin raked member — one side of an open pediment.
-function rake(name, len, thick, depth, mat) {
-  const m = new THREE.Mesh(new THREE.BoxGeometry(len, thick, depth), mat);
-  m.name = name;
-  m.castShadow = true; m.receiveShadow = true;
-  return m;
-}
-
-function pediment(w, h, d) {
-  const s = new THREE.Shape();
-  s.moveTo(-w / 2, 0); s.lineTo(w / 2, 0); s.lineTo(0, h); s.closePath();
-  const g = new THREE.ExtrudeGeometry(s, { depth: d, bevelEnabled: false });
-  g.translate(0, 0, -d / 2);
-  const m = new THREE.Mesh(g, STONE);
-  m.name = 'pediment';
-  m.castShadow = true; m.receiveShadow = true;
-  return m;
 }
 
 export function mountStele(container, opts = {}) {
@@ -87,7 +147,8 @@ export function mountStele(container, opts = {}) {
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(34, 1, 0.1, 60);
-  let dist = 5.5;
+  let dist = 5.5, shiftX = 0;
+  const CONTACT_W = 3.3;                     // visible ground footprint, see below
   const look = new THREE.Vector3(0, 0, 0);   // set to the object's centre below
 
   // ---- the artifact ------------------------------------------------------
@@ -96,76 +157,113 @@ export function mountStele(container, opts = {}) {
   swing.add(stele);
   scene.add(swing);
 
-  // ---- stylobate: one slab floating on a dark shadow gap ------------------
-  const gapH = 0.07;
-  stele.add(box('shadow_gap', INK, 2.55, gapH, 1.15, 0, gapH / 2, 0));
-  stele.add(box('stylobate', STONE, 2.95, 0.15, 1.30, 0, gapH + 0.075, 0));
-  stele.add(box('stylobate_reveal', BRASS, 2.97, 0.010, 1.32, 0, gapH + 0.155, 0));
-  const top = gapH + 0.16;
+  // ---- stylobate: two courses on a dark shadow gap -----------------------
+  // The dedication needs two lines of real size, so the base is stepped: a wide
+  // lower course carrying the title, a narrower upper course carrying the name.
+  // Each face gets one line only — that is what keeps both legible at the scale
+  // the section renders at.
+  const gapH = 0.06;
+  const baseH = 0.20, baseW = 2.86, baseD = 1.20;      // lower course, the title
+  const upperH = 0.24, upperW = 2.60, upperD = 1.06;   // upper course, the name
+  stele.add(box('shadow_gap', INK, 2.44, gapH, 1.04, 0, gapH / 2, 0));
+  const BASE_STONE = new THREE.MeshStandardMaterial({
+    name: 'stone_dark_course', color: '#33383B', roughness: 0.62, metalness: 0.05
+  });
+  stele.add(box('base_course', BASE_STONE, baseW, baseH, baseD, 0, gapH + baseH / 2, 0));
+  stele.add(box('stylobate', STONE, upperW, upperH, upperD, 0, gapH + baseH + upperH / 2, 0));
+  const top = gapH + baseH + upperH;
 
-  const colR = 0.115, colH = 2.30;
+  // ---- the dedication, cut into the two stone faces -----------------------
+  // A Greek stele carries its inscription on the stone, not on a label beside
+  // it. Each line is drawn on a canvas generated at its face's exact aspect —
+  // so it can neither spill past the stone nor squash — with a lit upper edge
+  // over a shadowed groove, so it reads as an incision rather than printed ink.
+  function inscribe(name, text, opts) {
+    const { faceW, faceH, faceY, faceZ, weight, family, ratio, track, fill, hi, lo } = opts;
+    const plateW = faceW * 0.92, plateH = faceH;
+    const W = 3072, H = Math.round(W * plateH / plateW);
+    const c = document.createElement('canvas');
+    c.width = W; c.height = H;
+    const x = c.getContext('2d');
+    const size = Math.round(H * ratio);
+    const draw = (colour, dy) => {
+      x.fillStyle = colour;
+      x.textAlign = 'center';
+      x.textBaseline = 'middle';
+      x.font = weight + ' ' + size + 'px ' + family;
+      x.letterSpacing = track + 'px';
+      x.fillText(text, W / 2 + track / 2, H * 0.54 + dy);
+    };
+    // A bevel in three passes: a dark edge below, a lit edge above, then the
+    // letter's own face between them — the letter reads as chamfered stone
+    // rather than flat paint.
+    const e = Math.max(Math.round(H * 0.026), 2);
+    draw(lo, e);
+    draw(hi, -e);
+    draw(fill, 0);
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.anisotropy = 8;
+    const plate = new THREE.Mesh(new THREE.PlaneGeometry(plateW, plateH),
+      new THREE.MeshStandardMaterial({ map: tex, transparent: true, roughness: 0.55, metalness: 0.02, depthWrite: false }));
+    plate.name = name;
+    plate.position.set(0, faceY, faceZ + 0.0015);
+    plate.receiveShadow = true;
+    stele.add(plate);
+  }
+
+  inscribe('dedication_name', 'PEDRO SILVESTRINI', {
+    faceW: upperW, faceH: upperH, faceY: gapH + baseH + upperH / 2, faceZ: upperD / 2,
+    weight: '700', family: 'Inter, system-ui, sans-serif', ratio: 0.66, track: 22,
+    fill: 'rgba(48,42,34,0.97)', hi: 'rgba(255,251,242,0.95)', lo: 'rgba(26,22,17,0.55)'
+  });
+  // the title is cut in the mineral grey, bevelled the same way
+  inscribe('dedication_role', 'CEO & FUNDADOR', {
+    faceW: baseW, faceH: baseH, faceY: gapH + baseH / 2, faceZ: baseD / 2,
+    weight: '500', family: '"JetBrains Mono", ui-monospace, monospace', ratio: 0.52, track: 26,
+    fill: 'rgba(184,195,191,0.97)', hi: 'rgba(232,238,235,0.7)', lo: 'rgba(14,17,18,0.7)'
+  });
+
+  // ---- video panel: sized first, everything else is built around it -------
+  const panelW = 1.90, panelH = panelW * 4 / 3;      // 1.90 × 2.53
+  const panelY = top + 0.14 + panelH / 2;
+  const rail = 0.014;                                 // one hairline brass edge
+
+  const colR = 0.165, colH = panelY + panelH / 2 + 0.10 - top - (BASE_H + CAP_H);
   const cols = [];
   for (const s of [-1, 1]) {
     const c = column(s < 0 ? 'column_left' : 'column_right', colH, colR);
-    c.position.set(s * 1.12, top, 0);
+    // clear of the backing's edge, so it reads as a column carrying the lintel
+    c.position.set(s * (panelW / 2 + 0.05 + colR + 0.055), top, 0.06);
     cols.push(c);
     stele.add(c);
   }
   const colTop = top + cols[0].userData.top;
 
-  // ---- the ink monolith the screen is cut into ---------------------------
-  const slabH = colTop - top - 0.06;
-  stele.add(box('monolith', INK, 2.02, slabH, 0.20, 0, top + slabH / 2, -0.10));
-  stele.add(box('monolith_reveal', GREEN, 2.04, 0.012, 0.21, 0, top + 0.006, -0.10));
+  // the ink field the screen sits in — just deep enough to read as stone
+  stele.add(box('backing', INK, panelW + 0.10, panelH + 0.20, 0.16, 0, panelY, -0.09));
 
-  // ---- video panel -------------------------------------------------------
-  // Sized to the monolith itself (2.02 x slabH) minus a thin margin, not a
-  // fixed 3:4 box — the old fixed size left a wide, clearly-visible band of
-  // bare ink monolith around the video (it read as "doesn't fill the black
-  // area" once the video was actually playing instead of solid black).
-  // fitVideo()'s cover-crop below adapts to whatever aspect this resolves to.
-  const panelMargin = 0.05;
-  const panelW = 2.02 - panelMargin * 2, panelH = slabH - panelMargin * 2;
-  const panelY = top + slabH / 2;
-  const rail = 0.016;                       // a hairline brass bezel
-  stele.add(box('bezel_top', BRASS, panelW + rail * 2, rail, 0.05, 0, panelY + panelH / 2 + rail / 2, 0.005));
-  stele.add(box('bezel_bottom', BRASS, panelW + rail * 2, rail, 0.05, 0, panelY - panelH / 2 - rail / 2, 0.005));
+  stele.add(box('bezel_top', BRASS, panelW + rail * 2, rail, 0.04, 0, panelY + panelH / 2 + rail / 2, 0.004));
+  stele.add(box('bezel_bottom', BRASS, panelW + rail * 2, rail, 0.04, 0, panelY - panelH / 2 - rail / 2, 0.004));
   for (const s of [-1, 1]) {
     stele.add(box(s < 0 ? 'bezel_left' : 'bezel_right', BRASS,
-      rail, panelH + rail * 2, 0.05, s * (panelW / 2 + rail / 2), panelY, 0.005));
+      rail, panelH + rail * 2, 0.04, s * (panelW / 2 + rail / 2), panelY, 0.004));
   }
 
   const videoMat = new THREE.MeshBasicMaterial({ color: '#141618' });
-  // Exempt from the renderer's ACES Filmic tone mapping below — that grading
-  // is deliberate on the stone/brass (a cinematic, slightly desaturated
-  // look) but it was also being applied to the video itself, tinting and
-  // recontrasting Pedro's actual footage. The video should show its real,
-  // already-graded colors unmodified; the stone around it keeps its look.
-  videoMat.toneMapped = false;
-  // Re-applied every frame below (not just once on 'loadedmetadata') — the
-  // one-shot listener left a visible black margin around the picture in
-  // practice: videoWidth/videoHeight are 0 until the browser has actually
-  // decoded a frame, and depending on exactly when that first fires
-  // relative to this mount, the one-time fit() could run against the 3:4
-  // fallback (which equals this panel's own aspect, so it computed a
-  // no-op crop) and never get a second chance to correct itself once the
-  // real dimensions were known. Recomputing each frame is cheap (two
-  // Vector2.set calls) and self-corrects the moment real dimensions
-  // become available, whatever order things actually load in.
-  let fitVideo = null;
   if (opts.video) {
     const tex = new THREE.VideoTexture(opts.video);
     tex.colorSpace = THREE.SRGBColorSpace;
     videoMat.map = tex;
     videoMat.color.set('#ffffff');
     // cover-fit whatever aspect the source has into the 3:4 panel
-    fitVideo = () => {
-      if (!opts.video.videoWidth || !opts.video.videoHeight) return;
-      const va = opts.video.videoWidth / opts.video.videoHeight;
+    const fit = () => {
+      const va = (opts.video.videoWidth || 3) / (opts.video.videoHeight || 4);
       const pa = panelW / panelH;
       if (va > pa) { tex.repeat.set(pa / va, 1); tex.offset.set((1 - pa / va) / 2, 0); }
       else { tex.repeat.set(1, va / pa); tex.offset.set(0, (1 - va / pa) / 2); }
     };
+    opts.video.readyState >= 1 ? fit() : opts.video.addEventListener('loadedmetadata', fit, { once: true });
   }
   videoMat.name = 'video_screen';
   const screen = new THREE.Mesh(new THREE.PlaneGeometry(panelW, panelH), videoMat);
@@ -173,33 +271,11 @@ export function mountStele(container, opts = {}) {
   screen.position.set(0, panelY, 0.006);
   stele.add(screen);
 
-  // ---- entablature: slim beam, brass hairline, open pediment -------------
-  const archH = 0.17;
-  stele.add(box('architrave', STONE, 2.86, archH, 0.42, 0, colTop + archH / 2, -0.02));
-  stele.add(box('taenia', BRASS, 2.90, 0.012, 0.44, 0, colTop + archH + 0.006, -0.02));
-  for (let i = -4; i <= 4; i++) {
-    stele.add(box('triglyph_' + (i + 5), SAND, 0.024, archH - 0.05, 0.02,
-      i * 0.30, colTop + archH / 2, 0.19));
-  }
-  const cornY = colTop + archH + 0.012;
-  stele.add(box('cornice', STONE, 3.06, 0.09, 0.50, 0, cornY + 0.045, -0.02));
-
-  const pedW = 3.02, pedH = 0.60;
-  const rakeLen = Math.hypot(pedW / 2, pedH) + 0.06;
-  const ang = Math.atan2(pedH, pedW / 2);
-  const pedBase = cornY + 0.09;
-  for (const s of [-1, 1]) {
-    const r1 = rake(s < 0 ? 'rake_left' : 'rake_right', rakeLen, 0.085, 0.34, STONE);
-    r1.position.set(s * pedW / 4, pedBase + pedH / 2, -0.02);
-    r1.rotation.z = s * -ang;
-    stele.add(r1);
-    const r2 = rake(s < 0 ? 'rake_brass_left' : 'rake_brass_right', rakeLen, 0.010, 0.36, BRASS);
-    r2.position.set(s * pedW / 4, pedBase + pedH / 2 - 0.048, -0.02);
-    r2.rotation.z = s * -ang;
-    stele.add(r2);
-  }
-  stele.add(box('acroterion', INK, 0.09, 0.09, 0.30, 0, pedBase + pedH + 0.02, -0.02));
-  const objTop = pedBase + pedH + 0.07;
+  // ---- one lintel across the columns, and nothing above it ---------------
+  const archH = 0.15;
+  const lintelW = (panelW / 2 + 0.05 + colR + 0.055) * 2 + cols[0].userData.abaW;
+  stele.add(box('lintel', STONE, lintelW, archH, 0.38, 0, colTop + archH / 2, 0.01));
+  const objTop = colTop + archH;
 
   // ---- ground contact ----------------------------------------------------
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(24, 24), new THREE.ShadowMaterial({ opacity: 0.26, color: '#3A3226' }));
@@ -223,7 +299,9 @@ export function mountStele(container, opts = {}) {
   })();
   const contact = new THREE.Group();
   contact.name = 'contact_shadow';
-  for (const [w, d, o, y] of [[3.3, 1.5, 0.6, 0.006], [5.0, 2.4, 0.34, 0.004], [7.6, 3.6, 0.16, 0.002]]) {
+  // The rings fade radially to nothing, so the widest one may exceed the stone
+  // without a visible edge — but it still has to fit the frame.
+  for (const [w, d, o, y] of [[2.7, 1.15, 0.6, 0.006], [3.4, 1.5, 0.30, 0.004], [3.9, 1.8, 0.12, 0.002]]) {
     const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshBasicMaterial({
       map: aoTex, transparent: true, opacity: o, depthWrite: false, color: '#000000'
     }));
@@ -235,11 +313,11 @@ export function mountStele(container, opts = {}) {
 
   // ---- light -------------------------------------------------------------
   const key = new THREE.DirectionalLight('#FFE7BE', 3.0);
-  key.position.set(-4.4, 6.4, 4.6);
+  key.position.set(-1.5, 10.2, 3.0);
   key.castShadow = true;
   key.shadow.mapSize.set(MOBILE ? 1024 : 2048, MOBILE ? 1024 : 2048);
   const sc = key.shadow.camera;
-  sc.left = -5; sc.right = 5; sc.top = 6; sc.bottom = -3; sc.near = 1; sc.far = 22;
+  sc.left = -3.6; sc.right = 3.6; sc.top = 4.6; sc.bottom = -2; sc.near = 1; sc.far = 20;
   key.shadow.bias = -0.0007; key.shadow.radius = 3;
   scene.add(key);
   const fill = new THREE.DirectionalLight('#C9D6CE', 0.9);
@@ -273,7 +351,6 @@ export function mountStele(container, opts = {}) {
     scene.environmentIntensity = 0.7;
     BRASS.envMapIntensity = 1.9;
     INK.envMapIntensity = 0.5;
-    GREEN.envMapIntensity = 0.6;
     p.dispose(); t.dispose();
   })();
 
@@ -299,12 +376,21 @@ export function mountStele(container, opts = {}) {
     const w = container.clientWidth || 1, h = container.clientHeight || 1;
     renderer.setSize(w, h, false);
     camera.aspect = w / h;
-    // frame the whole artifact (base to pediment) to the canvas, whatever its
-    // shape: pull back until both the object's height and width fit
-    const objH = objTop * 1.02, objW = 3.15, pad = camera.aspect < 0.9 ? 1.22 : 1.14;
-    const vFit = (objH * pad / 2) / Math.tan((camera.fov * Math.PI / 180) / 2);
-    const hFit = (objW * pad / 2) / Math.tan((camera.fov * Math.PI / 180) / 2) / camera.aspect;
-    dist = Math.max(vFit, hFit);
+    // Frame the object AND the ground shadow it throws. The shadow's reach is
+    // the top of the lintel projected along the light direction; the widest
+    // contact-shadow ring adds to that. Aim at the centre of the whole box, so
+    // neither the stone nor its shadow can be clipped by the canvas edge.
+    const L = key.position;
+    const reachX = objTop * (-L.x) / L.y;                 // + is screen-right
+    const halfW = Math.max(lintelW / 2, CONTACT_W / 2);
+    const xMin = Math.min(-halfW, -halfW + reachX);
+    const xMax = Math.max(halfW, halfW + reachX);
+    const objW = xMax - xMin;
+    const objH = objTop * 1.02;
+    const pad = camera.aspect < 0.9 ? 1.01 : 1.0;
+    const tan = Math.tan((camera.fov * Math.PI / 180) / 2);
+    dist = Math.max((objH * pad / 2) / tan, (objW * pad / 2) / tan / camera.aspect);
+    shiftX = (xMin + xMax) / 2;
     camera.updateProjectionMatrix();
   }
   const ro = new ResizeObserver(resize);
@@ -315,26 +401,26 @@ export function mountStele(container, opts = {}) {
   let raf = 0;
   function frame() {
     raf = requestAnimationFrame(frame);
-    fitVideo?.();
     const dt = clock.getDelta();
     p = lerp(p, tp, Math.min(dt * 2.4, 1));       // smoother settle, matches the hero
     mx = lerp(mx, tmx, Math.min(dt * 2.4, 1));
     my = lerp(my, tmy, Math.min(dt * 2.4, 1));
 
-    // -1 below frame, 0 face-on at centre, +1 turned away above — still
-    // used for the lighting settle-in below, but no longer drives any
-    // rotation/position: the stele should load static and hold its pose
-    // (not swing in on a ~35° turn as it scrolls into view), with only a
-    // slight, pointer-driven left-right sway on top. Vertical parallax
-    // (the old my-driven X-rotation and camera Y-shift) dropped too — the
-    // brief was left-right movement only.
+    // -1 below frame, 0 face-on at centre, +1 turned away above
     const t = (p - 0.5) * 2;
     const settle = 1 - Math.abs(t);
-    swing.rotation.y = mx * 0.06;
+    // on a phone the swing is gentler: less lateral travel, less yaw
+    const amp = MOBILE ? 0.55 : 1;
+    swing.rotation.y = t * 0.40 * amp + mx * 0.07;
+    swing.rotation.x = -t * 0.08 * amp + my * 0.03;
+    swing.position.y = -t * 0.20 * amp;
+    swing.position.x = t * 0.26 * amp;
+    swing.position.z = -Math.abs(t) * 0.65 * amp;
     warm.intensity = 1.6 + settle * 2.2;
     key.intensity = 2.4 + settle * 0.9;
 
-    camera.position.set(0, centreY, dist);
+    camera.position.set(shiftX, centreY + my * 0.10, dist);
+    look.set(shiftX, centreY, 0);
     camera.lookAt(look);
     renderer.render(scene, camera);
   }

@@ -99,11 +99,11 @@ export default function AutoridadeSection() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-80px" }}
             transition={{ duration: 0.6, ease: EASE }}
+            className="autoridade-artifact"
           >
             <div
               ref={steleContainerRef}
-              className="relative w-full"
-              style={{ height: "min(58vh, 440px)", minHeight: 340 }}
+              className="stele-frame relative"
               role="img"
               aria-label="Estela grega com o vídeo de Pedro Silvestrini"
             />
@@ -141,11 +141,11 @@ export default function AutoridadeSection() {
                 playsInline
               />
             </div>
-            <p className="mt-4 text-lg font-bold text-ink text-center">
-              Pedro Silvestrini
-            </p>
-            <p className="font-mono text-sm tracking-wide text-green text-center">
-              CEO &amp; Fundador da Tektone
+            {/* PEDRO SILVESTRINI / CEO & FUNDADOR are now cut directly into
+                the stele's stepped base in the 3D scene — this copy stays
+                for screen readers and for search, not for sighted display. */}
+            <p className="sr-only">
+              Pedro Silvestrini — CEO &amp; Fundador da Tektone
             </p>
           </motion.div>
 
