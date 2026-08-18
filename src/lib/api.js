@@ -163,6 +163,9 @@ export const api = {
   updateTodo: (id, body) => req(`/kanban/todos/${id}`, { method: "PUT", body }),
   deleteTodo: (id, series) => req(`/kanban/todos/${id}${series ? "?series=1" : ""}`, { method: "DELETE" }),
 
+  // marketing funnel tracking (ADMIN only — see functions/api/analytics/[[path]].js)
+  getAnalyticsSummary: (days) => req(`/analytics/summary${days ? `?days=${days}` : ""}`),
+
   // /blog admin (ADMIN only — see functions/api/blog/[[path]].js)
   listBlogPosts: (status) => req(`/blog/admin/posts${status ? `?status=${status}` : ""}`),
   updateBlogPost: (id, body) => req(`/blog/admin/posts/${id}`, { method: "PATCH", body }),

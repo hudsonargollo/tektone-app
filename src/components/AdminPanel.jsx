@@ -14,6 +14,7 @@ import {
   ChevronDown,
   ChevronUp,
   CheckCheck,
+  BarChart3,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { crmApi } from "@/crm/crmApi";
@@ -46,6 +47,16 @@ export default function AdminPanel({ currentEmail, clients, onClose }) {
   useEffect(() => {
     if (tab === "templates") loadTemplates();
   }, [tab]);
+
+  // ── Marketing funnel (visitor -> form_start -> form_complete) ────────────
+  const [analytics, setAnalytics] = useState(null);
+  const [analyticsDays, setAnalyticsDays] = useState(30);
+  const [analyticsError, setAnalyticsError] = useState("");
+  useEffect(() => {
+    if (tab !== "analytics") return;
+    setAnalyticsError("");
+    api.getAnalyticsSummary(analyticsDays).then(setAnalytics).catch((e) => setAnalyticsError(e.body?.error || "Falha ao carregar."));
+  }, [tab, analyticsDays]);
 
   async function createTemplate() {
     const tasks = templateDraft.tasksText
@@ -275,6 +286,12 @@ export default function AdminPanel({ currentEmail, clients, onClose }) {
                 {pendingPlans.length}
               </span>
             )}
+          </button>
+          <button
+            onClick={() => setTab("analytics")}
+            className={`flex items-center gap-1.5 rounded-t-lg px-3 py-2 font-mono text-[11px] transition-colors ${tab === "analytics" ? "border-b-2 border-action text-action" : "text-stone-500"}`}
+          >
+            <BarChart3 size={12} /> funil do site
           </button>
         </div>
 
@@ -611,6 +628,108 @@ export default function AdminPanel({ currentEmail, clients, onClose }) {
                     );
                   })}
                 </ul>
+              )}
+            </>
+          )}
+
+          {tab === "analytics" && (
+            <>
+              <div className="mb-4 flex items-center justify-between">
+                <p className="text-xs leading-relaxed text-stone-500">
+                  Visitas na home, quantas iniciam o formulário de qualificação e
+                  quantas completam — sessão anônima por aba, sem cookies
+                  persistentes (ver migrations/0024_hub_marketing_analytics.sql).
+                </p>
+                <div className="flex gap-1 rounded-lg surface-3 p-1">
+                  {[7, 30, 90].map((d) => (
+                    <button
+                      key={d}
+                      onClick={() => setAnalyticsDays(d)}
+                      className={`rounded-md px-2.5 py-1 font-mono text-[11px] transition-colors ${analyticsDays === d ? "bg-action text-clay" : "text-stone-500"}`}
+                    >
+                      {d}d
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {analyticsError && <p className="mb-3 font-mono text-[11px] text-danger">{analyticsError}</p>}
+
+              {!analytics ? (
+                <div className="flex justify-center py-8">
+                  <Spinner />
+                </div>
+              ) : (
+                <>
+                  {(() => {
+                    const { page_view: visits, form_start: starts, form_complete: completes } = analytics.totals;
+                    const pct = (n, d) => (d > 0 ? `${Math.round((n / d) * 100)}%` : "—");
+                    return (
+                      <>
+                        <div className="mb-5 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                          <div className="rounded-lg surface-3 p-3">
+                            <p className="font-mono text-[9px] uppercase tracking-wider text-stone-500">Visitas</p>
+                            <p className="mt-0.5 text-lg font-semibold text-ink">{visits}</p>
+                          </div>
+                          <div className="rounded-lg surface-3 p-3">
+                            <p className="font-mono text-[9px] uppercase tracking-wider text-stone-500">
+                              Iniciaram o formulário
+                            </p>
+                            <p className="mt-0.5 text-lg font-semibold text-ink">
+                              {starts} <span className="text-xs font-normal text-stone-500">({pct(starts, visits)})</span>
+                            </p>
+                          </div>
+                          <div className="rounded-lg surface-3 p-3">
+                            <p className="font-mono text-[9px] uppercase tracking-wider text-stone-500">
+                              Completaram o formulário
+                            </p>
+                            <p className="mt-0.5 text-lg font-semibold text-success">
+                              {completes}{" "}
+                              <span className="text-xs font-normal text-stone-500">({pct(completes, starts)} de quem iniciou)</span>
+                            </p>
+                          </div>
+                        </div>
+
+                        {analytics.daily.length === 0 ? (
+                          <p className="text-sm text-stone-500">Nenhum evento registrado ainda no período.</p>
+                        ) : (
+                          (() => {
+                            const days = [...new Set(analytics.daily.map((r) => r.day))].sort();
+                            const byDay = {};
+                            for (const r of analytics.daily) {
+                              byDay[r.day] = byDay[r.day] || {};
+                              byDay[r.day][r.event_type] = r.sessions;
+                            }
+                            return (
+                              <div className="overflow-x-auto rounded-lg surface-3">
+                                <table className="w-full text-left text-sm">
+                                  <thead>
+                                    <tr className="font-mono text-[9px] uppercase tracking-wider text-stone-500">
+                                      <th className="px-3 py-2">Dia</th>
+                                      <th className="px-3 py-2">Visitas</th>
+                                      <th className="px-3 py-2">Iniciaram</th>
+                                      <th className="px-3 py-2">Completaram</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {days.map((day) => (
+                                      <tr key={day} className="border-t border-ink/[0.06]">
+                                        <td className="px-3 py-2 font-mono text-xs text-stone-500">{day}</td>
+                                        <td className="px-3 py-2 text-ink">{byDay[day].page_view || 0}</td>
+                                        <td className="px-3 py-2 text-ink">{byDay[day].form_start || 0}</td>
+                                        <td className="px-3 py-2 text-success">{byDay[day].form_complete || 0}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            );
+                          })()
+                        )}
+                      </>
+                    );
+                  })()}
+                </>
               )}
             </>
           )}
