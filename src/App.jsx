@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback, Suspense, lazy } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { AlertCircle, LogOut, ShieldCheck, Menu, X, Sparkles, Package, LayoutGrid, ListChecks, Wallet, Briefcase, Newspaper, Link2 } from "lucide-react";
 import { api } from "@/lib/api";
@@ -16,6 +16,10 @@ import NudgeToast from "@/components/NudgeToast";
 import Login from "@/components/Login";
 import AdminPanel from "@/components/AdminPanel";
 import BlogPanel from "@/components/BlogPanel";
+// Lazy-loaded — @blocksuite/presets + yjs are large deps that shouldn't bloat
+// the initial bundle for the ~majority of users who aren't plus_enabled. First
+// code-split in this codebase; justified specifically by BlockSuite's size.
+const BoardsPanel = lazy(() => import("@/boards/BoardsPanel"));
 import FinancePanel from "@/components/FinancePanel";
 import CommercialPanel from "@/components/CommercialPanel";
 import CustomerShell from "@/components/CustomerShell";
@@ -50,6 +54,7 @@ export default function App() {
   const [userAvatar, setUserAvatar] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [financeAccess, setFinanceAccess] = useState(false);
+  const [plusAccess, setPlusAccess] = useState(false);
   const [accessRole, setAccessRole] = useState(null);
   const [crmRole, setCrmRole] = useState(null);
   const [userTimezone, setUserTimezone] = useState(null);
@@ -104,12 +109,13 @@ export default function App() {
   const refreshMe = useCallback(() => {
     api
       .me()
-      .then(({ authed, email, admin, accessRole, financeAccess, crmRole, name, avatar, timezone }) => {
+      .then(({ authed, email, admin, accessRole, financeAccess, plusAccess, crmRole, name, avatar, timezone }) => {
         setAuthed(Boolean(authed));
         setUserEmail(email);
         setIsAdmin(Boolean(admin));
         setAccessRole(accessRole);
         setFinanceAccess(Boolean(financeAccess));
+        setPlusAccess(Boolean(plusAccess));
         setCrmRole(crmRole);
         setUserName(name);
         setUserAvatar(avatar);
@@ -605,6 +611,7 @@ export default function App() {
           isAdmin={isAdmin}
           financeAccess={financeAccess}
           crmRole={crmRole}
+          plusAccess={plusAccess}
         />
 
         {view !== "board" ? (
@@ -619,6 +626,11 @@ export default function App() {
               <CommercialPanel clients={clients} isAdmin={isAdmin} onClose={() => navigateTo("board")} />
             )}
             {view === "blog" && <BlogPanel onClose={() => navigateTo("board")} />}
+            {view === "boards" && (
+              <Suspense fallback={<div className="flex flex-1 items-center justify-center"><Spinner /></div>}>
+                <BoardsPanel onClose={() => navigateTo("board")} />
+              </Suspense>
+            )}
             {view === "crm" && (
               <CrmPanel crmRole={crmRole} timezone={userTimezone} onClose={() => navigateTo("board")} />
             )}

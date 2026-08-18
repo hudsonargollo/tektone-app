@@ -35,6 +35,22 @@ export function hasFinanceAccess(user) {
   return isAdmin(user) || (user?.access_role === "STAFF" && Number(user?.finance_authorized) === 1);
 }
 
+export function hasPlusAccess(user) {
+  return isAdmin(user) || Number(user?.plus_enabled) === 1;
+}
+
+// Unlike isProjectMember below, staff do NOT get an implicit pass — Boards sits
+// behind the extra plus_enabled gate already, so access is admin-override or
+// explicit board_users membership only, never role-based.
+export async function isBoardMember(db, user, boardId) {
+  if (isAdmin(user)) return true;
+  const row = await db
+    .prepare("SELECT 1 FROM board_users WHERE board_id = ? AND user_email = ?")
+    .bind(boardId, user.email)
+    .first();
+  return Boolean(row);
+}
+
 export async function isProjectMember(db, user, projectId) {
   if (isStaffOrAdmin(user)) return true; // staff/admin implicitly pass, per PRD §4
   const row = await db

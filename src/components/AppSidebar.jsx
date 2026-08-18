@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { LayoutGrid, Wallet, Briefcase, Newspaper, Sparkles, ShieldCheck, ListChecks, TrendingUp, ChevronsLeft, ChevronsRight, Award, Link2 } from "lucide-react";
+import { LayoutGrid, Wallet, Briefcase, Newspaper, Sparkles, ShieldCheck, ListChecks, TrendingUp, ChevronsLeft, ChevronsRight, Award, Link2, LayoutTemplate } from "lucide-react";
 
 // Persistent, collapsible desktop-only app-level navigation — distinct from
 // the project-filter <Sidebar/> shown inside the board view. Replaces the
@@ -19,11 +19,12 @@ const NAV_ITEMS = [
   { key: "crm", label: "CRM", icon: TrendingUp, show: (p) => p.crmRole },
   { key: "links", label: "Links", icon: Link2, show: (p) => p.crmRole },
   { key: "blog", label: "Conteúdo", icon: Newspaper, show: (p) => p.isAdmin },
+  { key: "boards", label: "Boards", icon: LayoutTemplate, show: (p) => p.plusAccess },
   { key: "admin", label: "Admin", icon: ShieldCheck, show: (p) => p.isAdmin },
 ];
 
-export default function AppSidebar({ view, onNavigate, collapsed, onToggleCollapse, isAdmin, financeAccess, crmRole }) {
-  const perms = { isAdmin, financeAccess, crmRole };
+export default function AppSidebar({ view, onNavigate, collapsed, onToggleCollapse, isAdmin, financeAccess, crmRole, plusAccess }) {
+  const perms = { isAdmin, financeAccess, crmRole, plusAccess };
   const [hovered, setHovered] = useState(false);
   // "Peeking": pinned collapsed but temporarily shown wide via hover — does
   // not touch the persisted `collapsed` preference, but DOES reflow the

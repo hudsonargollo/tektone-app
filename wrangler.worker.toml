@@ -76,6 +76,13 @@ script_name = "tektone-realtime"
 binding = "BLOG_MEDIA"
 bucket_name = "tektone-blog-media"
 
+# Boards feature (collaborative Notion+Miro-style docs/canvas, BlockSuite) — Yjs
+# snapshot blobs. Same bucket as wrangler.toml's binding — one-time manual
+# create: `wrangler r2 bucket create tektone-boards-data`.
+[[r2_buckets]]
+binding = "BOARDS_DATA"
+bucket_name = "tektone-boards-data"
+
 # /blog: cover-illustration generation (FLUX.1 [schnell]) — native Cloudflare
 # binding, no external API key/credits, no vendor dependency. Chosen after
 # Higgsfield (the tool used for the /login redesign) ran out of credits

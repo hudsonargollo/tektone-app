@@ -38,6 +38,8 @@ export const api = {
   adminReset: (email) => req("/auth/admin/reset", { method: "POST", body: { email } }),
   adminSetFinanceAccess: (email, authorized) =>
     req("/auth/admin/finance-access", { method: "POST", body: { email, authorized } }),
+  adminSetPlusAccess: (email, enabled) =>
+    req("/auth/admin/plus-access", { method: "POST", body: { email, enabled } }),
 
   // internal financial tracking (STAFF/ADMIN only — see rbac.hasFinanceAccess)
   getFinances: (projectId, month) => req(`/finances/${projectId}${month ? `?month=${month}` : ""}`),
@@ -165,6 +167,34 @@ export const api = {
 
   // marketing funnel tracking (ADMIN only — see functions/api/analytics/[[path]].js)
   getAnalyticsSummary: (days) => req(`/analytics/summary${days ? `?days=${days}` : ""}`),
+
+  // /boards (plus_enabled + board membership gated — see functions/api/boards/[[path]].js).
+  // Snapshot save/load are raw Yjs bytes, not JSON — bypass req()'s JSON
+  // stringify/parse and use fetch directly.
+  listBoards: () => req("/boards"),
+  createBoard: (title) => req("/boards", { method: "POST", body: { title } }),
+  renameBoard: (id, title) => req(`/boards/${id}`, { method: "PUT", body: { title } }),
+  deleteBoard: (id) => req(`/boards/${id}`, { method: "DELETE" }),
+  listBoardCollaborators: (id) => req(`/boards/${id}/collaborators`),
+  addBoardCollaborator: (id, email, role) =>
+    req(`/boards/${id}/collaborators`, { method: "POST", body: { email, role } }),
+  removeBoardCollaborator: (id, email) =>
+    req(`/boards/${id}/collaborators/${encodeURIComponent(email)}`, { method: "DELETE" }),
+  async getBoardSnapshot(id) {
+    const res = await fetch(`${API_BASE}/api/boards/${id}/snapshot`, { credentials: "same-origin" });
+    if (res.status === 404) return null;
+    if (!res.ok) throw Object.assign(new Error(`API ${res.status}`), { status: res.status });
+    return new Uint8Array(await res.arrayBuffer());
+  },
+  async putBoardSnapshot(id, bytes) {
+    const res = await fetch(`${API_BASE}/api/boards/${id}/snapshot`, {
+      method: "PUT",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/octet-stream" },
+      body: bytes,
+    });
+    if (!res.ok) throw Object.assign(new Error(`API ${res.status}`), { status: res.status });
+  },
 
   // /blog admin (ADMIN only — see functions/api/blog/[[path]].js)
   listBlogPosts: (status) => req(`/blog/admin/posts${status ? `?status=${status}` : ""}`),

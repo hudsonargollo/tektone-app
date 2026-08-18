@@ -53,3 +53,10 @@ TASKS_BACKEND = "d1"
 name = "BOARD_ROOM"
 class_name = "BoardRoom"
 script_name = "tektone-realtime"
+
+# Boards feature (collaborative Notion+Miro-style docs/canvas, BlockSuite) — Yjs
+# snapshot blobs. Bucket itself is a one-time manual create:
+# `wrangler r2 bucket create tektone-boards-data`.
+[[r2_buckets]]
+binding = "BOARDS_DATA"
+bucket_name = "tektone-boards-data"

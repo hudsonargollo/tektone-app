@@ -25,7 +25,7 @@ import {
   updateUserFields,
   deleteUser,
 } from "../../_lib/db.js";
-import { canSignUp, isAdmin as checkIsAdmin, hasFinanceAccess as checkHasFinanceAccess } from "../../_lib/rbac.js";
+import { canSignUp, isAdmin as checkIsAdmin, hasFinanceAccess as checkHasFinanceAccess, hasPlusAccess as checkHasPlusAccess } from "../../_lib/rbac.js";
 
 const json = (data, status = 200, extra = {}) =>
   new Response(JSON.stringify(data), {
@@ -96,6 +96,7 @@ async function handle(context) {
       admin: authed && checkIsAdmin(user),
       accessRole: authed ? user.access_role : null,
       financeAccess: authed && checkHasFinanceAccess(user),
+      plusAccess: authed && checkHasPlusAccess(user),
       // NULL unless explicitly granted (migration 0009_hub_crm.sql) —
       // independent of accessRole, gates /crm access specifically.
       crmRole: authed ? (user.crm_role ?? null) : null,
@@ -213,6 +214,7 @@ async function handle(context) {
           admin: checkIsAdmin(u),
           accessRole: u.access_role,
           financeAuthorized: Boolean(u.finance_authorized),
+          plusEnabled: Boolean(u.plus_enabled),
         })),
       });
     }
@@ -235,6 +237,18 @@ async function handle(context) {
       const targetUser = await getUserByEmail(db, target);
       if (!targetUser) return json({ error: "E-mail inválido." }, 400);
       await updateUserFields(db, target, { finance_authorized: authorized ? 1 : 0 });
+      return json({ ok: true });
+    }
+
+    // Gates /boards visibility (see rbac.hasPlusAccess) — admin-toggled, no
+    // billing behind it. ADMIN already passes unconditionally, so this is a
+    // no-op for admin targets, same as finance-access above.
+    if (sub === "plus-access" && method === "POST") {
+      const { email, enabled } = await request.json().catch(() => ({}));
+      const target = normEmail(email);
+      const targetUser = await getUserByEmail(db, target);
+      if (!targetUser) return json({ error: "E-mail inválido." }, 400);
+      await updateUserFields(db, target, { plus_enabled: enabled ? 1 : 0 });
       return json({ ok: true });
     }
 

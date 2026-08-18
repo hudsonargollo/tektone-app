@@ -15,6 +15,7 @@ import {
   ChevronUp,
   CheckCheck,
   BarChart3,
+  LayoutTemplate,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { crmApi } from "@/crm/crmApi";
@@ -230,6 +231,18 @@ export default function AdminPanel({ currentEmail, clients, onClose }) {
     }
   }
 
+  async function togglePlus(u) {
+    setBusy(u.email);
+    try {
+      await api.adminSetPlusAccess(u.email, !u.plusEnabled);
+      await load();
+    } catch (e) {
+      setError(e.body?.error || "Falha ao atualizar acesso plus.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
   async function reset(email) {
     const self = email === currentEmail;
     const msg = self
@@ -349,6 +362,20 @@ export default function AdminPanel({ currentEmail, clients, onClose }) {
                       }`}
                     >
                       <Wallet size={12} /> financeiro
+                    </button>
+                  )}
+                  {!u.admin && u.registered && (
+                    <button
+                      disabled={busy === u.email}
+                      onClick={() => togglePlus(u)}
+                      title={u.plusEnabled ? "Revogar acesso a Boards" : "Liberar acesso a Boards"}
+                      className={`inline-flex shrink-0 items-center gap-1.5 rounded-lg border px-2.5 py-1.5 font-mono text-[11px] transition-colors disabled:cursor-not-allowed disabled:opacity-30 ${
+                        u.plusEnabled
+                          ? "border-action/40 text-action hover:bg-action/10"
+                          : "border-ink/15 text-stone-500 hover:border-action/40 hover:text-action"
+                      }`}
+                    >
+                      <LayoutTemplate size={12} /> boards
                     </button>
                   )}
                   <button
