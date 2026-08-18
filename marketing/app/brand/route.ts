@@ -257,6 +257,71 @@ const HTML = `<!doctype html>
   .icon-card .info span{display:block;font-size:.78rem;color:var(--ink-55);margin-top:4px;line-height:1.45;}
   .swatch .copied{color:var(--green);font-weight:600;}
 
+  /* =================== CONSTRUCTION =================== */
+  .spec-line{display:block;margin-top:8px;font-family:var(--f-mono);font-size:.68rem;letter-spacing:.04em;color:var(--sand-dark);}
+
+  /* =================== VARIATIONS & SEAL =================== */
+  .mark-card.on-sand .stage{background:var(--sand);}
+  .mark-card.on-green .stage{background:var(--green);}
+
+  .lockup-grid{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-bottom:22px;}
+  @media (max-width:760px){.lockup-grid{grid-template-columns:1fr;}}
+  .lockup-card{border:1px solid var(--ink-14);border-radius:18px;overflow:hidden;background:var(--paper);}
+  .lockup-stage{height:170px;display:flex;align-items:center;justify-content:center;gap:16px;padding:0 28px;background:var(--ink);}
+  .lockup-stage.stacked{flex-direction:column;gap:8px;}
+  .lockup-stage img{height:64px;width:auto;}
+  .lockup-stage .divider{width:1px;align-self:stretch;background:var(--ink-14);opacity:.4;}
+  .lockup-word{display:flex;flex-direction:column;}
+  .lockup-word b{font-family:var(--f-sans);font-weight:700;font-size:1.5rem;letter-spacing:.02em;color:var(--clay);}
+  .lockup-word span{font-family:var(--f-mono);font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;color:rgba(239,232,220,.55);margin-top:2px;}
+  .lockup-stage.stacked .lockup-word{align-items:center;}
+  .lockup-stage.stacked .lockup-word b{font-size:1.15rem;text-align:center;}
+  .lockup-card .cap{padding:16px 20px 20px;border-top:1px solid var(--ink-08);background:var(--sur3);}
+  .lockup-card .cap b{display:block;font-family:var(--f-mono);font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;color:var(--green);margin-bottom:3px;}
+  .lockup-card .cap span{font-size:.86rem;color:var(--ink-70);}
+
+  .seal-wrap{display:grid;grid-template-columns:220px 1fr;gap:32px;align-items:center;border:1px solid var(--ink-14);border-radius:18px;padding:30px;background:var(--paper);}
+  @media (max-width:600px){.seal-wrap{grid-template-columns:1fr;justify-items:center;text-align:center;}}
+  .seal-mark{width:180px;height:180px;}
+  .seal-copy h4{font-family:var(--f-serif);font-style:italic;font-weight:600;font-size:1.4rem;color:var(--ink);margin-bottom:8px;}
+  .seal-copy p{font-size:.9rem;color:var(--ink-70);line-height:1.55;margin-bottom:6px;}
+  .seal-copy .tag{display:inline-block;margin-top:6px;font-family:var(--f-mono);font-size:.64rem;letter-spacing:.14em;text-transform:uppercase;color:var(--sand-dark);border:1px solid var(--ink-14);border-radius:999px;padding:4px 12px;}
+
+  /* =================== APPLICATIONS =================== */
+  .app-grid{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-bottom:22px;}
+  @media (max-width:760px){.app-grid{grid-template-columns:1fr;}}
+  .app-card{border:1px solid var(--ink-14);border-radius:18px;overflow:hidden;background:var(--paper);}
+  .app-card .cap{padding:14px 20px 18px;border-top:1px solid var(--ink-08);background:var(--sur3);}
+  .app-card .cap b{display:block;font-family:var(--f-mono);font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;color:var(--green);margin-bottom:3px;}
+  .app-card .cap span{font-size:.86rem;color:var(--ink-70);}
+
+  .biz-card{aspect-ratio:1.75/1;background:var(--ink);color:var(--clay);padding:26px 28px;display:flex;flex-direction:column;justify-content:space-between;}
+  .biz-card .mk{font-family:var(--f-mono);font-size:.7rem;letter-spacing:.2em;color:rgba(239,232,220,.6);}
+  .biz-card img{width:56px;height:56px;object-fit:contain;}
+  .biz-card .yr{font-family:var(--f-mono);font-size:.66rem;letter-spacing:.08em;color:rgba(239,232,220,.5);}
+
+  .sig-card{padding:26px 28px;display:flex;gap:18px;align-items:flex-start;}
+  .sig-card img{width:42px;height:42px;object-fit:contain;flex:none;margin-top:2px;}
+  .sig-card b{display:block;font-size:.98rem;color:var(--ink);}
+  .sig-card .role{font-size:.78rem;color:var(--ink-55);margin-top:2px;}
+  .sig-card .mail{font-family:var(--f-mono);font-size:.76rem;color:var(--green);margin-top:8px;display:block;}
+  .sig-card q{display:block;margin-top:14px;font-family:var(--f-serif);font-style:italic;font-size:.86rem;color:var(--ink-70);border-top:1px solid var(--ink-08);padding-top:12px;}
+
+  .fav-row{display:flex;align-items:flex-end;gap:22px;padding:28px;flex-wrap:wrap;}
+  .fav-row .fav{display:flex;flex-direction:column;align-items:center;gap:8px;}
+  .fav-row .fav img{object-fit:contain;}
+  .fav-row .fav span{font-family:var(--f-mono);font-size:.64rem;color:var(--ink-38);}
+  .fav-tab{margin-left:auto;display:flex;align-items:center;gap:8px;border:1px solid var(--ink-14);border-radius:8px;padding:8px 14px;background:var(--sur3);}
+  .fav-tab img{width:16px;height:16px;object-fit:contain;}
+  .fav-tab span{font-family:var(--f-mono);font-size:.74rem;color:var(--ink-70);}
+
+  .ig-card{padding:26px 28px;display:flex;gap:16px;align-items:center;}
+  .ig-avatar{width:72px;height:72px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center;flex:none;}
+  .ig-avatar img{width:60%;height:60%;object-fit:contain;}
+  .ig-card b{display:block;font-size:.98rem;color:var(--ink);}
+  .ig-card p{font-size:.8rem;color:var(--ink-55);margin-top:3px;line-height:1.4;}
+  .ig-card .link{font-family:var(--f-mono);font-size:.76rem;color:var(--green);margin-top:6px;display:block;}
+
   /* =================== 04 TYPE =================== */
   .type-fams{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:40px;}
   @media (max-width:720px){.type-fams{grid-template-columns:1fr;}}
@@ -565,10 +630,110 @@ const HTML = `<!doctype html>
 
 <div class="strata"><i></i><i></i><i></i></div>
 
-<!-- ============================================================ 01B ICONS -->
+<!-- ============================================================ 01B CONSTRUCTION -->
 <section class="pad wrap reveal">
   <div class="sec-head">
-    <span class="eyebrow">05 — Ícones do Sistema</span>
+    <span class="eyebrow">05 — Construção do Símbolo</span>
+    <h2>Como o T é construído</h2>
+    <p>Três camadas materiais sobrepostas em um grid 10×10, centro óptico no eixo 5,5. Cada elemento serve uma função estrutural — nada é decorativo.</p>
+  </div>
+
+  <div class="scale-table">
+    <div class="scale-row"><div class="tok"><b>i. Architrave</b><span>28px sobre 36px · ratio 7:9</span></div><div>A viga horizontal. Pedra preta no centro, areia revelada nas bordas — o "carved" não é gradiente, é uma segunda camada.</div><div class="fam">viga</div></div>
+    <div class="scale-row"><div class="tok"><b>ii. Pillar</b><span>32px · núcleo 18px · flauta 2px</span></div><div>O suporte vertical em três materiais: verde mineral externo, pedra preta no núcleo, uma única flauta sand vertical — referência dórica silenciosa.</div><div class="fam">fuste</div></div>
+    <div class="scale-row"><div class="tok"><b>iii. Foundation</b><span>4 strata</span></div><div>A base. Quatro camadas em descida progressiva — areia, pedra, horizonte, eco. O T não termina no chão: ele assenta.</div><div class="fam">base</div></div>
+  </div>
+
+  <p class="subhead">Área de proteção</p>
+  <p style="max-width:640px;font-size:.92rem;color:var(--ink-70);line-height:1.6">Margem mínima ao redor do símbolo: ≥ 1 unidade de grid — a altura do arquitrave — em todos os lados. Nada, nem texto nem outro elemento, invade esse espaço.</p>
+</section>
+
+<div class="strata"><i></i><i></i><i></i></div>
+
+<!-- ============================================================ 01C VARIATIONS -->
+<section class="pad wrap reveal">
+  <div class="sec-head">
+    <span class="eyebrow">06 — Variações &amp; Selo</span>
+    <h2>Um sistema, muitas vozes</h2>
+    <p>Seis variações principais, dois lockups oficiais e um selo secundário para uso institucional pontual.</p>
+  </div>
+
+  <p class="subhead">Variações do símbolo</p>
+  <div class="mark-grid">
+    <div class="mark-card on-clay">
+      <div class="stage"><img src="/brand/mark-clay.png" alt="Variação primária, mineral" width="480" height="480" /></div>
+      <div class="cap"><b>V.01 · Primary · Mineral</b><span>Render 3D completo — a versão padrão</span></div>
+    </div>
+    <div class="mark-card on-clay">
+      <div class="stage"><svg viewBox="0 0 100 116"><rect x="15" y="18" width="70" height="22" fill="#141618"/><rect x="42" y="37" width="16" height="58" fill="#141618"/><rect x="38" y="95" width="24" height="5" fill="#141618"/><rect x="33" y="100" width="34" height="4" fill="#141618"/><rect x="26" y="106.5" width="48" height="1.8" fill="#141618"/><rect x="21" y="110.5" width="58" height="1.2" fill="#141618"/></svg></div>
+      <div class="cap"><b>V.02 · Mono · Black</b><span>Silhueta chapada — carimbos, PDFs, contextos de uma cor só</span></div>
+    </div>
+    <div class="mark-card on-green">
+      <div class="stage"><img src="/brand/mark-green.png" alt="Variação invertida sobre verde" width="480" height="480" /></div>
+      <div class="cap"><b>V.03 · Inverted · On Green</b><span>Sobre o verde mineral primário</span></div>
+    </div>
+    <div class="mark-card on-black">
+      <div class="stage"><img src="/brand/mark-black.png" alt="Variação invertida sobre preto" width="480" height="480" /></div>
+      <div class="cap"><b>V.04 · Inverted · On Black</b><span>Preto absoluto — papelaria fundadora</span></div>
+    </div>
+    <div class="mark-card on-sand">
+      <div class="stage"><svg viewBox="0 0 100 116"><rect x="15" y="18" width="70" height="22" fill="#141618"/><rect x="42" y="37" width="16" height="58" fill="#141618"/><rect x="38" y="95" width="24" height="5" fill="#141618"/><rect x="33" y="100" width="34" height="4" fill="#141618"/><rect x="26" y="106.5" width="48" height="1.8" fill="#141618"/><rect x="21" y="110.5" width="58" height="1.2" fill="#141618"/></svg></div>
+      <div class="cap"><b>V.05 · Mono · On Sand</b><span>Silhueta chapada sobre areia</span></div>
+    </div>
+    <div class="mark-card on-clay">
+      <div class="stage"><img src="/brand/mark-ink.png" alt="Símbolo em tamanho mínimo" width="480" height="480" style="max-width:34%;max-height:34%;object-fit:contain;width:auto;height:auto" /></div>
+      <div class="cap"><b>V.06 · Minimum · 72px</b><span>Abaixo disso, use o glifo achatado — ver 07 — Ícones do Sistema</span></div>
+    </div>
+  </div>
+
+  <p class="subhead">Lockups oficiais</p>
+  <div class="lockup-grid">
+    <div class="lockup-card">
+      <div class="lockup-stage">
+        <img src="/brand/mark-ink.png" alt="Tektone" />
+        <div class="divider"></div>
+        <div class="lockup-word"><b>TEKTONE</b><span>Structural intelligence</span></div>
+      </div>
+      <div class="cap"><b>L.01 · Horizontal</b><span>Lockup padrão — cabeçalhos, apresentações, assinatura de contratos</span></div>
+    </div>
+    <div class="lockup-card">
+      <div class="lockup-stage stacked">
+        <img src="/brand/mark-ink.png" alt="Tektone" />
+        <div class="lockup-word"><b>TEKTONE</b><span>Maison · MMXXVI</span></div>
+      </div>
+      <div class="cap"><b>L.02 · Vertical · Stacked</b><span>Uso vertical — selos, embalagens, formatos estreitos</span></div>
+    </div>
+  </div>
+
+  <p class="subhead">Selo secundário</p>
+  <div class="seal-wrap">
+    <svg class="seal-mark" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="100" cy="100" r="92" fill="none" stroke="#141618" stroke-width="1" opacity=".5" />
+      <circle cx="100" cy="100" r="70" fill="none" stroke="#141618" stroke-width="1" opacity=".35" />
+      <path d="M22 22h14M22 22v14M178 22h-14M178 22v14M22 178h14M22 178v-14M178 178h-14M178 178v-14" stroke="#141618" stroke-width="1.4" opacity=".55" fill="none" />
+      <rect x="76" y="76" width="48" height="48" fill="none" stroke="#2E4A43" stroke-width="1.4" />
+      <g transform="translate(100 100) scale(0.24) translate(-50 -58)">
+        <rect x="15" y="18" width="70" height="22" fill="#141618" />
+        <rect x="42" y="37" width="16" height="58" fill="#141618" />
+        <rect x="38" y="95" width="24" height="5" fill="#141618" />
+        <rect x="33" y="100" width="34" height="4" fill="#141618" />
+      </g>
+    </svg>
+    <div class="seal-copy">
+      <h4>Sigillum Gordii</h4>
+      <p>Selo institucional. Uso restrito: contratos, equity, papelaria fundadora.</p>
+      <p>"A marca é um corpo de três materiais. O selo é um corpo de três séculos."</p>
+      <span class="tag">S.01 · Gordian Meander Seal</span>
+    </div>
+  </div>
+</section>
+
+<div class="strata"><i></i><i></i><i></i></div>
+
+<!-- ============================================================ 01D ICONS -->
+<section class="pad wrap reveal">
+  <div class="sec-head">
+    <span class="eyebrow">07 — Ícones do Sistema</span>
     <h2>Um símbolo, renderizado por contexto</h2>
     <p>Favicon e ícone de app não são desenhos à parte — são o mesmo mark 3D, renderizado para cada superfície. Desde o refresh mais recente, a marca-mãe e o WorkHub têm identidades de ícone distintas: antes, site institucional e hub usavam exatamente o mesmo arquivo.</p>
   </div>
@@ -602,10 +767,90 @@ const HTML = `<!doctype html>
 
 <div class="strata"><i></i><i></i><i></i></div>
 
+<!-- ============================================================ 01E APPLICATIONS -->
+<section class="pad wrap-wide reveal">
+  <div class="sec-head">
+    <span class="eyebrow">08 — Aplicações da Marca</span>
+    <h2>Como a marca aterriza</h2>
+    <p>Cartão preto matte, assinatura de e-mail, favicon, avatar de Instagram, selo físico — cinco contextos reais, não hipotéticos.</p>
+  </div>
+
+  <div class="app-grid">
+    <div class="app-card">
+      <div class="biz-card">
+        <span class="mk">TEKTONE</span>
+        <img src="/brand/mark-ink.png" alt="Tektone" />
+        <span class="yr">MMXXVI · Maison</span>
+      </div>
+      <div class="cap"><b>01 · Business card</b><span>Verso — preto matte + relevo em areia. A frente carrega nome, cargo e contato.</span></div>
+    </div>
+
+    <div class="app-card">
+      <div class="sig-card">
+        <img src="/brand/mark-ink.png" alt="Tektone" />
+        <div>
+          <b>Pedro Silvestrini</b>
+          <div class="role">Founder · Tektone Maison</div>
+          <span class="mail">pedro@tektone.maison</span>
+          <q>Onde o nó é cortado, o império começa.</q>
+        </div>
+      </div>
+      <div class="cap"><b>02 · Assinatura de e-mail</b><span>Mark pequeno + hierarquia clara + uma citação, nunca mais de uma linha.</span></div>
+    </div>
+
+    <div class="app-card">
+      <div class="fav-row">
+        <div class="fav"><img src="/brand/mark-ink.png" alt="128px" style="width:64px;height:64px" /><span>128</span></div>
+        <div class="fav"><img src="/brand/mark-ink.png" alt="64px" style="width:40px;height:40px" /><span>64</span></div>
+        <div class="fav"><img src="/brand/mark-ink.png" alt="32px" style="width:24px;height:24px" /><span>32</span></div>
+        <div class="fav"><img src="/brand/mark-ink.png" alt="16px" style="width:14px;height:14px" /><span>16</span></div>
+        <div class="fav-tab"><img src="/brand/mark-ink.png" alt="" /><span>tektone.maison</span></div>
+      </div>
+      <div class="cap"><b>03 · Escala de favicon</b><span>16 · 32 · 64 · 128px — a mesma renderização, sem retrabalho por tamanho.</span></div>
+    </div>
+
+    <div class="app-card">
+      <div class="ig-card">
+        <div class="ig-avatar"><img src="/brand/mark-clay.png" alt="Tektone" /></div>
+        <div>
+          <b>@tektone</b>
+          <p>Maison estratégica. Construindo o invisível desde MMXXVI.</p>
+          <span class="link">↗ tektone.maison</span>
+        </div>
+      </div>
+      <div class="cap"><b>04 · Avatar de Instagram</b><span>Mark isolado sobre o verde mineral primário, recortado em círculo.</span></div>
+    </div>
+  </div>
+
+  <div class="seal-wrap" style="margin-top:22px">
+    <svg class="seal-mark" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="100" cy="100" r="92" fill="none" stroke="#141618" stroke-width="1" opacity=".5" />
+      <circle cx="100" cy="100" r="70" fill="none" stroke="#141618" stroke-width="1" opacity=".35" />
+      <path d="M22 22h14M22 22v14M178 22h-14M178 22v14M22 178h14M22 178v-14M178 178h-14M178 178v-14" stroke="#141618" stroke-width="1.4" opacity=".55" fill="none" />
+      <rect x="76" y="76" width="48" height="48" fill="none" stroke="#2E4A43" stroke-width="1.4" />
+      <g transform="translate(100 100) scale(0.24) translate(-50 -58)">
+        <rect x="15" y="18" width="70" height="22" fill="#141618" />
+        <rect x="42" y="37" width="16" height="58" fill="#141618" />
+        <rect x="38" y="95" width="24" height="5" fill="#141618" />
+        <rect x="33" y="100" width="34" height="4" fill="#141618" />
+      </g>
+    </svg>
+    <div class="seal-copy">
+      <h4>Carta de fundação</h4>
+      <p>Selo aplicado em papelaria fundadora, contratos de equity e documentos institucionais — nunca em redes sociais ou peças de marketing.</p>
+      <span class="tag">05 · Founder seal</span>
+    </div>
+  </div>
+
+  <p style="max-width:680px;margin:34px auto 0;font-family:var(--f-serif);font-style:italic;font-weight:600;font-size:1.25rem;color:var(--green);line-height:1.5;text-align:center;text-wrap:balance">"A marca não é o que aparece no Instagram. É o que aparece quando você assina o contrato."</p>
+</section>
+
+<div class="strata"><i></i><i></i><i></i></div>
+
 <!-- ============================================================ 02 PILLARS -->
 <section class="pad wrap reveal">
   <div class="sec-head">
-    <span class="eyebrow">06 — Os Três Pilares</span>
+    <span class="eyebrow">09 — Os Três Pilares</span>
     <h2>Ordo · Tekhnē · Permanentia</h2>
     <p>Essas três palavras não são enfeite em latim — são os três compromissos que qualquer trabalho assinado Tektone precisa cumprir, do primeiro rascunho à entrega final.</p>
   </div>
@@ -643,7 +888,7 @@ const HTML = `<!doctype html>
 <!-- ============================================================ 03 PALETTE -->
 <section class="pad wrap-wide reveal">
   <div class="sec-head">
-    <span class="eyebrow">07 — Paleta</span>
+    <span class="eyebrow">10 — Paleta</span>
     <h2>Cores minerais</h2>
     <p>Clique em qualquer cor para copiar o hex.</p>
   </div>
@@ -651,7 +896,7 @@ const HTML = `<!doctype html>
   <div class="pal-group">
     <div class="pal-group-head"><h3>Clay &amp; Paper</h3><span>Fundos</span></div>
     <div class="swatch-row">
-      <div class="swatch" role="button" tabindex="0" data-hex="#EFE8DC"><div class="chip" style="background:#EFE8DC"></div><div class="info"><b>Ivory Clay</b><span class="hex">#EFE8DC</span><p class="use">Fundo dominante da marca. Base sobre a qual tudo se assenta.</p></div></div>
+      <div class="swatch" role="button" tabindex="0" data-hex="#EFE8DC"><div class="chip" style="background:#EFE8DC"></div><div class="info"><b>Ivory Clay</b><span class="hex">#EFE8DC · CMYK 5/8/15/0</span><p class="use">Fundo dominante da marca. Base sobre a qual tudo se assenta.</p></div></div>
       <div class="swatch" role="button" tabindex="0" data-hex="#F8F3EA"><div class="chip" style="background:#F8F3EA"></div><div class="info"><b>Paper</b><span class="hex">#F8F3EA</span><p class="use">Cartão elevado — a superfície onde o conteúdo repousa sobre o clay.</p></div></div>
     </div>
   </div>
@@ -659,14 +904,14 @@ const HTML = `<!doctype html>
   <div class="pal-group">
     <div class="pal-group-head"><h3>Mineral Black</h3><span>Estrutura</span></div>
     <div class="swatch-row">
-      <div class="swatch" role="button" tabindex="0" data-hex="#141618"><div class="chip" style="background:#141618"></div><div class="info"><b>Ink</b><span class="hex">#141618</span><p class="use">Texto e estrutura. Também o fundo do manifesto e dos usos invertidos.</p></div></div>
+      <div class="swatch" role="button" tabindex="0" data-hex="#141618"><div class="chip" style="background:#141618"></div><div class="info"><b>Ink</b><span class="hex">#141618 · CMYK 0/0/0/95</span><p class="use">Texto e estrutura. Também o fundo do manifesto e dos usos invertidos.</p></div></div>
     </div>
   </div>
 
   <div class="pal-group">
     <div class="pal-group-head"><h3>Mineral Green</h3><span>Primária</span></div>
     <div class="swatch-row">
-      <div class="swatch" role="button" tabindex="0" data-hex="#2E4A43"><div class="chip" style="background:#2E4A43"></div><div class="info"><b>Green</b><span class="hex">#2E4A43</span><p class="use">Ação primária, links, foco. O fuste da coluna. Mapeia para <span style="font-family:var(--f-mono)">action</span> no código.</p></div></div>
+      <div class="swatch" role="button" tabindex="0" data-hex="#2E4A43"><div class="chip" style="background:#2E4A43"></div><div class="info"><b>Green</b><span class="hex">#2E4A43 · CMYK 75/45/60/55</span><p class="use">Ação primária, links, foco. O fuste da coluna. Mapeia para <span style="font-family:var(--f-mono)">action</span> no código.</p></div></div>
       <div class="swatch" role="button" tabindex="0" data-hex="#3E6B4E"><div class="chip" style="background:#3E6B4E"></div><div class="info"><b>Success</b><span class="hex">#3E6B4E</span><p class="use">Confirmações, tarefas concluídas, estado positivo.</p></div></div>
     </div>
   </div>
@@ -674,8 +919,16 @@ const HTML = `<!doctype html>
   <div class="pal-group">
     <div class="pal-group-head"><h3>Mineral Sand</h3><span>Secundária</span></div>
     <div class="swatch-row">
-      <div class="swatch" role="button" tabindex="0" data-hex="#C7B79C"><div class="chip" style="background:#C7B79C"></div><div class="info"><b>Sand</b><span class="hex">#C7B79C</span><p class="use">Arquitrave e fundação do símbolo. Bordas quentes, acentos secundários.</p></div></div>
+      <div class="swatch" role="button" tabindex="0" data-hex="#C7B79C"><div class="chip" style="background:#C7B79C"></div><div class="info"><b>Sand</b><span class="hex">#C7B79C · CMYK 15/25/40/10</span><p class="use">Arquitrave e fundação do símbolo. Bordas quentes, acentos secundários.</p></div></div>
     </div>
+  </div>
+
+  <p class="subhead">Proporção de uso · Black 25 · Green 15 · Sand 10 · Ivory Clay 50</p>
+  <div style="display:flex;height:10px;border-radius:999px;overflow:hidden;margin-bottom:8px">
+    <div style="width:25%;background:#141618"></div>
+    <div style="width:15%;background:#2E4A43"></div>
+    <div style="width:10%;background:#C7B79C"></div>
+    <div style="width:50%;background:#EFE8DC;border-right:1px solid var(--ink-14)"></div>
   </div>
 
   <div class="pal-group">
@@ -692,7 +945,7 @@ const HTML = `<!doctype html>
 <!-- ============================================================ 04 TYPE -->
 <section class="pad wrap reveal">
   <div class="sec-head">
-    <span class="eyebrow">08 — Tipografia</span>
+    <span class="eyebrow">11 — Tipografia</span>
     <h2>Três famílias, três funções</h2>
     <p>Nenhuma fonte é decorativa — cada uma tem um trabalho específico a fazer na interface.</p>
   </div>
@@ -733,7 +986,7 @@ const HTML = `<!doctype html>
 <!-- ============================================================ 05 SURFACES -->
 <section class="pad wrap reveal">
   <div class="sec-head">
-    <span class="eyebrow">09 — Superfícies &amp; Textura</span>
+    <span class="eyebrow">12 — Superfícies &amp; Textura</span>
     <h2>Elevação sem sombra dramática</h2>
     <p>A profundidade vem de camadas de cor, não de sombras pesadas. Um grão sutil de papel cobre tudo — a pedra nunca é perfeitamente lisa.</p>
   </div>
@@ -758,7 +1011,7 @@ const HTML = `<!doctype html>
 <!-- ============================================================ 06 COMPONENTS -->
 <section class="pad wrap reveal">
   <div class="sec-head">
-    <span class="eyebrow">10 — Aplicação</span>
+    <span class="eyebrow">13 — Aplicação</span>
     <h2>Como o sistema se comporta</h2>
     <p>Os mesmos tokens, aplicados a componentes de interface — o vocabulário que qualquer tela ou produto Tektone deve falar.</p>
   </div>
@@ -797,10 +1050,12 @@ const HTML = `<!doctype html>
 <!-- ============================================================ 07 VOICE -->
 <section class="pad wrap reveal">
   <div class="sec-head">
-    <span class="eyebrow">11 — Voz da marca</span>
+    <span class="eyebrow">14 — Voz da marca</span>
     <h2>Faça &amp; não faça</h2>
     <p>A mesma sobriedade da paleta vale para o texto. Precisão em vez de entusiasmo, em qualquer canal.</p>
   </div>
+
+  <p style="max-width:620px;margin:0 auto 40px;text-align:center;font-family:var(--f-serif);font-style:italic;font-weight:600;font-size:1.2rem;color:var(--ink);line-height:1.5;text-wrap:balance">"Tektone fala devagar. Nunca grita. Quando precisa cortar, corta com clareza."</p>
 
   <div class="voice-item">
     <div class="voice-h">Confirmação de ação</div>
@@ -828,7 +1083,7 @@ const HTML = `<!doctype html>
 <!-- ============================================================ MANIFESTO -->
 <section class="manifesto reveal">
   <div class="wrap">
-    <span class="eyebrow">12 — Manifesto</span>
+    <span class="eyebrow">15 — Manifesto</span>
     <blockquote>Tektone vem do grego — quem constrói.<br>Não precisa gritar para ser levado a sério. Precisa apenas não ceder.</blockquote>
     <div class="lines">
       <span>Ordem não é burocracia — é o que libera tempo para o ofício.</span>
