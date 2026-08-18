@@ -4,6 +4,7 @@ import { effects } from "@blocksuite/presets/effects";
 import { AffineSchemas } from "@blocksuite/blocks";
 import { DocCollection, Schema, Text } from "@blocksuite/store";
 import { MemoryBlobSource } from "@blocksuite/sync";
+import * as Y from "yjs";
 import { api } from "@/lib/api";
 import { Spinner } from "@/components/ui";
 
@@ -30,13 +31,32 @@ class RestDocSource {
   name = "tektone-rest";
   constructor(boardId) {
     this.boardId = boardId;
+    // Serializes push() calls — the DocEngine can fire several in quick
+    // succession (one per local transaction), and each one's read-modify-
+    // write against R2 must not race a concurrent one or an earlier update
+    // gets silently lost.
+    this._pushChain = Promise.resolve();
   }
   async pull() {
     const data = await api.getBoardSnapshot(this.boardId);
     return data ? { data } : null;
   }
+  // DocEngine calls push() with an INCREMENTAL Yjs update (the diff since
+  // the last sync point), not the full document state — confirmed by
+  // reading @blocksuite/sync's own IndexedDBDocSource reference
+  // implementation, which appends each update to a list rather than
+  // overwriting. A plain R2 .put(data) here silently discarded everything
+  // pushed before it (caught live: byte count was shrinking between pushes,
+  // and reloading lost all typed content). Merge with whatever's already
+  // stored instead, keeping R2 holding one canonical merged snapshot rather
+  // than an ever-growing update log.
   async push(_docId, data) {
-    await api.putBoardSnapshot(this.boardId, data);
+    this._pushChain = this._pushChain.then(async () => {
+      const existing = await api.getBoardSnapshot(this.boardId);
+      const merged = existing ? Y.mergeUpdates([existing, data]) : data;
+      await api.putBoardSnapshot(this.boardId, merged);
+    });
+    await this._pushChain;
   }
   subscribe() {
     return () => {};
@@ -78,6 +98,15 @@ export default function BoardEditor({ boardId, title, onClose }) {
           blobSources: { main: new MemoryBlobSource() },
         });
         collection.start();
+        // Required before the first createDoc() call — it lazily sets up the
+        // Yjs-backed proxy array addDocMeta()/getDoc() read and write through.
+        // Skipping this doesn't throw; it just makes createDoc()'s internal
+        // getDoc(docId) lookup silently return null (confirmed by reading
+        // @blocksuite/store's actual collection.js/meta.js, not documented
+        // anywhere narrative — the reference starter example gets away
+        // without calling this directly in its own init function because its
+        // caller (setup-playground.ts) already calls it once beforehand).
+        collection.meta.initialize();
         if (destroyed) {
           collection.dispose();
           return;
