@@ -8,7 +8,8 @@
     "build": "vite build",
     "build:portal": "vite build --config vite.portal.config.js && mv dist-portal/portal.html dist-portal/index.html",
     "preview": "vite preview",
-    "deploy": "npm run build && wrangler pages deploy dist --project-name=tektone-app --commit-dirty=true"
+    "deploy": "npm run build && wrangler pages deploy dist --project-name=tektone-app --commit-dirty=true",
+    "deploy:hub": "npm run build && wrangler pages functions build --outdir=./dist/_worker.js/ && wrangler deploy --config wrangler.worker.toml"
   },
   "dependencies": {
     "@block65/webcrypto-web-push": "^1.0.2",

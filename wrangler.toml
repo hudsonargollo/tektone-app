@@ -1,5 +1,11 @@
 name = "tektone-app"
 pages_build_output_dir = "dist"
+# `npm run deploy` (this Pages project) only serves tasks.tektone.com.br.
+# The tektone.com.br/hub and /task routes cut over to a separate Worker —
+# see wrangler.worker.toml, deployed via `npm run deploy:hub`. Deploying
+# only this one will NOT update what's live at tektone.com.br/hub, which
+# is what most people mean by "the Hub app" — confirmed the hard way after
+# several deploys here left tektone.com.br/hub stuck on old content.
 compatibility_date = "2024-11-01"
 # Required by @block65/webcrypto-web-push (Phase B web push): it has a
 # `node:crypto` fallback import for non-Workers runtimes that's never
