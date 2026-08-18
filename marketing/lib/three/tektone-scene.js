@@ -496,11 +496,18 @@ export function mountScene(container, opts = {}) {
     const seat = edge('[data-band-seat]', 'top');
     const rawBottom = seat !== null ? seat
       : (edge('[data-band-bottom]', 'top') ?? h * 0.20) + pad;
-    // Never solve against an inverted or hairline band: if the copy leaves less
-    // than 26% of the stage clear, fall back to centring the mark in that
-    // minimum height. Otherwise the solver would chase a negative span and push
-    // the camera outward until the mark is a few pixels tall.
-    const MIN = h * 0.36;
+    // Never solve against an inverted or hairline band: if the copy leaves
+    // less than this fraction of the stage clear, fall back to centring the
+    // mark in that minimum height. Otherwise the solver would chase a
+    // negative span and push the camera outward until the mark is a few
+    // pixels tall. On mobile the "seat" branch below buys extra room by
+    // letting the mark rise up BEHIND the copy — with a 4-5 line headline on
+    // a narrow phone, a 0.36 floor bought so much room the mark ended up
+    // behind actual text, not just empty space above it. Desktop uses
+    // [data-band-box] instead (see the guide check below) so this constant
+    // only matters there as a brief-mount fallback before the guide is
+    // measured — safe to keep conservative.
+    const MIN = h * (MOBILE ? 0.16 : 0.36);
     let TOP = rawTop, BOTTOM = rawBottom;
     if (h - TOP - BOTTOM < MIN) {
       if (seat !== null) {

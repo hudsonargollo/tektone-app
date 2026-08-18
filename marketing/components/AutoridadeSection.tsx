@@ -18,24 +18,15 @@ const stats = [
 // Mounts the Tektone 3D "Autoridade" stele (lib/three/tektone-stele.js) — a
 // Greek aedicula whose recessed panel carries Pedro's portrait video as a
 // VideoTexture. Plays a plain native <video> — NOT next-video's <Video>
-// player component, which was tried first and never worked: readyState
-// stayed stuck at 0 (HAVE_NOTHING) forever, panel rendered solid black,
-// even after fixing the CORS issue its default player has (see the git
-// history on this file for that fix, still correct and still needed —
-// video.tektone.com.br sends no Access-Control-Allow-Origin header). The
-// remaining, unfixed problem was almost certainly React hydration error
-// #418 logged in the console on every load — next-video's player is built
-// from custom elements (Media Chrome) wrapped in Suspense, and whatever's
-// mismatching between server and client render there left the component
-// never properly wired up client-side, despite LOOKING like a normal
-// video tag with a valid src in the DOM. This video is invisible (opacity-0,
-// sampled into a VideoTexture, never shown directly) and needs zero of the
-// player's UI/controls/adaptive-bitrate machinery, so bypassing it
-// entirely removes an entire class of problems rather than chasing the
-// hydration bug further. pedroVideo.sources[0].src is the same
-// R2-backed URL next-video's own asset metadata already resolves to (see
-// videos/pedro-silvestrini.mp4.json) — stays in sync with whatever
-// `npx next-video sync` produces, no hardcoded URL.
+// player component, which was tried first and never worked (readyState
+// stuck at 0, React hydration error #418 in console) — bypassing its
+// Media-Chrome-based player removes an entire class of problems the
+// texture-only use case doesn't need (UI/controls/adaptive-bitrate).
+// pedroVideo.sources[0].src is the same R2-backed URL next-video's own
+// asset metadata already resolves to (see videos/pedro-silvestrini.mp4.json)
+// — stays in sync with whatever `npx next-video sync` produces, no
+// hardcoded URL. See the crossOrigin comment below for the actual bug
+// that kept the panel black even once playback itself was fine.
 function useAutoridadeStele(videoRef: React.RefObject<HTMLVideoElement | null>) {
   const steleContainerRef = useRef<HTMLDivElement>(null);
   const sectionRef = useRef<HTMLElement>(null);
@@ -119,19 +110,23 @@ export default function AutoridadeSection() {
             {/* The actual video element — its pixels are sampled into the
                 stele's VideoTexture, never displayed directly. It's tucked
                 into a 2x2px corner with opacity 0.01 rather than display:none
-                or opacity:0 — browsers (confirmed on real iOS Safari, not
-                just a theory) treat a genuinely-zero-opacity/zero-size video
-                as backgrounded and never start decoding it, so readyState
-                gets stuck at 0 forever and the stele panel renders solid
-                black. A technically-on-screen, technically-visible (if
-                imperceptible) video doesn't hit that heuristic. video.tektone.com.br
-                (R2-backed, see next.config.mjs) doesn't send
-                Access-Control-Allow-Origin, so no crossOrigin attribute is
-                set here — the resulting "tainted" WebGL texture is fine
-                since the stele only displays the video, it never reads
-                pixels back out (no toDataURL/readPixels calls). Plain
-                native <video>, not next-video's <Video> player — see the
-                comment on useAutoridadeStele above for why. */}
+                or opacity:0, as a defensive measure against browsers that
+                throttle decoding of genuinely-invisible video.
+
+                crossOrigin="anonymous" is the real fix for the panel staying
+                solid black: video.tektone.com.br DOES send
+                Access-Control-Allow-Origin (confirmed via `curl` with an
+                Origin header — a plain `curl -I` doesn't send one, which is
+                why an earlier check here missed it), but only a browser
+                request that actually asks for CORS clearance gets it. Without
+                crossOrigin, the <video> plays back completely normally
+                (autoplay/readyState/paint all look fine) — but the frame data
+                counts as tainted cross-origin content, and WebGL silently
+                refuses to upload a tainted source into a texture. The panel
+                stays black forever with no error anywhere, which is exactly
+                what made this so hard to pin down: playback itself was never
+                the problem. Plain native <video>, not next-video's <Video>
+                player — see the comment on useAutoridadeStele above for why. */}
             <div
               className="pointer-events-none fixed left-0 top-0 h-0.5 w-0.5 overflow-hidden opacity-[0.01]"
               aria-hidden
@@ -139,6 +134,7 @@ export default function AutoridadeSection() {
               <video
                 ref={videoRef}
                 src={pedroVideo.sources?.[0]?.src}
+                crossOrigin="anonymous"
                 autoPlay
                 muted
                 loop
