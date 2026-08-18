@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import { Check, ArrowRight, ArrowLeft, ShieldCheck, X } from "lucide-react";
 import SectionBlob from "@/components/SectionBlob";
+import { trackEvent } from "@/lib/analytics";
 
 const WHATSAPP_URL =
   "https://wa.me/5547989110551?text=" +
@@ -206,6 +207,7 @@ export default function QualificacaoSection() {
   const [submitError, setSubmitError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const attribution = useRef({ utmSource: "", utmMedium: "", utmCampaign: "", referrer: "" });
+  const startTracked = useRef(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -276,6 +278,7 @@ export default function QualificacaoSection() {
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || "Falha ao enviar.");
 
+      trackEvent("form_complete");
       setAnalyzing(true);
       setAnalyzingLine(0);
       const t = json.tier as "hot" | "warm" | "cold";
@@ -297,6 +300,12 @@ export default function QualificacaoSection() {
     if (step === "gate" && data.hasCompany === false) {
       setEliminated(true);
       return;
+    }
+    if (step === "gate" && !startTracked.current) {
+      // "Started the form" = genuinely advancing past the gate, not just
+      // scrolling the section into view — matches the "form_start" event.
+      startTracked.current = true;
+      trackEvent("form_start");
     }
     if (step === "decision") {
       submit();

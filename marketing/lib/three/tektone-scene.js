@@ -501,13 +501,16 @@ export function mountScene(container, opts = {}) {
     // mark in that minimum height. Otherwise the solver would chase a
     // negative span and push the camera outward until the mark is a few
     // pixels tall. On mobile the "seat" branch below buys extra room by
-    // letting the mark rise up BEHIND the copy — with a 4-5 line headline on
-    // a narrow phone, a 0.36 floor bought so much room the mark ended up
-    // behind actual text, not just empty space above it. Desktop uses
-    // [data-band-box] instead (see the guide check below) so this constant
-    // only matters there as a brief-mount fallback before the guide is
-    // measured — safe to keep conservative.
-    const MIN = h * (MOBILE ? 0.16 : 0.36);
+    // letting the mark rise up BEHIND the copy — on a 4-5 line headline on a
+    // narrow phone, even 0.16 still bought more room than the real gap
+    // between the sub-headline and the CTA button, so the mark kept clipping
+    // the last line of copy. Dropped hard to 0.07: on mobile this mark is
+    // decorative background art, not something that needs a guaranteed
+    // minimum size — never overlapping the copy matters far more here.
+    // Desktop uses [data-band-box] instead (see the guide check below) so
+    // this constant only matters there as a brief-mount fallback before the
+    // guide is measured — safe to keep conservative.
+    const MIN = h * (MOBILE ? 0.07 : 0.36);
     let TOP = rawTop, BOTTOM = rawBottom;
     if (h - TOP - BOTTOM < MIN) {
       if (seat !== null) {
@@ -540,7 +543,12 @@ export function mountScene(container, opts = {}) {
         boxCentreX = (g.left + g.right) / 2 - rect.left;
       }
     }
-    const solveBand = Math.max(wantBot - wantTop, h * 0.2);
+    // Floor this at MIN, not a separate constant — a bigger floor here than
+    // the one already baked into TOP/BOTTOM above would size the mark for
+    // more room than it's actually being positioned into, overflowing the
+    // band it's supposed to fit and overlapping the copy regardless of how
+    // small MIN itself is set.
+    const solveBand = Math.max(wantBot - wantTop, MIN);
     // Solve for distance and aim numerically: the view is tilted, so a closed
     // form is off by enough to overlap the type. Six passes converge to the
     // mark sitting exactly inside the clear band.

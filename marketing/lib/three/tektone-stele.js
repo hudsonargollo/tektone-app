@@ -119,8 +119,14 @@ export function mountStele(container, opts = {}) {
   stele.add(box('monolith_reveal', GREEN, 2.04, 0.012, 0.21, 0, top + 0.006, -0.10));
 
   // ---- video panel -------------------------------------------------------
-  const panelW = 1.42, panelH = panelW * 4 / 3;
-  const panelY = top + slabH / 2 + 0.06;
+  // Sized to the monolith itself (2.02 x slabH) minus a thin margin, not a
+  // fixed 3:4 box — the old fixed size left a wide, clearly-visible band of
+  // bare ink monolith around the video (it read as "doesn't fill the black
+  // area" once the video was actually playing instead of solid black).
+  // fitVideo()'s cover-crop below adapts to whatever aspect this resolves to.
+  const panelMargin = 0.05;
+  const panelW = 2.02 - panelMargin * 2, panelH = slabH - panelMargin * 2;
+  const panelY = top + slabH / 2;
   const rail = 0.016;                       // a hairline brass bezel
   stele.add(box('bezel_top', BRASS, panelW + rail * 2, rail, 0.05, 0, panelY + panelH / 2 + rail / 2, 0.005));
   stele.add(box('bezel_bottom', BRASS, panelW + rail * 2, rail, 0.05, 0, panelY - panelH / 2 - rail / 2, 0.005));
@@ -130,6 +136,12 @@ export function mountStele(container, opts = {}) {
   }
 
   const videoMat = new THREE.MeshBasicMaterial({ color: '#141618' });
+  // Exempt from the renderer's ACES Filmic tone mapping below — that grading
+  // is deliberate on the stone/brass (a cinematic, slightly desaturated
+  // look) but it was also being applied to the video itself, tinting and
+  // recontrasting Pedro's actual footage. The video should show its real,
+  // already-graded colors unmodified; the stone around it keeps its look.
+  videoMat.toneMapped = false;
   // Re-applied every frame below (not just once on 'loadedmetadata') — the
   // one-shot listener left a visible black margin around the picture in
   // practice: videoWidth/videoHeight are 0 until the browser has actually
