@@ -42,12 +42,13 @@ export default function Navbar({
           <motion.div
             aria-hidden
             className="absolute inset-0 backdrop-blur-xl"
-            style={{ opacity: bgOpacity, background: "rgba(46,74,67,0.92)" }}
+            style={{ opacity: bgOpacity, background: "rgba(26,42,38,0.95)" }}
           />
           {/* grain-dark uses mix-blend-mode: screen, which lightens whatever's
-              under it — on the brand's Mineral Green (#2E4A43) that washed it
-              out toward a gray sage instead of the true deep green. overlay
-              preserves the base color's identity while still adding texture. */}
+              under it — on the brand's Mineral Green (darkened from #2E4A43
+              to #1A2A26 here) that washed it out toward a gray sage instead
+              of the true deep green. overlay preserves the base color's
+              identity while still adding texture. */}
           <motion.div
             aria-hidden
             className="absolute inset-0 grain-dark"
