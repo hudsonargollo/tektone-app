@@ -257,7 +257,11 @@ export default function App() {
   // ── Keyboard shortcuts ──────────────────────────────────────────────────────
   useEffect(() => {
     const onKey = (e) => {
-      const typing = ["INPUT", "TEXTAREA", "SELECT"].includes(e.target.tagName);
+      // BlockSuite's Boards editor (src/boards/BoardEditor.jsx) types into
+      // contenteditable divs, not <input>/<textarea> — checking tagName alone
+      // let every "n" typed in a board hijack focus into this wizard.
+      const typing =
+        ["INPUT", "TEXTAREA", "SELECT"].includes(e.target.tagName) || e.target.isContentEditable;
       if (typing) return;
       if (e.key === "/") {
         e.preventDefault();

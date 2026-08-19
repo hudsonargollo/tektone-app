@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, LayoutGrid, FileText } from "lucide-react";
 import { effects } from "@blocksuite/presets/effects";
+import { effects as blocksEffects } from "@blocksuite/blocks/effects";
 import { AffineSchemas } from "@blocksuite/blocks";
 import { DocCollection, Schema, Text } from "@blocksuite/store";
 import { MemoryBlobSource } from "@blocksuite/sync";
@@ -20,7 +21,21 @@ import { Spinner } from "@/components/ui";
 // and data/empty.ts), not guessed from types alone. Bumping these deps needs a
 // fresh re-check against whatever tag matches the new version, not a blind
 // `npm update`.
+//
+// @blocksuite/presets' own effects() only imports '@blocksuite/blocks/effects'
+// for its module side effects — it never calls the effects() function that
+// module exports. That function is what registers 'editor-host' (via
+// @blocksuite/block-std's effects()) along with every block/widget custom
+// element blocks defines. Without calling it explicitly here, BlockStdScope's
+// own render() (`new EditorHost()`) throws "Failed to construct 'HTMLElement':
+// Illegal constructor" — EditorHost's class was never passed to
+// customElements.define(), so `new` on it hits the same guard the platform
+// uses to reject `new HTMLElement()` directly. page-editor still mounted and
+// its doc still loaded fine, so this failed silently inside a render() no one
+// awaited — the editor just stayed permanently blank, with no toolbar, no
+// slash menu, nothing to click.
 effects();
+blocksEffects();
 
 // BlockSuite persists through a DocSource interface (pull/push/subscribe) —
 // this implementation backs it with our own REST snapshot endpoints
@@ -28,6 +43,18 @@ effects();
 // IndexedDB/BroadcastChannel sources. Phase A has no realtime peer, so
 // subscribe() is a no-op; Phase B adds a WebSocket-based DocSource for live
 // multi-user sync, using this same interface rather than replacing this one.
+//
+// DocEngine's SyncPeer connects TWO distinct Y.Docs through this one source:
+// the DocCollection's own root/meta doc first, then the board's content
+// subdoc — passing each one's guid as the `id` argument to pull()/push().
+// Only the content subdoc (guid === boardId, see mountEditor below) has
+// anything worth persisting; the root doc is a throwaway per-mount
+// scaffold. Ignoring `id` here (an earlier version did) makes the root
+// doc's connect — which runs FIRST — pull the board's real snapshot into
+// the wrong doc, then immediately push the root doc's own near-empty state
+// back over it, clobbering the content before the subdoc's own connect
+// ever gets to read it. Gating on `id === this.boardId` is what keeps the
+// two docs' sync traffic from colliding on the same R2 object.
 class RestDocSource {
   name = "tektone-rest";
   constructor(boardId) {
@@ -38,7 +65,8 @@ class RestDocSource {
     // gets silently lost.
     this._pushChain = Promise.resolve();
   }
-  async pull() {
+  async pull(id) {
+    if (id !== this.boardId) return null;
     const data = await api.getBoardSnapshot(this.boardId);
     return data ? { data } : null;
   }
@@ -51,7 +79,8 @@ class RestDocSource {
   // and reloading lost all typed content). Merge with whatever's already
   // stored instead, keeping R2 holding one canonical merged snapshot rather
   // than an ever-growing update log.
-  async push(_docId, data) {
+  async push(id, data) {
+    if (id !== this.boardId) return;
     this._pushChain = this._pushChain.then(async () => {
       const existing = await api.getBoardSnapshot(this.boardId);
       const merged = existing ? Y.mergeUpdates([existing, data]) : data;
@@ -108,8 +137,14 @@ export default function BoardEditor({ boardId, title, onClose }) {
 
         const schema = new Schema();
         schema.register(AffineSchemas);
+        // The collection's own root/meta doc gets `id` as its Y.Doc guid
+        // (DocCollection constructor: `new BlockSuiteDoc({ guid: id })`) —
+        // giving it the SAME id as the board's content doc below made two
+        // live Y.Docs share one guid, and made RestDocSource unable to tell
+        // them apart (see the class comment above). Prefixed so it can
+        // never collide with a real boardId.
         const collection = new DocCollection({
-          id: boardId,
+          id: `collection-${boardId}`,
           schema,
           docSources: { main: new RestDocSource(boardId) },
           blobSources: { main: new MemoryBlobSource() },
