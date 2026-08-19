@@ -750,6 +750,66 @@ const HTML = `<!doctype html>
     </div>
   </div>
 
+  <p class="subhead">iOS — App Store e ícones alternativos</p>
+  <div class="icon-grid">
+    <div class="icon-card">
+      <div class="chip"><img src="/brand/icons/icon-tektone-ios-appstore.png" alt="Tektone — App Store 1024" width="300" height="300" /></div>
+      <div class="info"><b>Tektone · App Store 1024</b><span>Capa da loja — sem alpha, sem cantos arredondados</span></div>
+    </div>
+    <div class="icon-card">
+      <div class="chip"><img src="/brand/icons/icon-tektone-ios-alt-green.png" alt="Tektone — alternativo verde" width="300" height="300" /></div>
+      <div class="info"><b>Tektone · Alternate green</b><span>Ícone alternativo, fundo verde mineral</span></div>
+    </div>
+    <div class="icon-card">
+      <div class="chip"><img src="/brand/icons/icon-tektone-ios-alt-sand.png" alt="Tektone — alternativo areia" width="300" height="300" /></div>
+      <div class="info"><b>Tektone · Alternate sand</b><span>Ícone alternativo, fundo areia — contextos claros</span></div>
+    </div>
+    <div class="icon-card">
+      <div class="chip"><img src="/brand/icons/icon-tektone-ios-alt-freeform.png" alt="Tektone — silhueta livre" width="300" height="300" /></div>
+      <div class="info"><b>Tektone · Alternate freeform</b><span>Silhueta livre com alpha — arte plana</span></div>
+    </div>
+    <div class="icon-card">
+      <div class="chip"><img src="/brand/workhub-lockup.png" alt="WorkHub — App Store 1024" width="480" height="480" /></div>
+      <div class="info"><b>WorkHub · App Store 1024</b><span>Lockup completo — símbolo + wordmark, ink #141618</span></div>
+    </div>
+    <div class="icon-card">
+      <div class="chip"><img src="/brand/icons/icon-workhub-ios-alt-green.png" alt="WorkHub — alternativo verde" width="300" height="300" /></div>
+      <div class="info"><b>WorkHub · Alternate green</b><span>Ícone alternativo, fundo verde mineral</span></div>
+    </div>
+  </div>
+
+  <p class="subhead">Android — Google Play e adaptativo</p>
+  <div class="icon-grid">
+    <div class="icon-card">
+      <div class="chip"><img src="/brand/icons/icon-tektone-android-play.png" alt="Tektone — Play Store 512" width="300" height="300" /></div>
+      <div class="info"><b>Tektone · Play Store 512</b><span>Ícone do Play Console — 512×512, 32-bit</span></div>
+    </div>
+    <div class="icon-card">
+      <div class="chip"><img src="/brand/icons/icon-tektone-android-play-green.png" alt="Tektone — Play Store verde" width="300" height="300" /></div>
+      <div class="info"><b>Tektone · Play Store 512 green</b><span>Listagem alternativa, fundo verde</span></div>
+    </div>
+    <div class="icon-card">
+      <div class="chip"><img src="/brand/icons/icon-tektone-android-adaptive.png" alt="Tektone — foreground adaptativo" width="300" height="300" /></div>
+      <div class="info"><b>Tektone · Adaptive foreground</b><span>ic_launcher_foreground — alpha, dentro do círculo seguro</span></div>
+    </div>
+    <div class="icon-card">
+      <div class="chip"><img src="/brand/icons/icon-workhub-android-play.png" alt="WorkHub — Play Store 512" width="300" height="300" /></div>
+      <div class="info"><b>WorkHub · Play Store 512</b><span>Ícone do Play Console — mesmo mark, ink #141618</span></div>
+    </div>
+  </div>
+
+  <p class="subhead">Web — favicon</p>
+  <div class="icon-grid">
+    <div class="icon-card">
+      <div class="chip"><img src="/brand/icons/icon-tektone-web-favicon.png" alt="Tektone — favicon 512" width="300" height="300" /></div>
+      <div class="info"><b>Tektone · favicon-512</b><span>tektone.com.br — apple-touch-icon e manifest</span></div>
+    </div>
+    <div class="icon-card">
+      <div class="chip"><img src="/brand/icons/icon-workhub-web-favicon.png" alt="WorkHub — favicon 512" width="300" height="300" /></div>
+      <div class="info"><b>WorkHub · favicon-512</b><span>tektone.com.br/hub — apple-touch-icon e manifest</span></div>
+    </div>
+  </div>
+
   <p class="subhead">Hierarquia por tamanho</p>
   <div class="scale-table">
     <div class="scale-row"><div class="tok"><b>1024 · 180 · 167 · 152px</b><span>App Store, apple-touch-icon</span></div><div>Lockup completo — símbolo sobre o nome</div><div class="fam">lockup</div></div>
