@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
 import { motion } from "framer-motion";
+import Video from "next-video";
 import pedroVideo from "/videos/pedro-silvestrini.mp4";
 import AnimatedNumber from "@/components/AnimatedNumber";
 import SectionBlob from "@/components/SectionBlob";
@@ -15,73 +15,9 @@ const stats = [
   { value: 4, label: "idiomas falados" },
 ];
 
-// Mounts the Tektone 3D "Autoridade" stele (lib/three/tektone-stele.js) — a
-// Greek aedicula whose recessed panel carries Pedro's portrait video as a
-// VideoTexture. Plays a plain native <video> — NOT next-video's <Video>
-// player component, which was tried first and never worked (readyState
-// stuck at 0, React hydration error #418 in console) — bypassing its
-// Media-Chrome-based player removes an entire class of problems the
-// texture-only use case doesn't need (UI/controls/adaptive-bitrate).
-// pedroVideo.sources[0].src is the same R2-backed URL next-video's own
-// asset metadata already resolves to (see videos/pedro-silvestrini.mp4.json)
-// — stays in sync with whatever `npx next-video sync` produces, no
-// hardcoded URL. See the crossOrigin comment below for the actual bug
-// that kept the panel black even once playback itself was fine.
-function useAutoridadeStele(videoRef: React.RefObject<HTMLVideoElement | null>) {
-  const steleContainerRef = useRef<HTMLDivElement>(null);
-  const sectionRef = useRef<HTMLElement>(null);
-
-  useEffect(() => {
-    if (!steleContainerRef.current) return;
-    let destroyed = false;
-    let cleanup: (() => void) | undefined;
-    let raf = 0;
-
-    // A plain <video ref={...}> attaches synchronously, but keep the rAF
-    // wait anyway — cheap, and removes any doubt about ref-timing as a
-    // variable while diagnosing the real (now-fixed) player issue above.
-    const tryMount = () => {
-      if (destroyed) return;
-      const videoEl = videoRef.current;
-      if (!videoEl) {
-        raf = requestAnimationFrame(tryMount);
-        return;
-      }
-      // Muted, so browser autoplay policy allows it without a user
-      // gesture; the rejection catch is a safety net, not an expected path.
-      videoEl.play().catch(() => {});
-      import("@/lib/three/tektone-stele.js").then((mod) => {
-        if (destroyed || !steleContainerRef.current) return;
-        const inst = mod.mountStele(steleContainerRef.current, {
-          video: videoEl,
-          scrollTarget: sectionRef.current,
-        });
-        cleanup = () => inst.destroy();
-      });
-    };
-    tryMount();
-
-    return () => {
-      destroyed = true;
-      cancelAnimationFrame(raf);
-      cleanup?.();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  return { steleContainerRef, sectionRef };
-}
-
 export default function AutoridadeSection() {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const { steleContainerRef, sectionRef } = useAutoridadeStele(videoRef);
-
   return (
-    <section
-      id="autoridade"
-      ref={sectionRef as React.RefObject<HTMLElement>}
-      className="relative bg-ivory py-16 sm:py-24 overflow-hidden"
-    >
+    <section id="autoridade" className="relative bg-ivory py-16 sm:py-24 overflow-hidden">
       <div className="absolute inset-0 bp-dots opacity-40 mask-fade" aria-hidden />
       <div className="absolute inset-0 grain-light mask-fade" aria-hidden />
       <SectionBlob tone="ochre" className="-left-24 top-10 h-[26rem] w-[26rem]" />
@@ -91,66 +27,57 @@ export default function AutoridadeSection() {
         </h2>
 
         <div className="grid gap-12 lg:grid-cols-[0.8fr_1.2fr] lg:gap-16 items-start">
-          {/* Portrait — the 3D stele carries the video in a recessed panel
-              (see tektone-stele.js) instead of the flat passe-partout mat
-              this section used before. */}
+          {/* Portrait — video instead of a static photo. Same passe-partout
+              mat/registration-mark framing as before; next-video's <Video>
+              handles poster generation + optimized delivery via the
+              Cloudflare R2 provider (see next.config.mjs) instead of Mux. */}
           <motion.div
             initial={{ opacity: 0, y: 24 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-80px" }}
             transition={{ duration: 0.6, ease: EASE }}
-            className="autoridade-artifact"
           >
-            <div
-              ref={steleContainerRef}
-              className="stele-frame relative"
-              role="img"
-              aria-label="Estela grega com o vídeo de Pedro Silvestrini"
-            />
-            {/* The actual video element — its pixels are sampled into the
-                stele's VideoTexture, never displayed directly. It's tucked
-                into a 2x2px corner with opacity 0.01 rather than display:none
-                or opacity:0, as a defensive measure against browsers that
-                throttle decoding of genuinely-invisible video.
+            <div className="relative w-full max-w-sm rounded-2xl surface-paper-raised p-3">
+              {/* Passe-partout mat, in the stone/parchment texture */}
+              <div className="absolute inset-0 rounded-2xl grain-heavy" aria-hidden />
 
-                crossOrigin="anonymous" is the real fix for the panel staying
-                solid black: video.tektone.com.br DOES send
-                Access-Control-Allow-Origin (confirmed via `curl` with an
-                Origin header — a plain `curl -I` doesn't send one, which is
-                why an earlier check here missed it), but only a browser
-                request that actually asks for CORS clearance gets it. Without
-                crossOrigin, the <video> plays back completely normally
-                (autoplay/readyState/paint all look fine) — but the frame data
-                counts as tainted cross-origin content, and WebGL silently
-                refuses to upload a tainted source into a texture. The panel
-                stays black forever with no error anywhere, which is exactly
-                what made this so hard to pin down: playback itself was never
-                the problem. Plain native <video>, not next-video's <Video>
-                player — see the comment on useAutoridadeStele above for why. */}
-            <div
-              className="pointer-events-none fixed left-0 top-0 h-0.5 w-0.5 overflow-hidden opacity-[0.01]"
-              aria-hidden
-            >
-              <video
-                ref={videoRef}
-                src={pedroVideo.sources?.[0]?.src}
-                crossOrigin="anonymous"
-                autoPlay
-                muted
-                loop
-                playsInline
-              />
+              {/* Corner registration marks — architectural-drawing convention */}
+              {[
+                "left-2 top-2 border-l-2 border-t-2",
+                "right-2 top-2 border-r-2 border-t-2",
+                "left-2 bottom-2 border-l-2 border-b-2",
+                "right-2 bottom-2 border-r-2 border-b-2",
+              ].map((pos) => (
+                <span
+                  key={pos}
+                  aria-hidden
+                  className={`absolute z-10 h-3 w-3 border-green/50 ${pos}`}
+                />
+              ))}
+
+              <div className="relative aspect-[3/4] w-full overflow-hidden rounded-lg ring-1 ring-inset ring-ink/10">
+                <Video
+                  src={pedroVideo}
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                  controls={false}
+                  className="h-full w-full [&_video]:h-full [&_video]:w-full [&_video]:object-cover"
+                />
+                <div className="pointer-events-none absolute inset-0 grain-light" aria-hidden />
+              </div>
             </div>
-            {/* PEDRO SILVESTRINI / CEO & FUNDADOR are now cut directly into
-                the stele's stepped base in the 3D scene — this copy stays
-                for screen readers and for search, not for sighted display. */}
-            <p className="sr-only">
-              Pedro Silvestrini — CEO &amp; Fundador da Tektone
+            <p className="mt-4 text-lg font-bold text-ink">
+              Pedro Silvestrini
+            </p>
+            <p className="font-mono text-sm tracking-wide text-green">
+              CEO &amp; Fundador da Tektone
             </p>
           </motion.div>
 
           {/* Narrative + stats */}
-          <div className="autoridade-narrative">
+          <div>
             <motion.div
               initial={{ opacity: 0, y: 24 }}
               whileInView={{ opacity: 1, y: 0 }}
