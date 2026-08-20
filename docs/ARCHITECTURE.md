@@ -115,6 +115,56 @@ Workers Routes on `/hub`, `/portal`, `/crm` already take priority over the Pages
 marketing site on the same zone, proven repeatedly. **Only revisit this if Cloudflare
 deprecates Pages outright.**
 
+## `/v2` — homepage redesign preview
+
+`PRD-HOMEPAGE-REDESIGN.md` proposes replacing the production homepage with the "Sistema
+Mineral" brand system documented at `/brand`. `/v2` (`marketing/app/v2/route.ts`) is where
+that candidate gets reviewed live at `tektone.com.br/v2` without touching the production
+homepage — same non-destructive-preview pattern `/brand` already established.
+
+The source is a Three.js single-page export (a separate design tool's output, originally
+packaged as a standalone `tektone-templo` Cloudflare Worker deploy zip, never actually
+deployed as its own Worker) imported wholesale as a Next.js **edge route**
+(`export const runtime = "edge"`, a `GET` returning `new Response(HTML, ...)`), not a normal
+`page.tsx` — same reasoning as `/brand`: the content is a self-contained static document with
+its own scroll-driven WebGL boot sequence, not a React component tree.
+
+Two gotchas from the import, worth knowing before touching this file again:
+- **Escaping.** The full inlined Three.js bundle and page script had to sit inside route.ts's
+  own JS template literal — every literal backtick or `${` in the source had to be
+  backslash-escaped (`` ` `` → `` \` ``, `${` → `\${`) or it terminates the outer literal
+  early. Done once via a Python transform when the route was created; if this file is ever
+  regenerated from a fresh export, redo the same transform rather than hand-editing 700KB of
+  minified JS.
+- **Z-fighting read as an "artifact."** The mark's green inline accent slabs sat ~0.5mm proud
+  of the black shaft's front face in `buildMark()` — close enough that it flickered like a
+  rendering bug rather than reading as an intentional trim. Fixed by pushing them ~6mm proud.
+  Same failure mode is worth checking for anywhere else two meshes share a near-identical
+  z-offset in this scene.
+
+Other changes made while reviewing this page (2026-08-20): the preloader's SVG mark was
+rendering at its native 1024×1024 instead of the intended 64×64 (missing a
+`#pre .mk svg{width:100%;height:100%}` rule — the CSS on the container div doesn't constrain
+an `<svg>`'s own `width`/`height` attributes by itself); the chapter rail showed bare Greek
+letters with no visible meaning outside the hover tooltip, swapped for numbered markers;
+several `CAM[]` camera keyframes were re-panned so the 3D mark clears body copy instead of
+sitting behind it; the temporary local placeholder video was swapped for the real Pedro
+Silvestrini video at its public R2 URL (`https://video.tektone.com.br/videos/pedro-silvestrini-v2.mp4`)
+via a plain `<video src>` (not `next-video` — this isn't a React component); and a `COARSE`
+(`matchMedia('(pointer:coarse)')`) branch trims render cost on touch devices — no MSAA,
+`PCFShadowMap` instead of `PCFSoftShadowMap`, 1024px shadow maps, a lower pixel-ratio cap and
+initial `PERF.scale` — without dropping the WebGL scene entirely, which was the ask
+("keep the premium scene" on mobile). Not visually verified on a real device.
+
+The naos-interior "monumental T" set-piece (end of the interior corridor walk) was replaced
+with `buildWorkstation()` — a stone desk carrying a boxy, Apple-Lisa-proportioned "computer"
+(recessed screen glass, a lower twin-slot fascia echoing floppy bays, a keyboard), built from
+the same mineral material palette (`M.stoneD`/`M.marbleW`/`M.void`) as the rest of the temple.
+The "O futuro pertence a quem constrói hoje" creed carved above the old mark was removed with
+it. Confirmed to build and render without a JS error; the exact camera framing for this one
+object wasn't confirmed by eye this session (the automated browser session couldn't hold a
+stable angle on that specific interior view) — worth a manual look on the live site.
+
 ## Data model (D1: `hub-tektone`)
 
 One database, `migrations/` in numbered order. Grouped by when each module shipped:
@@ -158,13 +208,18 @@ than kept as an option.
 **Pipeline**: `leads.status` moves `new → contacted → qualified → won/lost` (`incomplete`
 covers abandoned captures) via a Kanban board (`src/crm/CrmLeads.jsx` — 5 lanes, native HTML5
 drag-and-drop, search/filter panel, quick-add modal). Every mutation logs a `lead_events` row.
+`qualified` is reached by manual closer action (dragging the card, or the generic
+`PATCH /crm/api/leads/:id/status`), not automatically from the qualification-form score — see
+"Public lead capture" below for why that changed.
 
 **Analytics dashboard** (`src/crm/CrmDashboard.jsx`, `GET /crm/api/dashboard`) — revenue vs.
 an admin-editable monthly goal (`crm_settings` table, `PUT /crm/api/settings/revenue-goal`,
 admin-only), a KPI strip (conversion %, win rate, leads/30d, pending commissions), a
-funnel-by-stage bar chart, a leads-by-source donut, a closer leaderboard, and an expandable
-temperature (hot/warm/cold) board — all hand-rolled SVG, no chart-library dependency,
-consistent with the rest of this codebase's from-scratch chart components.
+funnel-by-stage bar chart, a leads-by-source donut, a closer leaderboard, an expandable
+temperature (hot/warm/cold) board, and a link-in-bio funnel card (2026-08-20) comparing clicks
+on the `sbio` `wa_links` short link against form entries (leads with `qualification` set), with
+a click→form conversion % — all hand-rolled SVG, no chart-library dependency, consistent with
+the rest of this codebase's from-scratch chart components.
 
 **WhatsApp/URL link manager** (`src/crm/CrmWaLinks.jsx`, `wa_links`/`wa_numbers` tables,
 `worker/lib/waLinksService.js`) — short links redirect through a small dedicated Worker
@@ -209,8 +264,15 @@ behind `requireCrm` like every other `/crm/api/leads*` route. It recomputes the 
 score **server-side** from the raw answers (`worker/crm-entry.js#scoreQualification`) rather
 than trusting a client-supplied score — the client bundle is public, so a spoofed score would
 otherwise be trivial. An elimination answer (`hasCompany: false`) short-circuits before any
-lead is created; everything else always creates a lead, `status` set to `qualified` (warm/hot)
-or `incomplete` (cold) so closers can still triage a cold lead without it disappearing.
+lead is created; everything else always creates a lead, `status` set to `new` (warm/hot) or
+`incomplete` (cold) so closers can still triage a cold lead without it disappearing.
+
+`status` used to jump straight to `qualified` for every warm/hot submission — fixed
+2026-08-20. A high score meant "worth calling," not "already qualified," and every
+decent-scoring submission was landing in the qualified lane before anyone had actually spoken
+to the lead. `qualified` is now something a closer sets by hand once they've made real
+contact; score/tier still ride along on the row for prioritization (the hot/warm badges),
+just decoupled from the pipeline-stage transition itself.
 
 The approved (hot/warm) result screen's WhatsApp hand-off CTA
 (`marketing/components/QualificacaoSection.tsx`'s `WHATSAPP_URL`) now points at Pedro
@@ -626,3 +688,10 @@ reference against the routes portal can actually reach.
     throwaway test documents (created and deleted via direct D1 writes and the real UI),
     cleaned up after each check. First real usage will be the first true end-to-end proof
     in production conditions.
+14. **CRM fixes committed but not deployed** (`d45ae45`, `44bde3c`, 2026-08-20) — the
+    stop-auto-qualifying-at-intake fix and the link-in-bio dashboard widget are sitting in
+    `worker/crm-entry.js`/`src/crm/CrmDashboard.jsx` on `main`, not yet pushed live via
+    `npx wrangler deploy --config wrangler.crm.toml` (+ a `tektone-hub` deploy, since the
+    dashboard UI ships in the Hub bundle). Held back pending a manual review — this changes
+    live pipeline behavior (every new warm/hot lead currently still auto-lands in `qualified`
+    until this deploys).
