@@ -61,6 +61,7 @@ body.is-locked{ overflow:hidden; }
 }
 #pre.gone{ opacity:0; visibility:hidden; }
 #pre .mk{ width:64px; height:64px; }
+#pre .mk svg{ display:block; width:100%; height:100%; }
 #pre .glyph{ font-family:var(--ff-m); font-weight:700; font-size:14px; letter-spacing:.5em; text-indent:.5em; color:var(--ivory); }
 #pre .job{ font-family:var(--ff-m); font-size:10px; letter-spacing:.28em; text-transform:uppercase; color:var(--sand); min-height:1.2em; }
 #pre .bar{ width:min(320px,60vw); height:2px; background:rgba(239,232,220,.12); border-radius:2px; position:relative; overflow:hidden; }
@@ -474,13 +475,13 @@ footer .base .dark{ font-family:var(--ff-m); font-size:10px; letter-spacing:.24e
 </header>
 
 <nav id="rail" aria-label="Capítulos">
-  <a href="#hero" class="on">Α<span class="tip">O pórtico</span></a>
-  <a href="#problema">Β<span class="tip">O problema</span></a>
-  <a href="#arquitetura">Γ<span class="tip">A arquitetura</span></a>
-  <a href="#construtores">Δ<span class="tip">Os construtores</span></a>
-  <a href="#pratica">Ε<span class="tip">Na prática</span></a>
-  <a href="#autoridade">Ζ<span class="tip">Autoridade</span></a>
-  <a href="#faq">Η<span class="tip">FAQ · Contato</span></a>
+  <a href="#hero" class="on">01<span class="tip">O pórtico</span></a>
+  <a href="#problema">02<span class="tip">O problema</span></a>
+  <a href="#arquitetura">03<span class="tip">A arquitetura</span></a>
+  <a href="#construtores">04<span class="tip">Os construtores</span></a>
+  <a href="#pratica">05<span class="tip">Na prática</span></a>
+  <a href="#autoridade">06<span class="tip">Autoridade</span></a>
+  <a href="#faq">07<span class="tip">FAQ · Contato</span></a>
 </nav>
 
 <main>
@@ -609,7 +610,7 @@ footer .base .dark{ font-family:var(--ff-m); font-size:10px; letter-spacing:.24e
       <div class="auth-grid">
         <div>
           <div class="photo-card" data-rv>
-            <video muted loop playsinline autoplay preload="metadata" src="/v2/assets/pedro-placeholder.mp4" aria-label="Pedro Silvestrini"></video>
+            <video muted loop playsinline autoplay preload="metadata" src="https://video.tektone.com.br/videos/pedro-silvestrini-v2.mp4" aria-label="Pedro Silvestrini"></video>
             <div class="ph" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024"><defs><linearGradient id="sc" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#E4D9C3"></stop><stop offset=".55" stop-color="#C7B79C"></stop><stop offset="1" stop-color="#A29174"></stop></linearGradient><linearGradient id="kc" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2C3238"></stop><stop offset=".5" stop-color="#171A1D"></stop><stop offset="1" stop-color="#0A0C0D"></stop></linearGradient><linearGradient id="gc" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#456B60"></stop><stop offset="1" stop-color="#20342E"></stop></linearGradient><linearGradient id="yc" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#D3DCD8"></stop><stop offset="1" stop-color="#8B9C96"></stop></linearGradient><linearGradient id="tc" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000" stop-opacity=".45"></stop><stop offset="1" stop-color="#000" stop-opacity="0"></stop></linearGradient></defs><g transform="translate(512 512) scale(1.4677333333333333) translate(-300 -274)"><path transform="translate(26 30)" fill="#0B0D0E" opacity=".3" d="M0 0H600V147H364.3V484H437.5V514.6H470V537.9H531.5V545.2H471.5V547.6H128.5V545.2H68.5V537.9H130V514.6H162.5V484H235.7V147H0Z"></path><path transform="translate(14 16)" fill="#1D2226" d="M0 0H600V147H364.3V484H437.5V514.6H470V537.9H531.5V545.2H471.5V547.6H128.5V545.2H68.5V537.9H130V514.6H162.5V484H235.7V147H0Z"></path><rect x="0" y="0" width="600" height="147" rx="6" fill="url(#sc)"></rect><rect x="0" y="0" width="600" height="5" rx="2.5" fill="#F6EEDD" opacity=".65"></rect><path d="M17 17H583V130H381.4V112.9H364.3V484H235.7V112.9H218.6V130H17Z" fill="url(#kc)"></path><rect x="17" y="17" width="566" height="16" fill="url(#tc)"></rect><rect x="241.7" y="147" width="13.8" height="337" rx="1.5" fill="url(#gc)"></rect><rect x="241.7" y="147" width="3" height="337" fill="#5C877A" opacity=".55"></rect><rect x="344.5" y="147" width="13.8" height="337" rx="1.5" fill="url(#gc)"></rect><rect x="344.5" y="147" width="3" height="337" fill="#5C877A" opacity=".55"></rect><rect x="297" y="165" width="6" height="293" rx="2" fill="url(#yc)"></rect><rect x="162.5" y="484" width="275" height="30.6" rx="2" fill="url(#sc)"></rect><rect x="162.5" y="484" width="275" height="3" fill="#F0E6D3" opacity=".55"></rect><rect x="130" y="514.6" width="340" height="23.3" rx="1.5" fill="url(#kc)"></rect><rect x="68.5" y="537.9" width="463" height="7.3" rx="1" fill="#15181A"></rect><rect x="128.5" y="545.2" width="343" height="2.4" fill="#BCAB90"></rect></g></svg><i>AGUARDANDO RETRATO</i></div>
           </div>
           <div class="photo-cap" data-rv style="transition-delay:.1s"><b>Pedro Silvestrini</b><span>CEO &amp; Fundador da Tektone</span></div>
@@ -1429,7 +1430,7 @@ function updateWorld(t,dt){
 
 /* ======================================================== camera rig */
 const CAM = [
-  { p:[  9.4, 2.2, 50.6], t:[ 15.8, 3.2, 40.2], fov:43 },  /* Α hero — stele, firelit    */
+  { p:[  4.3, 2.2, 47.5], t:[ 10.7, 3.2, 37.1], fov:43 },  /* Α hero — stele, firelit — panned right of the text column */
   { p:[-20.0, 2.5, 40.0], t:[ 6.0, 7.5, -4.0], fov:45 },  /* Β problema — raking front  */
   { p:[ 16.5, 4.6, 23.0], t:[ 8.5, 6.0,-18.0], fov:48 },  /* Γ arquitetura — colonnade  */
   { p:[-18.0, 3.4, 16.0], t:[-8.8, 6.4,-16.0], fov:46 },  /* Δ construtores — west flank*/
