@@ -307,6 +307,10 @@ h1.display, h2.display, h3.display{
 
 /* ————— autoridade ————— */
 #autoridade .panel{ max-width:880px; }
+#autoridade .panel::before{
+  inset:-90px -140px;
+  background:radial-gradient(ellipse 105% 100% at 46% 46%, rgba(239,232,220,.97) 46%, rgba(239,232,220,.6) 78%, rgba(239,232,220,0) 100%);
+}
 .auth-grid{ display:grid; grid-template-columns:300px 1fr; gap:clamp(22px,3vw,44px); margin-top:34px; align-items:start; }
 @media (max-width:820px){ .auth-grid{ grid-template-columns:1fr; } }
 .photo-card{
@@ -752,6 +756,7 @@ const damp  = (cur,to,rate,dt) => lerp(cur,to,1-Math.exp(-rate*dt));
 const vpW = () => window.innerWidth, vpH = () => window.innerHeight;
 const SNAP = /[?&]snap=1/.test(location.search);
 const REDUCE = SNAP || matchMedia('(prefers-reduced-motion: reduce)').matches;
+const COARSE = matchMedia('(pointer:coarse)').matches;
 
 /* deterministic prng — the temple is always the same temple */
 let _seed = 20260819;
@@ -771,20 +776,20 @@ function fbm(x,y){ return vnoise(x,y)*.62 + vnoise(x*2.1,y*2.1)*.26 + vnoise(x*4
 /* ======================================================== renderer */
 let renderer, scene, camera;
 function initGL(){
-  renderer = new THREE.WebGLRenderer({ canvas:$('#gl'), antialias:true, powerPreference:'high-performance' });
+  renderer = new THREE.WebGLRenderer({ canvas:$('#gl'), antialias:!COARSE, powerPreference:'high-performance' });
   renderer.outputEncoding = THREE.sRGBEncoding;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.02;
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.type = COARSE ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
   scene = new THREE.Scene();
   scene.fog = new THREE.Fog(0xdfe9f1, 110, 640);
   camera = new THREE.PerspectiveCamera(40, vpW()/vpH(), .3, 1600);
   resize();
 }
-const PERF = { scale:1, locked:false, acc:0, n:0 };
+const PERF = { scale:COARSE?.78:1, locked:false, acc:0, n:0 };
 function resize(){
-  renderer.setPixelRatio(Math.min(devicePixelRatio||1, 2) * PERF.scale);
+  renderer.setPixelRatio(Math.min(devicePixelRatio||1, COARSE?1.5:2) * PERF.scale);
   renderer.setSize(vpW(), vpH());
   camera.aspect = vpW()/vpH();
   camera.updateProjectionMatrix();
@@ -882,7 +887,7 @@ function buildLights(){
   SUN = new THREE.DirectionalLight(0xfff0d8, 2.5);
   SUN.position.set(88, 74, 30);
   SUN.castShadow = true;
-  SUN.shadow.mapSize.set(2048, 2048);
+  SUN.shadow.mapSize.set(COARSE?1024:2048, COARSE?1024:2048);
   const sc = SUN.shadow.camera;
   sc.left=-70; sc.right=70; sc.top=70; sc.bottom=-70; sc.near=20; sc.far=280;
   SUN.shadow.bias = -0.0006;
@@ -990,7 +995,7 @@ function buildMark(){
   g.add(markPart(MMAT.black, pillarW, pillarH+shaftUp, shaftD, 0, pillarY+shaftUp/2, 0, .002));
   const inlineW=.0138, inlineX=pillarW/2-.006-inlineW/2, inlineD=D*.55;
   for(const sgn of [-1,1])
-    g.add(markPart(MMAT.green, inlineW, pillarH, inlineD, sgn*inlineX, pillarY, D/2-inlineD/2, .0005));
+    g.add(markPart(MMAT.green, inlineW, pillarH, inlineD, sgn*inlineX, pillarY, D/2-inlineD/2+.006, .0005));
   const fluteD=D*.5;
   g.add(markPart(MMAT.grey, .006, pillarH*.87, fluteD, 0, pillarY+.004, D/2-fluteD/2, .0005));
   const archW=.600, archH=.147, frame=.0171;
@@ -1330,12 +1335,12 @@ function buildMarks(){
   rel.position.set(0, ENTA_Y+2.05+.14, 22.72); T.add(rel);
   /* stele on the plaza — the mark met at ground level */
   const plinth=new THREE.Mesh(new THREE.BoxGeometry(4.1,.9,2.1), M.marble);
-  plinth.position.set(13.6,.45,42); plinth.rotation.y=-.34;
+  plinth.position.set(13.6,.45,42); plinth.rotation.y=.34;
   plinth.castShadow=plinth.receiveShadow=true; T.add(plinth);
   const cap=new THREE.Mesh(new THREE.BoxGeometry(3.6,.18,1.8), M.marbleW);
-  cap.position.set(13.6,.99,42); cap.rotation.y=-.34; cap.castShadow=true; T.add(cap);
+  cap.position.set(13.6,.99,42); cap.rotation.y=.34; cap.castShadow=true; T.add(cap);
   const stele = buildMark(); stele.scale.setScalar(5.2);
-  stele.position.set(13.6,1.08,42); stele.rotation.y=-.34;
+  stele.position.set(13.6,1.08,42); stele.rotation.y=.34;
   T.add(stele);
   STELE_L=new THREE.PointLight(0xf0ce93, .55, 16, 2); STELE_L.position.set(12.2, 3.2, 45.2); T.add(STELE_L);
   /* plaza braziers flanking the stele — the hero's firelight */
@@ -1430,12 +1435,12 @@ function updateWorld(t,dt){
 
 /* ======================================================== camera rig */
 const CAM = [
-  { p:[  4.3, 2.2, 47.5], t:[ 10.7, 3.2, 37.1], fov:43 },  /* Α hero — stele, firelit — panned right of the text column */
+  { p:[  5.6, 2.2, 48.2], t:[ 12.0, 3.2, 37.8], fov:43 },  /* Α hero — stele, firelit — panned right of the text column, less far than the first pass */
   { p:[-20.0, 2.5, 40.0], t:[ 6.0, 7.5, -4.0], fov:45 },  /* Β problema — raking front  */
   { p:[ 16.5, 4.6, 23.0], t:[ 8.5, 6.0,-18.0], fov:48 },  /* Γ arquitetura — colonnade  */
   { p:[-18.0, 3.4, 16.0], t:[-8.8, 6.4,-16.0], fov:46 },  /* Δ construtores — west flank*/
   { p:[  1.5, 5.2, 44.0], t:[ 0.0, 5.8, -2.0], fov:38 },  /* Ε na prática — axial face  */
-  { p:[ -3.1, 4.2,  8.8], t:[-3.1, 4.6,-14.5], fov:44 },  /* Ζ autoridade — INSIDE      */
+  { p:[ -6.6, 4.2,  8.8], t:[-6.6, 4.6,-14.5], fov:44 },  /* Ζ autoridade — INSIDE, mark panned right of the Pedro column */
   { p:[  0.0,11.0, 62.0], t:[ 0.0, 7.0,  0.0], fov:46 }   /* Η faq — rising farewell    */
 ];
 const RIG = { prog:0, smooth:0, mx:0, my:0, tmx:0, tmy:0, intro:0 };
