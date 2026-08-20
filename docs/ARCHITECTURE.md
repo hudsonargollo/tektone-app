@@ -635,8 +635,12 @@ reference against the routes portal can actually reach.
    `~/.claude/plans/tektone-adaptive-onboarding.md`) applies when a won lead has no
    `project_type`/brief signal. Still open: seed `kb_documents` with Tektone's real service
    catalog/pricing/case studies.
-5. **`crm_role` grants** — `hudson@tektone.com.br` has `admin`; nobody else does yet. Grant
-   via direct D1 write (no admin UI for this — low volume, not worth building yet):
+5. **`crm_role` grants** — `hudson@tektone.com.br` and `pedrosilvestrini@tektone.com.br` have
+   `admin` (Pedro granted 2026-08-20 — he'd had no `crm_role` at all, so the CRM nav item was
+   simply hidden for him; `admin` was the closest fit to "closer access + settings," since
+   `admin` is currently a strict superset of `closer` — the only thing it adds is the
+   revenue-goal settings endpoint). Nobody else has a grant yet. No admin UI for this (low
+   volume, not worth building yet) — grant via direct D1 write:
    ```sh
    npx wrangler d1 execute hub-tektone --remote --command \
      "UPDATE users SET crm_role = 'admin' WHERE email = 'someone@tektone.com.br'"
