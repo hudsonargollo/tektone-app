@@ -1019,6 +1019,43 @@ function buildMark(){
   return g;
 }
 
+/* ==================== an ancient office workstation — desk, machine, keyboard */
+function buildWorkstation(){
+  const g = new THREE.Group();
+  /* stone desk */
+  const support = new THREE.Mesh(new THREE.BoxGeometry(1.7,.55,.95), M.stoneD);
+  support.position.set(0,.275,0); support.castShadow=support.receiveShadow=true; g.add(support);
+  const top = new THREE.Mesh(new THREE.BoxGeometry(2.0,.09,1.15), M.marbleW);
+  top.position.set(0,.595,0); top.castShadow=top.receiveShadow=true; g.add(top);
+  const deskY=.64;
+  /* the machine — a boxy, Lisa-boned monolith, minimal and archaic */
+  const bodyW=.62, bodyH=.62, bodyD=.58, bodyZ=-.02, footH=.045;
+  const foot = new THREE.Mesh(new THREE.BoxGeometry(.7,footH,.62), M.stoneD);
+  foot.position.set(0, deskY+footH/2, bodyZ); foot.castShadow=foot.receiveShadow=true; g.add(foot);
+  const bodyY = deskY+footH+bodyH/2;
+  const body = new THREE.Mesh(new THREE.BoxGeometry(bodyW,bodyH,bodyD), M.marbleW);
+  body.position.set(0, bodyY, bodyZ); body.castShadow=body.receiveShadow=true; g.add(body);
+  /* screen bezel + glass, proud of the face so they never sit coplanar with it */
+  const faceZ = bodyZ+bodyD/2;
+  const bezel = new THREE.Mesh(new THREE.BoxGeometry(.4,.34,.02), M.stoneD);
+  bezel.position.set(0, bodyY+.06, faceZ+.011); bezel.castShadow=true; g.add(bezel);
+  const glass = new THREE.Mesh(new THREE.BoxGeometry(.32,.27,.02), M.void);
+  glass.position.set(0, bodyY+.06, faceZ+.022); g.add(glass);
+  /* lower chin fascia with a pair of slot recesses, echoing twin drive bays */
+  const chin = new THREE.Mesh(new THREE.BoxGeometry(bodyW-.02,.16,.04), M.stoneD);
+  chin.position.set(0, bodyY-.21, faceZ+.021); chin.castShadow=true; g.add(chin);
+  [-1,1].forEach(sgn=>{
+    const slot = new THREE.Mesh(new THREE.BoxGeometry(.19,.045,.012), M.void);
+    slot.position.set(sgn*.135, bodyY-.21, faceZ+.048); g.add(slot);
+  });
+  /* keyboard, set forward of the machine on the desk */
+  const kb = new THREE.Mesh(new THREE.BoxGeometry(.62,.045,.24), M.marbleW);
+  kb.position.set(0, deskY+.0225, .34); kb.castShadow=kb.receiveShadow=true; g.add(kb);
+  const kbFace = new THREE.Mesh(new THREE.BoxGeometry(.56,.012,.19), M.stoneD);
+  kbFace.position.set(0, deskY+.051, .34); g.add(kbFace);
+  return g;
+}
+
 /* ============================== inscriptions — carved canvas plaques */
 function inscribe(text, o){
   o = o || {};
@@ -1287,14 +1324,11 @@ function buildNaos(){
     const st=new THREE.Mesh(new THREE.BoxGeometry(w,h,d), M.stoneD);
     st.position.set(0, STYLO_Y+y, -14.1); T.add(st);
   });
-  const mark = buildMark(); mark.scale.setScalar(8);
-  mark.position.set(0, STYLO_Y+1.0, -14.1); T.add(mark);
+  const workstation = buildWorkstation(); workstation.scale.setScalar(2);
+  workstation.position.set(0, STYLO_Y+1.0, -14.1); T.add(workstation);
   const spot = new THREE.SpotLight(0xfff0d0, 1.7, 42, .5, .55, 1.4);
   spot.position.set(0, STYLO_Y+6.2, -3.5);
-  spot.target = mark; T.add(spot, spot.target);
-  /* creed carved above the mark */
-  const creed = inscribe('O futuro pertence a quem constrói hoje.', { w:11.2, h:1.0, italic:true, dark:true, ink:'rgba(233,222,196,.98)' });
-  creed.position.set(0, STYLO_Y+CH-.62, -16.5); T.add(creed);
+  spot.target = workstation; T.add(spot, spot.target);
   /* fase steles on the side walls, between the columns */
   const plaques=[
     ['ΔΙΑΓΝΩΣΙΣ · DIAGNÓSTICO', 5.6],
@@ -1335,12 +1369,12 @@ function buildMarks(){
   rel.position.set(0, ENTA_Y+2.05+.14, 22.72); T.add(rel);
   /* stele on the plaza — the mark met at ground level */
   const plinth=new THREE.Mesh(new THREE.BoxGeometry(4.1,.9,2.1), M.marble);
-  plinth.position.set(13.6,.45,42); plinth.rotation.y=.34;
+  plinth.position.set(13.6,.45,42); plinth.rotation.y=-.15;
   plinth.castShadow=plinth.receiveShadow=true; T.add(plinth);
   const cap=new THREE.Mesh(new THREE.BoxGeometry(3.6,.18,1.8), M.marbleW);
-  cap.position.set(13.6,.99,42); cap.rotation.y=.34; cap.castShadow=true; T.add(cap);
+  cap.position.set(13.6,.99,42); cap.rotation.y=-.15; cap.castShadow=true; T.add(cap);
   const stele = buildMark(); stele.scale.setScalar(5.2);
-  stele.position.set(13.6,1.08,42); stele.rotation.y=.34;
+  stele.position.set(13.6,1.08,42); stele.rotation.y=-.15;
   T.add(stele);
   STELE_L=new THREE.PointLight(0xf0ce93, .55, 16, 2); STELE_L.position.set(12.2, 3.2, 45.2); T.add(STELE_L);
   /* plaza braziers flanking the stele — the hero's firelight */
