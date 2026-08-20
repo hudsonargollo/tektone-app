@@ -692,10 +692,8 @@ reference against the routes portal can actually reach.
     throwaway test documents (created and deleted via direct D1 writes and the real UI),
     cleaned up after each check. First real usage will be the first true end-to-end proof
     in production conditions.
-14. **CRM fixes committed but not deployed** (`d45ae45`, `44bde3c`, 2026-08-20) — the
-    stop-auto-qualifying-at-intake fix and the link-in-bio dashboard widget are sitting in
-    `worker/crm-entry.js`/`src/crm/CrmDashboard.jsx` on `main`, not yet pushed live via
-    `npx wrangler deploy --config wrangler.crm.toml` (+ a `tektone-hub` deploy, since the
-    dashboard UI ships in the Hub bundle). Held back pending a manual review — this changes
-    live pipeline behavior (every new warm/hot lead currently still auto-lands in `qualified`
-    until this deploys).
+14. ~~**CRM fixes committed but not deployed**~~ — done (2026-08-20): `d45ae45`/`44bde3c`
+    (stop-auto-qualifying-at-intake, the link-in-bio dashboard widget) are live —
+    `tektone-hub` deployed (`693ba205`), `tektone-crm` deployed (`3da2f9b9`), both smoke
+    checked 200/302 as expected. New warm/hot leads now land as `status: "new"`; `qualified`
+    is a manual closer action from here on.
