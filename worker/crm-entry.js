@@ -449,11 +449,11 @@ const PAID_SALE_STATUSES = ["paid", "onboarding", "completed"];
 // ── dashboard ────────────────────────────────────────────────────────────
 app.get("/crm/api/dashboard", async (c) => {
   const db = c.env.DB;
-  const [leads, sales, goalRow, waLinks] = await Promise.all([
+  const [leads, sales, goalRow, bioLink] = await Promise.all([
     listLeads(db),
     listSales(db),
     db.prepare("SELECT value FROM crm_settings WHERE key = 'revenue_goal'").first(),
-    db.prepare("SELECT slug, title, type, clicks FROM wa_links ORDER BY clicks DESC").all(),
+    db.prepare("SELECT slug, title, type, clicks FROM wa_links WHERE slug = ?").bind("sbio").first(),
   ]);
 
   const byStatus = {};
@@ -513,19 +513,18 @@ app.get("/crm/api/dashboard", async (c) => {
   }
   const byCloser = Object.values(closerStats).sort((a, b) => b.leads - a.leads).slice(0, 8);
 
-  // Link-in-bio funnel — wa_links click counts (go.tektone.com.br/<slug>,
-  // worker-links/) vs. leads that actually came from the public
-  // qualification-form intake (leads.qualification is only ever set there —
-  // see POST /crm/api/public/leads above). Individual links are returned
-  // (not just a total) so the specific "bio" link is identifiable by title
-  // on a board that may hold several go-links at once.
-  const linkClicksTotal = waLinks.results.reduce((sum, l) => sum + (l.clicks || 0), 0);
+  // Link-in-bio funnel — clicks on the single go.tektone.com.br/sbio link
+  // (Instagram bio destaque, worker-links/) vs. leads that actually came
+  // from the public qualification-form intake (leads.qualification is only
+  // ever set there — see POST /crm/api/public/leads above).
+  const linkClicksTotal = bioLink?.clicks || 0;
   const formEntries = leads.filter((l) => l.qualification).length;
   const linkFunnel = {
+    slug: "sbio",
+    title: bioLink?.title || "INSTAGRAM-DESTAQUES",
     totalClicks: linkClicksTotal,
     formEntries,
     clickToFormPct: linkClicksTotal ? Math.round((formEntries / linkClicksTotal) * 1000) / 10 : null,
-    links: waLinks.results.map((l) => ({ slug: l.slug, title: l.title, type: l.type, clicks: l.clicks })),
   };
 
   return json(c, {
