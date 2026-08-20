@@ -144,7 +144,14 @@ app.post("/crm/api/public/leads", async (c) => {
     }),
     score,
     tier,
-    status: tier === "cold" ? "incomplete" : "qualified",
+    // "qualified" is a closer's call, made after they've actually talked to
+    // the lead — not something the score/tier should decide at intake (that
+    // used to send every non-cold form submission straight into "qualified"
+    // before anyone had spoken to them). Score/tier still land on the row
+    // for prioritization (hot leads first); the status just starts at
+    // "new" like every other channel's leads and moves through the board
+    // via PATCH /crm/api/leads/:id/status, same as a manually-created lead.
+    status: tier === "cold" ? "incomplete" : "new",
   });
   await logLeadEvent(c.env.DB, lead.id, {
     type: "created",
@@ -442,10 +449,11 @@ const PAID_SALE_STATUSES = ["paid", "onboarding", "completed"];
 // ── dashboard ────────────────────────────────────────────────────────────
 app.get("/crm/api/dashboard", async (c) => {
   const db = c.env.DB;
-  const [leads, sales, goalRow] = await Promise.all([
+  const [leads, sales, goalRow, waLinks] = await Promise.all([
     listLeads(db),
     listSales(db),
     db.prepare("SELECT value FROM crm_settings WHERE key = 'revenue_goal'").first(),
+    db.prepare("SELECT slug, title, type, clicks FROM wa_links ORDER BY clicks DESC").all(),
   ]);
 
   const byStatus = {};
@@ -505,6 +513,21 @@ app.get("/crm/api/dashboard", async (c) => {
   }
   const byCloser = Object.values(closerStats).sort((a, b) => b.leads - a.leads).slice(0, 8);
 
+  // Link-in-bio funnel — wa_links click counts (go.tektone.com.br/<slug>,
+  // worker-links/) vs. leads that actually came from the public
+  // qualification-form intake (leads.qualification is only ever set there —
+  // see POST /crm/api/public/leads above). Individual links are returned
+  // (not just a total) so the specific "bio" link is identifiable by title
+  // on a board that may hold several go-links at once.
+  const linkClicksTotal = waLinks.results.reduce((sum, l) => sum + (l.clicks || 0), 0);
+  const formEntries = leads.filter((l) => l.qualification).length;
+  const linkFunnel = {
+    totalClicks: linkClicksTotal,
+    formEntries,
+    clickToFormPct: linkClicksTotal ? Math.round((formEntries / linkClicksTotal) * 1000) / 10 : null,
+    links: waLinks.results.map((l) => ({ slug: l.slug, title: l.title, type: l.type, clicks: l.clicks })),
+  };
+
   return json(c, {
     month: monthStr,
     revenue: { thisMonth: revenueThisMonth, goal: goalRow ? Number(goalRow.value) || 0 : 0 },
@@ -527,6 +550,7 @@ app.get("/crm/api/dashboard", async (c) => {
     // Lightweight — just enough for the temperature cards to expand into a
     // lead list without a second round-trip.
     leads: pipelineLeads.map((l) => ({ id: l.id, name: l.name, phone: l.phone, tier: l.tier, status: l.status })),
+    linkFunnel,
   });
 });
 

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Pencil, Check, X, UserCheck, Tag } from "lucide-react";
+import { Pencil, Check, X, UserCheck, Tag, Link2 } from "lucide-react";
 import { crmApi } from "@/crm/crmApi";
 import { Spinner } from "@/components/ui";
 import { LEAD_STATUSES, TIER_COLOR, TIER_LABEL, CATEGORY_PALETTE, brl, withAlpha } from "@/crm/crmStatus";
@@ -215,6 +215,7 @@ export default function CrmDashboard({ isAdmin }) {
   }
 
   const { kpi, revenue } = data;
+  const linkFunnel = data.linkFunnel || { totalClicks: 0, formEntries: 0, clickToFormPct: null, links: [] };
   const statusData = LEAD_STATUSES.filter((s) => data.leadsByStatus[s.key] > 0).map((s) => ({
     label: s.label,
     value: data.leadsByStatus[s.key],
@@ -308,6 +309,44 @@ export default function CrmDashboard({ isAdmin }) {
         </div>
 
         <TemperatureBoard byTier={data.leadsByTier} leads={data.leads || []} />
+      </div>
+
+      <div className="surface-2 rounded-2xl p-5">
+        <p className="label-tech mb-3 flex items-center gap-1.5">
+          <Link2 size={11} /> Link na bio → Formulário
+        </p>
+        {linkFunnel.totalClicks || linkFunnel.formEntries ? (
+          <>
+            <div className="mb-4 grid grid-cols-3 gap-3">
+              <div>
+                <p className="font-mono text-[9.5px] uppercase tracking-wider text-stone-500">Cliques no link</p>
+                <p className="mt-1 text-xl font-bold text-ink tnum">{linkFunnel.totalClicks}</p>
+              </div>
+              <div>
+                <p className="font-mono text-[9.5px] uppercase tracking-wider text-stone-500">Formulários enviados</p>
+                <p className="mt-1 text-xl font-bold text-ink tnum">{linkFunnel.formEntries}</p>
+              </div>
+              <div>
+                <p className="font-mono text-[9.5px] uppercase tracking-wider text-stone-500">Conversão</p>
+                <p className="mt-1 text-xl font-bold text-ink tnum">
+                  {linkFunnel.clickToFormPct == null ? "—" : `${linkFunnel.clickToFormPct}%`}
+                </p>
+              </div>
+            </div>
+            {linkFunnel.links.length > 0 && (
+              <div className="space-y-1.5">
+                {linkFunnel.links.slice(0, 6).map((l) => (
+                  <div key={l.slug} className="flex items-center justify-between gap-2 rounded-lg surface-3 px-3.5 py-2.5">
+                    <span className="min-w-0 flex-1 truncate text-sm text-ink">{l.title || l.slug}</span>
+                    <span className="shrink-0 font-mono text-[11px] text-stone-500 tnum">{l.clicks} cliques</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        ) : (
+          <p className="text-xs text-stone-500">Sem dados ainda.</p>
+        )}
       </div>
     </div>
   );
