@@ -279,6 +279,21 @@ The approved (hot/warm) result screen's WhatsApp hand-off CTA
 Silvestrini's real number — it shipped for a while as a placeholder (`5565000000000`)
 because no real number existed anywhere in the codebase yet.
 
+Below `lg`, the section's pitch copy (`QualificacaoSection.tsx`'s left column) is two
+tap-advanced scenes instead of one static block — fixed 2026-08-21. `HeroSection.tsx`'s
+`useHeroScene()` intercepts every `a[href="#qualificacao"]` click and `scrollTo`s the section's
+top, and on mobile that top used to be a wall of static pitch text the visitor had to scroll
+past before the form ever appeared — friction between the hero CTA click and actually starting
+the form. Scene 1 (`introScene === 0`) is a `min-h-[80svh]` centered block — headline + first
+paragraph + a "Continuar" CTA — that fills the viewport as its own held beat, mirroring the
+hero's own full-screen CTA moment so landing here after the hero click feels like a
+continuation rather than a jump onto a text block. Tapping it swaps in scene 2 (rationale +
+the numbered steps), which is a normal, non-locked block that sits directly above the form
+card, so scrolling from there flows straight into the gate question. `lg:` and up keeps the
+original static two-column layout (pitch and form already visible side by side there, so
+nothing to split) — the two versions are duplicated JSX (`hidden lg:block` / `lg:hidden`)
+rather than one block with responsive scene logic, to keep the desktop path untouched.
+
 ## Per-user timezone preference
 
 `users.timezone` (migration `0019`, nullable) overrides the org default
