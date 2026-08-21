@@ -165,6 +165,34 @@ it. Confirmed to build and render without a JS error; the exact camera framing f
 object wasn't confirmed by eye this session (the automated browser session couldn't hold a
 stable angle on that specific interior view) — worth a manual look on the live site.
 
+## `/formv2` — parchment-animated qualification form (not `/v2`)
+
+Despite the name, this is unrelated to the `/v2` homepage-redesign preview above — different
+naming collision, kept as-is per how the page was requested. `marketing/app/formv2/page.tsx`
+is a full clone of the production homepage (`app/page.tsx`, same Hero/Agitacao/.../Footer
+composition, so the hero's `#qualificacao` scroll-intercept keeps working unchanged) with one
+swap: `QualificacaoSectionV2` (`marketing/components/formv2/`) replaces the production
+`QualificacaoSection`. Every scene of the flow (a condensed cover beat, the gate question,
+each of the 9 qualification questions, and the result screens) is wrapped in `ParchmentStage`,
+which rolls the outgoing scene shut and the incoming one open as a full-viewport "parchment" —
+pure CSS `clip-path` + Framer Motion, so it works on any device. A real three.js layer
+(`lib/three/parchment-ambience.js` — drifting dust + a soft pulsing glow) mounts behind the
+parchment only on devices that pass `lib/device-tier.ts`'s capability check (WebGL support,
+not `prefers-reduced-motion`, and not a touch+small-viewport+low-core/memory combo read as a
+budget phone) — everywhere else just gets the CSS roll with no extra canvas.
+
+Built as a new, isolated route rather than editing production `/` or `/v2`, both of which are
+untouched. Deployed live at `tektone.com.br/formv2`.
+
+**A real bug was caught and fixed during testing**: `ParchmentStage`'s content-sync effect
+originally depended only on `[stageKey]`, so a same-scene re-render (typing into the name/
+email/phone fields, picking a goal checkbox) never propagated the fresh `children` into what
+was displayed — the visible inputs froze at their initial empty render and the "Iniciar
+processo de qualificação" button stayed permanently disabled. Fixed by adding a second effect
+that syncs displayed content live whenever `stageKey === displayKey` (i.e. not mid-transition);
+the transition effect only fires the roll animation on an actual key change. Verified by typing
+through and submitting the full 9-question flow end to end after the fix.
+
 ## Data model (D1: `hub-tektone`)
 
 One database, `migrations/` in numbered order. Grouped by when each module shipped:
@@ -255,6 +283,17 @@ Approving a logged question promotes it into `kb_documents` as a `faq`-tier entr
 self-improving loop, same as the reference. **The knowledge base starts empty** — it needs
 Tektone's real service catalog, pricing, and case studies seeded before the copilot is
 useful for anything beyond the fail-open placeholder.
+
+**Deleting a lead** (`DELETE /crm/api/leads/:id`, added 2026-08-21) is gated to a single
+hardcoded email (`worker/crm-entry.js`'s `LEAD_DELETE_ALLOWED_EMAIL`, currently
+`hudson@tektone.com.br`) rather than a `crm_role` tier — unlike everything else in this
+section, it's not something a CRM admin promotion should grant, since it hard-deletes the
+lead's entire history (events, sales, and their commissions) with no undo. None of
+`lead_events`/`lead_questions`/`sales`/`commissions` have FK cascades on `lead_id`/`sale_id`,
+so `crmDb.js#deleteLead` walks and deletes each in one `db.batch()` rather than relying on
+the database to clean up. `CrmLeadDetail.jsx` mirrors the same email check to hide the button
+for everyone else — that's UX only, not the real gate; the route enforces it server-side
+regardless of what the client sends.
 
 ## Public lead capture (`/crm/api/public/leads`)
 
