@@ -49,6 +49,25 @@ export async function updateLead(db, id, fields) {
   return getLead(db, id);
 }
 
+// Hard-deletes a lead and everything hanging off it — lead_events,
+// lead_questions (migration 0010), and sales + their commissions (no FK
+// constraints/cascades exist on these tables, so this has to walk them by
+// hand). Restricted to a single hardcoded operator at the route level (see
+// worker/crm-entry.js) — this helper itself does no auth, same as every
+// other function in this file.
+export async function deleteLead(db, id) {
+  const sales = await db.prepare("SELECT id FROM sales WHERE lead_id = ?").bind(id).all();
+  const saleIds = (sales.results || []).map((s) => s.id);
+  const stmts = [
+    ...saleIds.map((saleId) => db.prepare("DELETE FROM commissions WHERE sale_id = ?").bind(saleId)),
+    db.prepare("DELETE FROM sales WHERE lead_id = ?").bind(id),
+    db.prepare("DELETE FROM lead_questions WHERE lead_id = ?").bind(id),
+    db.prepare("DELETE FROM lead_events WHERE lead_id = ?").bind(id),
+    db.prepare("DELETE FROM leads WHERE id = ?").bind(id),
+  ];
+  await db.batch(stmts);
+}
+
 export async function logLeadEvent(db, leadId, { type, payload, actorEmail }) {
   await db
     .prepare(

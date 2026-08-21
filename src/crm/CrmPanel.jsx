@@ -20,7 +20,7 @@ const TABS = [
 // retired) — the tektone-crm Worker (worker/crm-entry.js) still owns the
 // CRM's API routes, this panel just calls them via crmApi.js (hardcoded to
 // /crm regardless of which bundle it's compiled into).
-export default function CrmPanel({ crmRole, timezone, onClose }) {
+export default function CrmPanel({ crmRole, userEmail, timezone, onClose }) {
   const [view, setView] = useState({ tab: "dashboard" });
 
   useEffect(() => {
@@ -87,12 +87,16 @@ export default function CrmPanel({ crmRole, timezone, onClose }) {
         <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
           {view.tab === "dashboard" && <CrmDashboard isAdmin={crmRole === "admin"} />}
           {view.tab === "leads" && (
-            <CrmLeads onOpenLead={(id) => setView({ tab: "lead", leadId: id })} />
+            <CrmLeads
+              userEmail={userEmail}
+              onOpenLead={(id) => setView({ tab: "lead", leadId: id })}
+            />
           )}
           {view.tab === "lead" && (
             <CrmLeadDetail
               leadId={view.leadId}
               timezone={timezone}
+              userEmail={userEmail}
               onBack={() => setView({ tab: "leads" })}
             />
           )}

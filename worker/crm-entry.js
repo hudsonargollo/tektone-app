@@ -16,6 +16,7 @@ import {
   getLead,
   createLead,
   updateLead,
+  deleteLead,
   logLeadEvent,
   listLeadEvents,
   createSale,
@@ -243,6 +244,24 @@ app.patch("/crm/api/leads/:id/status", async (c) => {
     lead = await getLead(c.env.DB, id); // re-fetch: converted_project_id now set
   }
   return json(c, { lead, automation });
+});
+
+// Hard-delete a lead. Restricted to a single operator (not any crm_role
+// tier, including CRM admins) — deleting a lead wipes its whole history
+// (events, sales, commissions), so this deliberately isn't a role anyone
+// can be promoted into; it's one hardcoded email, same convention as
+// worker/lib/crmDb.js's HOUSE_COMMISSION_BENEFICIARY.
+const LEAD_DELETE_ALLOWED_EMAIL = "hudson@tektone.com.br";
+
+app.delete("/crm/api/leads/:id", async (c) => {
+  if (c.get("user").email !== LEAD_DELETE_ALLOWED_EMAIL) {
+    return json(c, { error: "unauthorized" }, 403);
+  }
+  const id = c.req.param("id");
+  const existing = await getLead(c.env.DB, id);
+  if (!existing) return json(c, { error: "not found" }, 404);
+  await deleteLead(c.env.DB, id);
+  return json(c, { ok: true });
 });
 
 // ── onboarding review queue (Phase 2 — AI-generated plans awaiting a human;

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowLeft, Save, Sparkles, Send, Check } from "lucide-react";
+import { ArrowLeft, Save, Sparkles, Send, Check, Trash2 } from "lucide-react";
 import { crmApi } from "@/crm/crmApi";
 import { Spinner } from "@/components/ui";
 import { fmtDateTime } from "@/lib/timezone";
@@ -73,8 +73,15 @@ const QUALIFICATION_FIELD_LABEL = {
 
 const brl = (n) => Number(n || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
-export default function CrmLeadDetail({ leadId, timezone, onBack }) {
+// Mirrors worker/crm-entry.js's LEAD_DELETE_ALLOWED_EMAIL — this only hides
+// the button for everyone else; the real gate is server-side, since a
+// client-side check alone would just hide a button anyone could still hit
+// the DELETE route without.
+const LEAD_DELETE_ALLOWED_EMAIL = "hudson@tektone.com.br";
+
+export default function CrmLeadDetail({ leadId, timezone, userEmail, onBack }) {
   const [data, setData] = useState(null);
+  const [deleting, setDeleting] = useState(false);
   const [notes, setNotes] = useState("");
   const [savingNotes, setSavingNotes] = useState(false);
   const [changingStatus, setChangingStatus] = useState(false);
@@ -209,11 +216,36 @@ export default function CrmLeadDetail({ leadId, timezone, onBack }) {
     qualification = null;
   }
 
+  async function removeLead() {
+    const label = lead.name || lead.email || lead.phone || "este lead";
+    if (!window.confirm(`Excluir "${label}"? Isso apaga o lead, suas vendas, comissões e todo o histórico. Não pode ser desfeito.`)) return;
+    setDeleting(true);
+    try {
+      await crmApi.deleteLead(leadId);
+      onBack();
+    } catch (e2) {
+      window.alert(e2.body?.error || e2.message);
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   return (
     <div>
-      <button onClick={onBack} className="mb-4 flex items-center gap-1.5 font-mono text-[11px] text-stone-500 hover:text-ink">
-        <ArrowLeft size={13} /> voltar
-      </button>
+      <div className="mb-4 flex items-center justify-between">
+        <button onClick={onBack} className="flex items-center gap-1.5 font-mono text-[11px] text-stone-500 hover:text-ink">
+          <ArrowLeft size={13} /> voltar
+        </button>
+        {userEmail === LEAD_DELETE_ALLOWED_EMAIL && (
+          <button
+            onClick={removeLead}
+            disabled={deleting}
+            className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 font-mono text-[11px] text-danger hover:bg-danger/10 disabled:opacity-50"
+          >
+            {deleting ? <Spinner /> : <Trash2 size={12} />} excluir lead
+          </button>
+        )}
+      </div>
 
       <div className="mb-6 rounded-2xl surface-2 p-6">
         <div className="mb-4 flex items-start justify-between gap-3">

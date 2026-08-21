@@ -44,6 +44,7 @@ export const crmApi = {
   createLead: (body) => req("/leads", { method: "POST", body }),
   getLead: (id) => req(`/leads/${id}`),
   updateLead: (id, body) => req(`/leads/${id}`, { method: "PATCH", body }),
+  deleteLead: (id) => req(`/leads/${id}`, { method: "DELETE" }),
   setLeadStatus: (id, status, opts = {}) =>
     req(`/leads/${id}/status`, { method: "PATCH", body: { status, ...opts } }),
   createSale: (leadId, amount, currency) =>

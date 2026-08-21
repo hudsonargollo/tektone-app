@@ -636,7 +636,7 @@ export default function App() {
               </Suspense>
             )}
             {view === "crm" && (
-              <CrmPanel crmRole={crmRole} timezone={userTimezone} onClose={() => navigateTo("board")} />
+              <CrmPanel crmRole={crmRole} userEmail={userEmail} timezone={userTimezone} onClose={() => navigateTo("board")} />
             )}
             {view === "links" && <CrmWaLinks onClose={() => navigateTo("board")} />}
             {view === "todos" && <PersonalTodoPanel />}
