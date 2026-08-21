@@ -96,6 +96,12 @@ const ANALYZING_LINES = [
   "Identificando compatibilidade…",
 ];
 
+const INTRO_STEPS = [
+  { t: "Qualificação", d: "9 perguntas rápidas sobre sua empresa." },
+  { t: "Análise automática", d: "Cruzamos suas respostas com nossos critérios de seleção." },
+  { t: "Call de diagnóstico", d: "Reunião estratégica para candidatos aprovados." },
+];
+
 type FormState = {
   hasCompany: boolean | null;
   name: string;
@@ -199,6 +205,7 @@ const inputCls =
 
 export default function QualificacaoSection() {
   const [stepIndex, setStepIndex] = useState(0);
+  const [introScene, setIntroScene] = useState<0 | 1>(0);
   const [data, setData] = useState<FormState>(empty);
   const [eliminated, setEliminated] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
@@ -345,43 +352,118 @@ export default function QualificacaoSection() {
         <div className="grid gap-12 lg:grid-cols-[0.85fr_1.15fr] lg:gap-16">
           {/* Left — pitch / selection rationale */}
           <div>
-            <p className="label-tech mb-4">Processo seletivo</p>
-            <h2 className="text-balance text-3xl sm:text-4xl font-bold leading-tight text-ink">
-              A Tektone seleciona seus parceiros.
-            </h2>
-            <p className="mt-5 text-pretty leading-relaxed text-ink/60">
-              Não somos uma consultoria de massas. Operamos com no máximo duas
-              empresas por mês para garantir presença ativa do fundador em
-              cada projeto.
-            </p>
-            <p className="mt-4 text-pretty leading-relaxed text-ink/60">
-              Esta qualificação funciona como um filtro de alta performance:
-              você responde sobre seu momento, nós avaliamos a aderência, e
-              empresas compatíveis saem com um convite direto para a call de
-              diagnóstico com o fundador.
-            </p>
+            {/* Desktop (lg+): pitch and form sit side by side and are both
+                already in view together, so the full static copy works
+                fine as-is — no scene-splitting needed here. */}
+            <div className="hidden lg:block">
+              <p className="label-tech mb-4">Processo seletivo</p>
+              <h2 className="text-balance text-3xl sm:text-4xl font-bold leading-tight text-ink">
+                A Tektone seleciona seus parceiros.
+              </h2>
+              <p className="mt-5 text-pretty leading-relaxed text-ink/60">
+                Não somos uma consultoria de massas. Operamos com no máximo duas
+                empresas por mês para garantir presença ativa do fundador em
+                cada projeto.
+              </p>
+              <p className="mt-4 text-pretty leading-relaxed text-ink/60">
+                Esta qualificação funciona como um filtro de alta performance:
+                você responde sobre seu momento, nós avaliamos a aderência, e
+                empresas compatíveis saem com um convite direto para a call de
+                diagnóstico com o fundador.
+              </p>
 
-            <ol className="mt-9 space-y-4">
-              {[
-                { t: "Qualificação", d: "9 perguntas rápidas sobre sua empresa." },
-                { t: "Análise automática", d: "Cruzamos suas respostas com nossos critérios de seleção." },
-                { t: "Call de diagnóstico", d: "Reunião estratégica para candidatos aprovados." },
-              ].map((s, i) => (
-                <li key={s.t} className="flex gap-4">
-                  <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md surface-paper font-mono text-xs text-green">
-                    {i + 1}
-                  </span>
-                  <div>
-                    <p className="font-semibold text-ink">{s.t}</p>
-                    <p className="text-sm text-ink/50">{s.d}</p>
-                  </div>
-                </li>
-              ))}
-            </ol>
+              <ol className="mt-9 space-y-4">
+                {INTRO_STEPS.map((s, i) => (
+                  <li key={s.t} className="flex gap-4">
+                    <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md surface-paper font-mono text-xs text-green">
+                      {i + 1}
+                    </span>
+                    <div>
+                      <p className="font-semibold text-ink">{s.t}</p>
+                      <p className="text-sm text-ink/50">{s.d}</p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
 
-            <p className="mt-8 font-mono text-xs tracking-wide text-ink/40">
-              Leva menos de 5 minutos. Sem compromisso.
-            </p>
+              <p className="mt-8 font-mono text-xs tracking-wide text-ink/40">
+                Leva menos de 5 minutos. Sem compromisso.
+              </p>
+            </div>
+
+            {/* Mobile (<lg): the pitch as two tap-driven scenes instead of a
+                wall of text to scroll past before reaching the form. Scene 1
+                fills the viewport as its own held beat — mirrors the hero's
+                own full-screen CTA moment, so landing here after tapping the
+                hero CTA feels like a continuation, not a jump onto a text
+                block. A single tap hands off into scene 2, which is a normal
+                (non-locked) block sitting directly above the form card, so
+                scrolling from there flows straight into the questions. */}
+            <div className="lg:hidden">
+              <AnimatePresence mode="wait">
+                {introScene === 0 ? (
+                  <motion.div
+                    key="intro-scene-1"
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -12 }}
+                    transition={{ duration: 0.35, ease: "easeOut" }}
+                    className="flex min-h-[80svh] flex-col justify-center"
+                  >
+                    <p className="label-tech mb-4">Processo seletivo</p>
+                    <h2 className="text-balance text-3xl font-bold leading-tight text-ink">
+                      A Tektone seleciona seus parceiros.
+                    </h2>
+                    <p className="mt-5 text-pretty leading-relaxed text-ink/60">
+                      Não somos uma consultoria de massas. Operamos com no
+                      máximo duas empresas por mês para garantir presença
+                      ativa do fundador em cada projeto.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setIntroScene(1)}
+                      className="group mt-8 inline-flex w-fit items-center gap-2 rounded-lg bg-green px-5 py-3 text-sm font-bold text-ivory transition-all duration-200 hover:bg-green-hover"
+                    >
+                      Continuar
+                      <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
+                    </button>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="intro-scene-2"
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.35, ease: "easeOut" }}
+                  >
+                    <p className="text-pretty leading-relaxed text-ink/60">
+                      Esta qualificação funciona como um filtro de alta
+                      performance: você responde sobre seu momento, nós
+                      avaliamos a aderência, e empresas compatíveis saem com
+                      um convite direto para a call de diagnóstico com o
+                      fundador.
+                    </p>
+
+                    <ol className="mt-9 space-y-4">
+                      {INTRO_STEPS.map((s, i) => (
+                        <li key={s.t} className="flex gap-4">
+                          <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md surface-paper font-mono text-xs text-green">
+                            {i + 1}
+                          </span>
+                          <div>
+                            <p className="font-semibold text-ink">{s.t}</p>
+                            <p className="text-sm text-ink/50">{s.d}</p>
+                          </div>
+                        </li>
+                      ))}
+                    </ol>
+
+                    <p className="mt-8 font-mono text-xs tracking-wide text-ink/40">
+                      Leva menos de 5 minutos. Sem compromisso.
+                    </p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
 
           {/* Right — qualification flow */}
